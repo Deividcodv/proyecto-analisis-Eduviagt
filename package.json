@@ -17,14 +17,16 @@
     "test:api": "turbo run test --filter=api",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
-    "clean": "turbo run clean && rm -rf node_modules"
+    "clean": "turbo run clean && rm -rf node_modules",
+    "up": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-up.ps1",
+    "up:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-up.ps1 -Stop"
   },
   "devDependencies": {
-    "turbo": "^2.0.0",
     "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.2",
     "prettier": "^3.3.0",
-    "typescript": "^5.5.0",
-    "eslint-config-prettier": "^9.1.2"
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.0"
   },
   "engines": {
     "node": ">=20"
