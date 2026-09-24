@@ -4,13 +4,18 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
+import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
 import { CreateRolDto } from './dto/create-rol.dto';
 import { UpdateRolDto } from './dto/update-rol.dto';
 import { AssignPermisoDto } from './dto/assign-permiso.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private audit: AuditService,
+  ) {}
 
   async findAllRoles() {
     return this.prisma.rol.findMany({
@@ -39,7 +44,7 @@ export class UsersService {
     return rol;
   }
 
-  async createRol(dto: CreateRolDto) {
+  async createRol(dto: CreateRolDto, usuario: AuthenticatedUser) {
     const existing = await this.prisma.rol.findUnique({
       where: { nombre: dto.nombre },
     });
@@ -48,15 +53,25 @@ export class UsersService {
       throw new ConflictException(`El rol "${dto.nombre}" ya existe`);
     }
 
-    return this.prisma.rol.create({
+    const rol = await this.prisma.rol.create({
       data: {
         nombre: dto.nombre,
         descripcion: dto.descripcion,
       },
     });
+
+    await this.audit.log({
+      usuarioId: usuario.id,
+      accion: 'crear',
+      entidad: 'rol',
+      entidadId: rol.id,
+      detalle: { nombre: dto.nombre },
+    });
+
+    return rol;
   }
 
-  async updateRol(id: string, dto: UpdateRolDto) {
+  async updateRol(id: string, dto: UpdateRolDto, usuario: AuthenticatedUser) {
     await this.findRolById(id);
 
     if (dto.nombre) {
@@ -69,13 +84,23 @@ export class UsersService {
       }
     }
 
-    return this.prisma.rol.update({
+    const rol = await this.prisma.rol.update({
       where: { id },
       data: dto,
     });
+
+    await this.audit.log({
+      usuarioId: usuario.id,
+      accion: 'editar',
+      entidad: 'rol',
+      entidadId: id,
+      detalle: { ...dto },
+    });
+
+    return rol;
   }
 
-  async deleteRol(id: string) {
+  async deleteRol(id: string, usuario: AuthenticatedUser) {
     await this.findRolById(id);
 
     const usersWithRole = await this.prisma.usuario.count({
@@ -88,10 +113,23 @@ export class UsersService {
       );
     }
 
-    return this.prisma.rol.delete({ where: { id } });
+    const rol = await this.prisma.rol.delete({ where: { id } });
+
+    await this.audit.log({
+      usuarioId: usuario.id,
+      accion: 'eliminar',
+      entidad: 'rol',
+      entidadId: id,
+    });
+
+    return rol;
   }
 
-  async assignPermisoToRol(rolId: string, dto: AssignPermisoDto) {
+  async assignPermisoToRol(
+    rolId: string,
+    dto: AssignPermisoDto,
+    usuario: AuthenticatedUser,
+  ) {
     await this.findRolById(rolId);
 
     await this.prisma.rolPermiso.deleteMany({
@@ -107,10 +145,33 @@ export class UsersService {
       data: rolPermisos,
     });
 
+    await this.audit.log({
+      usuarioId: usuario.id,
+      accion: 'asignar-permisos',
+      entidad: 'rol',
+      entidadId: rolId,
+      detalle: { permisoIds: dto.permisoIds },
+    });
+
     return this.findRolById(rolId);
   }
 
   async findAllPermisos() {
     return this.prisma.permiso.findMany();
+  }
+
+  async findAllUsuarios(rol?: string) {
+    return this.prisma.usuario.findMany({
+      where: rol ? { rol: { nombre: rol } } : undefined,
+      select: {
+        id: true,
+        cui: true,
+        nombres: true,
+        email: true,
+        estado: true,
+        rol: { select: { nombre: true } },
+      },
+      orderBy: { nombres: 'asc' },
+    });
   }
 }

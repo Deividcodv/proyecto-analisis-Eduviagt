@@ -76,8 +76,8 @@ async function main() {
     // Documentos
     { modulo: 'documento', accion: 'crear' },
     { modulo: 'documento', accion: 'ver' },
-    { modulo: 'documento', accion: 'eliminar' },
     { modulo: 'documento', accion: 'editar' },
+    { modulo: 'documento', accion: 'eliminar' },
     // Evaluaciones
     { modulo: 'evaluacion', accion: 'crear' },
     { modulo: 'evaluacion', accion: 'editar' },
@@ -86,6 +86,15 @@ async function main() {
     { modulo: 'comite', accion: 'crear' },
     { modulo: 'comite', accion: 'editar' },
     { modulo: 'comite', accion: 'ver' },
+    // Sesiones
+    { modulo: 'sesion', accion: 'crear' },
+    { modulo: 'sesion', accion: 'editar' },
+    { modulo: 'sesion', accion: 'ver' },
+    // Votos
+    { modulo: 'voto', accion: 'crear' },
+    // Decisiones
+    { modulo: 'decision', accion: 'crear' },
+    { modulo: 'decision', accion: 'ver' },
     // Reportes
     { modulo: 'reporte', accion: 'ver' },
     // Seguridad
@@ -119,37 +128,64 @@ async function main() {
   }
   console.log('✅ Permisos asignados a ADMIN');
 
-  // POSTULANTE: permisos para el flujo de solicitudes y documentos
+  // POSTULANTE tiene permisos de solicitudes y documentos
   const postulanteRole = roles.find((r) => r.nombre === 'POSTULANTE');
-  const postulantePermisos = permisos.filter(
-    (p) =>
-      (p.modulo === 'solicitud' && ['crear', 'ver', 'editar'].includes(p.accion)) ||
-      (p.modulo === 'documento' && ['crear', 'ver', 'eliminar'].includes(p.accion)),
+  const permisosPostulante = permisos.filter((p) =>
+    ['solicitud', 'documento'].includes(p.modulo),
   );
-  for (const permiso of postulantePermisos) {
+  for (const permiso of permisosPostulante) {
     await prisma.rolPermiso.upsert({
-      where: { rolId_permisoId: { rolId: postulanteRole!.id, permisoId: permiso.id } },
+      where: {
+        rolId_permisoId: { rolId: postulanteRole!.id, permisoId: permiso.id },
+      },
       update: {},
       create: { rolId: postulanteRole!.id, permisoId: permiso.id },
     });
   }
-  console.log('✅ Permisos asignados a POSTULANTE');
+  console.log('✅ Permisos de solicitud/documento asignados a POSTULANTE');
 
-  // COORDINADOR_COMITE: revisar solicitudes y rechazar documentos
-  const coordinadorRole = roles.find((r) => r.nombre === 'COORDINADOR_COMITE');
-  const coordinadorPermisos = permisos.filter(
-    (p) =>
-      p.modulo === 'solicitud' ||
-      (p.modulo === 'documento' && p.accion === 'editar'),
-  );
-  for (const permiso of coordinadorPermisos) {
-    await prisma.rolPermiso.upsert({
-      where: { rolId_permisoId: { rolId: coordinadorRole!.id, permisoId: permiso.id } },
-      update: {},
-      create: { rolId: coordinadorRole!.id, permisoId: permiso.id },
+  // EVALUADOR: evaluacion completo + solicitud:ver
+  // COORDINADOR_COMITE: comite/sesion/decision/evaluacion/solicitud completo
+  // MIEMBRO_COMITE: voto:crear + ver de sesion/comite/solicitud
+  const permisosPorRol: Array<[string, (p: (typeof permisos)[number]) => boolean]> = [
+    [
+      'EVALUADOR',
+      (p) =>
+        p.modulo === 'evaluacion' ||
+        (p.modulo === 'solicitud' && p.accion === 'ver'),
+    ],
+    [
+      'COORDINADOR_COMITE',
+      (p) =>
+        ['comite', 'sesion', 'decision', 'evaluacion', 'solicitud', 'documento'].includes(
+          p.modulo,
+        ),
+    ],
+    [
+      'MIEMBRO_COMITE',
+      (p) =>
+        p.modulo === 'voto' ||
+        (p.accion === 'ver' && ['sesion', 'comite', 'solicitud'].includes(p.modulo)),
+    ],
+  ];
+
+  for (const [rolNombre, filtro] of permisosPorRol) {
+    const rol = roles.find((r) => r.nombre === rolNombre);
+    const permitidos = permisos.filter(filtro).map((p) => p.id);
+    await prisma.rolPermiso.deleteMany({
+      where: { rolId: rol!.id, permisoId: { notIn: permitidos } },
     });
+    for (const pid of permitidos) {
+      await prisma.rolPermiso.upsert({
+        where: {
+          rolId_permisoId: { rolId: rol!.id, permisoId: pid },
+        },
+        update: {},
+        create: { rolId: rol!.id, permisoId: pid },
+      });
+    }
+    console.log(`✅ Permisos asignados a ${rolNombre}`);
   }
-  console.log('✅ Permisos asignados a COORDINADOR_COMITE');
 
   // ==========================================
   // BECAS Y CRITERIOS (demo)
@@ -188,6 +224,25 @@ async function main() {
     },
   });
   console.log('✅ Criterios de evaluación creados (demo)');
+
+  const becaDemo2 = becas[1];
+  const criteriosBeca2 = [
+    { id: '00000000-0000-4000-8000-000000000012', nombre: 'Situación socioeconómica', peso: 0.4 },
+    { id: '00000000-0000-4000-8000-000000000013', nombre: 'Trayectoria académica', peso: 0.6 },
+  ];
+  for (const c of criteriosBeca2) {
+    await prisma.criterioEvaluacion.upsert({
+      where: { id: c.id },
+      update: {},
+      create: {
+        id: c.id,
+        becaId: becaDemo2.id,
+        nombre: c.nombre,
+        peso: c.peso,
+      },
+    });
+  }
+  console.log('✅ Criterios de evaluación creados para beca 2 (demo)');
 
   // ==========================================
   // GÉNEROS
@@ -296,52 +351,72 @@ async function main() {
   console.log('✅ Usuario admin creado (admin@sigeb.gov.gt / Admin123!)');
 
   // ==========================================
-  // DEMO PORTAL PÚBLICO S2 (US-46) — cambios de David
-  // Postulante demo + convocatoria ABIERTA + solicitud de ejemplo
+  // USUARIO POSTULANTE POR DEFECTO
   // ==========================================
-  const postulanteRoleS2 = await prisma.rol.findUnique({
+  const postulanteRoleData = await prisma.rol.findUnique({
     where: { nombre: 'POSTULANTE' },
   });
 
-  const demoPostulante = await prisma.usuario.upsert({
+  await prisma.usuario.upsert({
     where: { cui: '9999999999999' },
-    update: { estado: 'ACTIVO' },
+    update: {},
     create: {
       cui: '9999999999999',
       nombres: 'Postulante Demo',
       email: 'postulante@demo.gt',
       passwordHash: hashedPassword,
-      rolId: postulanteRoleS2!.id,
+      rolId: postulanteRoleData!.id,
       estado: 'ACTIVO',
     },
   });
-  console.log('✅ Usuario postulante demo creado (postulante@demo.gt / Admin123!)');
+  console.log('✅ Usuario postulante creado (postulante@demo.gt / Admin123!)');
 
-  const convPortalDemo = await prisma.convocatoria.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000021' },
-    update: { estado: 'ABIERTA' },
-    create: {
-      id: '00000000-0000-4000-8000-000000000021',
-      nombre: 'Beca Excelencia 2026 (Demo Portal)',
-      descripcion: 'Convocatoria abierta de prueba para el portal público',
-      becaId: becaDemo.id,
-      estado: 'ABIERTA',
-      fechaApertura: new Date(),
-      fechaCierre: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-    },
+  // ==========================================
+  // USUARIOS DEMO (Evaluación/Comités)
+  // ==========================================
+  const evaluadorRoleData = await prisma.rol.findUnique({
+    where: { nombre: 'EVALUADOR' },
+  });
+  const coordinadorRoleData = await prisma.rol.findUnique({
+    where: { nombre: 'COORDINADOR_COMITE' },
+  });
+  const miembroRoleData = await prisma.rol.findUnique({
+    where: { nombre: 'MIEMBRO_COMITE' },
   });
 
-  const solicitudDemo = await prisma.solicitud.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000031' },
-    update: { estado: 'ENVIADA' },
-    create: {
-      id: '00000000-0000-4000-8000-000000000031',
-      convocatoriaId: convPortalDemo.id,
-      usuarioId: demoPostulante.id,
-      estado: 'ENVIADA',
+  const usuariosDemo = [
+    {
+      cui: '8888888888888',
+      nombres: 'Evaluador Demo',
+      email: 'evaluador@demo.gt',
+      rolId: evaluadorRoleData!.id,
     },
-  });
-  console.log('📋 CODIGO_DEMO_PARA_CONSULTA=', solicitudDemo.id);
+    {
+      cui: '7777777777777',
+      nombres: 'Coordinador Demo',
+      email: 'coordinador@demo.gt',
+      rolId: coordinadorRoleData!.id,
+    },
+    {
+      cui: '6666666666666',
+      nombres: 'Miembro Comité Demo',
+      email: 'miembro@demo.gt',
+      rolId: miembroRoleData!.id,
+    },
+  ];
+
+  for (const usuario of usuariosDemo) {
+    await prisma.usuario.upsert({
+      where: { cui: usuario.cui },
+      update: {},
+      create: {
+        ...usuario,
+        passwordHash: hashedPassword,
+        estado: 'ACTIVO',
+      },
+    });
+  }
+  console.log('✅ Usuarios demo de evaluación creados (evaluador/coordinador/miembro@demo.gt / Admin123!)');
 
   console.log('🎉 Seed completado exitosamente!');
 }
