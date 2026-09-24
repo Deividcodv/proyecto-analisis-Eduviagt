@@ -43,6 +43,74 @@ export interface HistorialEstado {
   fecha: string;
 }
 
+export interface Solicitud {
+  id: string;
+  convocatoriaId: string;
+  estado: string;
+  correccionesCount: number;
+  createdAt: string;
+  updatedAt: string;
+  convocatoria: {
+    id: string;
+    nombre: string;
+    beca: Beca;
+  };
+  _count?: { documentos?: number };
+}
+
+export interface SolicitudPerfilAcademico {
+  generoId: string | null;
+  generoOtro: string | null;
+  nivelAcademicoId: string | null;
+  nivelAcademicoOtro: string | null;
+  institucion: string | null;
+  carrera: string | null;
+  promedio: number | null;
+  departamentoId: string | null;
+  departamentoOtro: string | null;
+  municipioId: string | null;
+  municipioOtro: string | null;
+}
+
+export interface SolicitudPerfilFinanciero {
+  ingresoFamiliar: number | null;
+  numeroDependientes: number | null;
+  becasAnteriores: boolean;
+  descripcionSituacion: string | null;
+}
+
+export interface SolicitudDetalle extends Solicitud {
+  perfilAcademico?: SolicitudPerfilAcademico | null;
+  perfilFinanciero?: SolicitudPerfilFinanciero | null;
+  documentos?: {
+    id: string;
+    documentoTipoId: string;
+    archivoUrl: string;
+    estado: string;
+    version: number;
+    documentoTipo: DocumentoTipo;
+  }[];
+  historial?: HistorialEstado[];
+}
+
+export interface SolicitudChecklistDocumento {
+  documentoTipoId: string;
+  nombre: string;
+  obligatorio: boolean;
+  cargado: boolean;
+  archivoUrl: string | null;
+}
+
+export interface SolicitudChecklist {
+  solicitudId: string;
+  estado: string;
+  perfilAcademico: boolean;
+  perfilFinanciero: boolean;
+  documentos: SolicitudChecklistDocumento[];
+  pendientes: string[];
+  completo: boolean;
+}
+
 export interface ConsultaSolicitud {
   codigo: string;
   estado: string;
@@ -124,6 +192,19 @@ export async function http<T>(
   }
 
   return (await res.json()) as T;
+}
+
+export async function httpData<T>(
+  path: string,
+  options: {
+    method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
+    body?: unknown;
+    isFormData?: boolean;
+    token?: string | null;
+  } = {},
+): Promise<T> {
+  const res = await http<{ data: T }>(path, options);
+  return res.data;
 }
 
 export function formatearFecha(fecha: string) {

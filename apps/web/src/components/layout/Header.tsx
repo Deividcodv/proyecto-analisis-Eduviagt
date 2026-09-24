@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import { Button } from '@/components/ui/Button';
 import { Container } from '@/components/ui/Container';
 import { MobileMenu } from '@/components/layout/MobileMenu';
+import { UserMenu } from '@/components/layout/UserMenu';
 
 const enlaces = [
   { href: '/', label: 'Inicio' },
@@ -40,11 +40,8 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="hidden gap-3 md:flex">
-          <Button href="/login" variant="ghost">
-            Iniciar sesión
-          </Button>
-          <Button href="/registro">Registrarse</Button>
+        <div className="hidden items-center gap-3 md:flex">
+          <UserMenu />
         </div>
 
         <MobileMenu />
