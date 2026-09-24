@@ -29,7 +29,6 @@ import {
   MarcarEstadoDocumentoDto,
 } from './dto';
 import { Permisos } from '../common/decorators/permisos.decorator';
-import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
 
@@ -77,15 +76,6 @@ export class SolicitudesController {
   @ApiOperation({ summary: 'Listar mis solicitudes (admin: todas)' })
   findAll(@CurrentUser() usuario: AuthenticatedUser) {
     return this.solicitudesService.findAll(usuario);
-  }
-
-  @Get('consulta/:codigo')
-  @Public()
-  @ApiOperation({ summary: 'Consulta pública del estado de una solicitud por código' })
-  @ApiResponse({ status: 200, description: 'Estado de la solicitud' })
-  @ApiResponse({ status: 404, description: 'Código no encontrado' })
-  consultaPublica(@Param('codigo') codigo: string) {
-    return this.solicitudesService.consultaPublica(codigo);
   }
 
   @Get(':id/checklist')
