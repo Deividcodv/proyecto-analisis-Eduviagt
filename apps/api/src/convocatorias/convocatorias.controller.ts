@@ -5,10 +5,9 @@ import {
   Patch,
   Body,
   Param,
-  Query,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { ConvocatoriasService } from './convocatorias.service';
 import {
   CreateConvocatoriaDto,
@@ -18,8 +17,6 @@ import {
 } from './dto';
 import { Public } from '../common/decorators/public.decorator';
 import { Permisos } from '../common/decorators/permisos.decorator';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
 
 @ApiTags('Convocatorias')
 @Controller('convocatorias')
@@ -30,11 +27,8 @@ export class ConvocatoriasController {
   @Public()
   @ApiOperation({ summary: 'Listar convocatorias abiertas (público)' })
   @ApiResponse({ status: 200, description: 'Lista de convocatorias ABIERTA' })
-  @ApiQuery({ name: 'busqueda', required: false, description: 'Buscar por nombre de convocatoria o beca' })
-  findAllPublic(
-    @Query('busqueda') busqueda?: string,
-  ) {
-    return this.convocatoriasService.findAllPublic({ busqueda });
+  findAllPublic() {
+    return this.convocatoriasService.findAllPublic();
   }
 
   @Get('todas')
@@ -82,9 +76,8 @@ export class ConvocatoriasController {
   transicion(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: TransicionDto,
-    @CurrentUser() usuario: AuthenticatedUser,
   ) {
-    return this.convocatoriasService.transicion(id, dto, usuario);
+    return this.convocatoriasService.transicion(id, dto);
   }
 
   @Patch(':id/documentos')
@@ -94,8 +87,7 @@ export class ConvocatoriasController {
   documentos(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: DocumentosRequeridosDto,
-    @CurrentUser() usuario: AuthenticatedUser,
   ) {
-    return this.convocatoriasService.reemplazarDocumentosRequeridos(id, dto, usuario);
+    return this.convocatoriasService.reemplazarDocumentosRequeridos(id, dto);
   }
 }
