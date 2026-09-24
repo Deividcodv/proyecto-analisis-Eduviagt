@@ -16,6 +16,12 @@ const colores: Record<string, string> = {
   EVALUADA: 'bg-teal-100 text-teal-800',
   APROBADA: 'bg-green-100 text-green-800',
   RECHAZADA: 'bg-red-100 text-red-800',
+  PROGRAMADA: 'bg-blue-100 text-blue-800',
+  EN_CURSO: 'bg-amber-100 text-amber-800',
+  FINALIZADA: 'bg-purple-100 text-purple-800',
+  ABSTENCION: 'bg-gray-200 text-gray-700',
+  APROBAR: 'bg-green-100 text-green-800',
+  RECHAZAR: 'bg-red-100 text-red-800',
 };
 
 export function Badge({ estado, className = '' }: BadgeProps) {

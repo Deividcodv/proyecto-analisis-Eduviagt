@@ -13,6 +13,7 @@ export interface Convocatoria {
   fechaApertura: string;
   fechaCierre: string;
   beca: Beca;
+  _count?: { solicitudes?: number };
 }
 
 export interface DocumentoTipo {
@@ -140,6 +141,103 @@ export interface Departamento {
   id: string;
   nombre: string;
   municipios?: Municipio[];
+}
+
+export interface UsuarioSimplificado {
+  id: string;
+  cui: string;
+  nombres: string;
+  email: string;
+  estado: string;
+  rol: { nombre: string };
+}
+
+export interface Comite {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  activo: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { miembros?: number };
+}
+
+export interface ComiteMiembro {
+  id: string;
+  rol: string;
+  activo: boolean;
+  usuario: { id: string; nombres: string; email: string; cui: string };
+}
+
+export interface ComiteDetalle extends Comite {
+  miembros: ComiteMiembro[];
+}
+
+export interface Sesion {
+  id: string;
+  comiteId: string;
+  fecha: string;
+  lugar: string | null;
+  estado: string;
+  quorumMinimo: number | null;
+  createdAt: string;
+  updatedAt: string;
+  comite?: { id: string; nombre: string };
+  _count?: { agenda?: number; votos?: number };
+}
+
+export interface SesionVoto {
+  id: string;
+  voto: string;
+  observaciones: string | null;
+  createdAt: string;
+  usuario?: { id: string; nombres: string };
+  solicitud?: { id: string };
+}
+
+export interface SesionAgendaItem {
+  id: string;
+  solicitud: {
+    id: string;
+    estado: string;
+    usuario: { nombres: string; cui: string };
+  };
+}
+
+export interface Decision {
+  id: string;
+  solicitudId: string;
+  sesionId: string;
+  resultado: string;
+  observaciones: string | null;
+  fecha: string;
+}
+
+export interface SesionDetalle extends Sesion {
+  agenda: SesionAgendaItem[];
+  votos: SesionVoto[];
+  decisiones: Decision[];
+}
+
+export interface EvaluadorScore {
+  evaluador: { id: string; nombres: string };
+  criterios: {
+    id: string;
+    nombre: string;
+    peso: number;
+    puntaje: number;
+  }[];
+  completados: number;
+  total: number;
+  completo: boolean;
+  score: number | null;
+}
+
+export interface ScoreSolicitud {
+  solicitudId: string;
+  score: number | null;
+  completo: boolean;
+  evaluadores: EvaluadorScore[];
 }
 
 export interface ListaResponse<T> {

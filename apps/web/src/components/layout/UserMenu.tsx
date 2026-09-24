@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/Button';
 const rutaPorRol = (rol: string): string => {
   const r = (rol || '').toUpperCase();
   if (r === 'EVALUADOR') return '/evaluador';
+  if (r === 'COORDINADOR_COMITE') return '/coordinador';
+  if (r === 'MIEMBRO_COMITE') return '/comite';
   if (r !== 'POSTULANTE') return '/admin';
   return '/dashboard';
 };
