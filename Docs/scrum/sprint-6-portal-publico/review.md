@@ -52,3 +52,17 @@
 1. Enlazar autenticación real en `/login` y `/registro` (Sprint 7)
 2. Botón "Postularme" del detalle debe crear la solicitud cuando el usuario esté autenticado
 3. Lazy loading de imágenes cuando se integren assets de convocatorias
+
+---
+
+## Actualización del equipo (2026)
+
+> Sprint ejecutado en el ciclo de recreación del equipo (repo `Deividcodv/proyecto-analisis-Eduviagt`), tomando como fuente el commit del producto `986fc89`.
+
+### Recreación S2 — Portal público (US-40..US-48)
+
+- **US-40..US-48 completadas:** layout base + Design System y home conectada al API (US-40 — agrupada por el backlog del producto bajo S5, pero trabajada junto al portal), secciones hero/sobre SIGEB/cómo funciona, `/convocatorias` con filtro de búsqueda, detalle de convocatoria, consulta de beca por código (endpoint acotado), nosotros y footer.
+- **PR del equipo:** `feat(portal)` (#9, `edd9c5d`, 2026-09-10), más endpoints públicos US-44/45 (#7) y consulta US-46.
+- **Fechas:** 2026-09-09 → 2026-09-11 (margen sábado 12) · **Review:** 2026-09-11.
+- **Participantes:** Yemerson (Developer), Héctor (Developer), José (Developer), David (Scrum Master / Reviewer).
+- **Métricas:** 40 pts, 9/9 historias.
