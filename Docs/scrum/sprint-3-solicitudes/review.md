@@ -50,3 +50,16 @@
 1. Consumir los endpoints de solicitudes desde el portal postulante (Sprint 7).
 2. Definir flujo de RECHAZO de documentos por el comité (estado `DocumentoEstado`). 
 
+---
+
+## Actualización del equipo (2026)
+
+> Estado real del módulo de solicitudes en el repo del equipo (`Deividcodv/proyecto-analisis-Eduviagt`).
+
+### Estado actual (US-18..US-25)
+
+- **Módulo de solicitudes (US-18..US-25):** llega al repo del equipo vía PR `feat(solicitudes)` (#10, `a3932ae`, 2026-09-11): creación y máquina de estados con historial, perfiles académico/financiero con "otro" (US-13), carga/eliminación de documentos (Multer, PDF/JPG/PNG ≤ 5 MB, `/storage`), checklist de completitud y envío validado.
+- **S4 — rechazo de documentos:** `PATCH /solicitudes/:id/documentos/:tipoId/estado` (permiso `documento:editar`), checklist con `RECHAZADO` como pendiente y re-upload que lo completa (PR #19, `c97daba`, 2026-09-23).
+- **Integración con evaluación:** las solicitudes en `EN_REVISION`/`EVALUADA` alimentan evaluadores, criterios y sesiones (ver sprint-4).
+- **Participantes:** José (Dev), David (Scrum Master), Héctor (Soporte). 
+

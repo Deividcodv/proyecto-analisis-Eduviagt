@@ -51,3 +51,18 @@
 1. Consumir catálogos y convocatorias desde la capa de solicitudes (Sprint 3)
 2. Integrar el storage adapter con endpoint de upload (Multer) en Sprint 3
 3. Implementar opción "otro" (US-13) junto con los perfiles de solicitud
+
+---
+
+## Actualización del equipo (2026)
+
+> Sprint ejecutado en el ciclo de recreación del equipo (repo `Deividcodv/proyecto-analisis-Eduviagt`), tomando como fuente los commits del producto `85122d2` y `986fc89`.
+
+### Recreación S1 — Convocatorias y catálogos (US-11..US-17)
+
+- **US-11** guard de permisos por roles; **US-12** gestión de catálogos (género, nivel académico, departamento, municipio); **US-14** CRUD de convocatorias; **US-15** máquina de estados; **US-16** documentos requeridos por convocatoria; **US-17** storage adapter base.
+- **US-13** ("otro" en catálogos) se completó en S3 junto con los perfiles de solicitud.
+- **PRs del equipo:** `feature/convocatorias-crud` (#5, `46c2ddd`, merge 2026-09-07); endpoints públicos US-44/45 (#7, `f64b5a7`, 2026-09-10); base de auditoría + interface autenticado (#8, `0e740e1`).
+- **S4 — tipos de documento:** soporte de tipos de documento en convocatorias (#18, `22a0ed7`, 2026-09-23).
+- **Fechas:** 2026-09-07 → 2026-09-09 · **Review:** 2026-09-09.
+- **Participantes:** Marcos (Developer), Héctor (Developer), David (Scrum Master / Reviewer).

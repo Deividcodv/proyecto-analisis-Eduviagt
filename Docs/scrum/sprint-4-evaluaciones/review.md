@@ -55,3 +55,21 @@
 
 1. Panel de evaluador en frontend consumiendo `/evaluaciones/mias` y otros endpoints de evaluación (Sprint 7).
 2. Crear reporte de evaluaciones pendientes con auto-score (Sprint 5).
+
+---
+
+## Actualización del equipo (2026)
+
+> Cierre ejecutado del Sprint 4 en el repo del equipo (`Deividcodv/proyecto-analisis-Eduviagt`), fuente del producto `41285d4` (API) y `3cb58e9` (web).
+
+### Cierre S4 — Evaluaciones y comités (US-26..US-33 + AD-4.1)
+
+- **PRs mergeados en orden #17 → #18 → #19 → #20 (2026-09-23):**
+  - #17 `chore/shared`: schema `SesionAgenda`, migración y `GET /usuarios` (`9f7cbcc`).
+  - #18 `feat(api)`: soporte de tipos de documento en convocatorias (`22a0ed7`).
+  - #19 `feat(api)`: evaluaciones, comités, sesiones y rechazo de documentos (`c97daba`).
+  - #20 `feat(web)`: flujo de evaluación — paneles y roles (`5ad4949`).
+- **Proceso:** 1 aprobación por PR (ruleset "Protect develop"), squash + delete de rama; `lint-and-test` en verde en cada PR y `develop` queda verde.
+- **Tag:** `v0.2-s4-evaluacion` (anotado, sobre `5ad4949`).
+- **Participantes:** David (coordinación/merges), Héctor (#17/#18), José (#19), Hamilton (#20).
+- **Demo:** score ponderado en vuelo, asignación de evaluadores, comités, sesiones con voto único, quórum y decisión por mayoría, rechazo/re-subida de documentos.
