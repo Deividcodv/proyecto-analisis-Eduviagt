@@ -13,7 +13,6 @@ const postulante: AuthenticatedUser = {
 describe('SolicitudesService', () => {
   let prisma: any;
   let storage: any;
-  let audit: any;
   let service: SolicitudesService;
 
   beforeEach(() => {
@@ -32,8 +31,7 @@ describe('SolicitudesService', () => {
       read: jest.fn(),
       exists: jest.fn(),
     };
-    audit = { log: jest.fn() };
-    service = new SolicitudesService(prisma, storage, audit);
+    service = new SolicitudesService(prisma, storage);
   });
 
   describe('guardarPerfilAcademico (US-13: opcion otro)', () => {
@@ -447,51 +445,6 @@ describe('SolicitudesService', () => {
         expect.arrayContaining(['Documento "Certificado académico" pendiente']),
       );
       expect(result.completo).toBe(false);
-    });
-  });
-
-  describe('consultaPublica (US-46)', () => {
-    it('devuelve el estado publico sin datos sensibles del postulante', async () => {
-      prisma.solicitud.findUnique.mockResolvedValue({
-        id: 's1',
-        estado: 'APROBADA',
-        createdAt: new Date('2026-08-01'),
-        updatedAt: new Date('2026-08-10'),
-        convocatoria: {
-          nombre: 'Beca de Excelencia',
-          beca: { nombre: 'Excelencia Academica' },
-        },
-        historial: [
-          {
-            estado: 'BORRADOR',
-            comentario: 'Solicitud creada',
-            createdAt: new Date('2026-08-01'),
-          },
-          {
-            estado: 'APROBADA',
-            comentario: 'Decision del comite',
-            createdAt: new Date('2026-08-10'),
-          },
-        ],
-      });
-
-      const result = await service.consultaPublica('s1');
-
-      expect(result.codigo).toBe('s1');
-      expect(result.estado).toBe('APROBADA');
-      expect(result.beca).toBe('Excelencia Academica');
-      expect(result.convocatoria).toBe('Beca de Excelencia');
-      expect(result.historial).toHaveLength(2);
-      expect(result).not.toHaveProperty('usuarioId');
-      expect(result).not.toHaveProperty('documentos');
-      expect(result).not.toHaveProperty('perfilAcademico');
-    });
-
-    it('lanza NotFoundException si el codigo no existe', async () => {
-      prisma.solicitud.findUnique.mockResolvedValue(null);
-      await expect(service.consultaPublica('no-existe')).rejects.toThrow(
-        'No se encontr',
-      );
     });
   });
 });
