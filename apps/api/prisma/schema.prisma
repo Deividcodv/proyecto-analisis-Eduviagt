@@ -264,6 +264,7 @@ model Solicitud {
   evaluaciones    Evaluacion[]
   votos           Voto[]
   decision        Decision?
+  sesionesAgenda  SesionAgenda[]
 
   @@map("solicitud")
 }
@@ -417,8 +418,22 @@ model Sesion {
   comite     Comite     @relation(fields: [comiteId], references: [id])
   votos      Voto[]
   decisiones Decision[]
+  agenda     SesionAgenda[]
 
   @@map("sesion")
+}
+
+model SesionAgenda {
+  id          String @id @default(uuid())
+  sesionId    String
+  solicitudId String
+  createdAt   DateTime @default(now())
+
+  sesion    Sesion    @relation(fields: [sesionId], references: [id], onDelete: Cascade)
+  solicitud Solicitud @relation(fields: [solicitudId], references: [id])
+
+  @@unique([sesionId, solicitudId])
+  @@map("sesion_agenda")
 }
 
 model Voto {
