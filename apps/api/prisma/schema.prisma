@@ -503,6 +503,7 @@ model AsistenteBaseConocimiento {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([activo])
   @@map("asistente_base_conocimiento")
 }
 
