@@ -10,6 +10,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class AuthService {
@@ -17,6 +18,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private audit: AuditService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -70,7 +72,7 @@ export class AuthService {
     };
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, ip?: string) {
     const user = await this.prisma.usuario.findUnique({
       where: { email: dto.email },
       include: { rol: true },
@@ -92,6 +94,14 @@ export class AuthService {
 
     const tokens = await this.generateTokens(user.id, user.email);
 
+    await this.audit.log({
+      usuarioId: user.id,
+      accion: 'login',
+      entidad: 'usuario',
+      entidadId: user.id,
+      ip,
+    });
+
     return {
       ...tokens,
       user: {
@@ -104,7 +114,7 @@ export class AuthService {
     };
   }
 
-  async refreshToken(refreshToken: string) {
+  async refreshToken(refreshToken: string, ip?: string) {
     try {
       const payload = this.jwtService.verify(refreshToken, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET') || 'sigeb-jwt-refresh-secret-dev',
@@ -125,6 +135,14 @@ export class AuthService {
           secret: this.configService.get<string>('JWT_SECRET') || 'sigeb-jwt-secret-dev',
         },
       );
+
+      await this.audit.log({
+        usuarioId: user.id,
+        accion: 'refresh',
+        entidad: 'usuario',
+        entidadId: user.id,
+        ip,
+      });
 
       return { accessToken };
     } catch {
