@@ -125,10 +125,10 @@ export function PanelSesiones() {
   return (
     <div>
       {error && (
-        <p className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p>
+        <p className="mb-4 rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-4 text-sm font-bold text-brutal-rojo">{error}</p>
       )}
       {exito && (
-        <p className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">{exito}</p>
+        <p className="mb-4 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-lima/30 p-4 text-sm font-bold text-brutal-tinta">{exito}</p>
       )}
 
       <div className="mb-6 flex justify-end">
@@ -138,8 +138,8 @@ export function PanelSesiones() {
       </div>
 
       {mostrarForm && (
-        <Card className="mb-6 border-2 border-sigeb-blue">
-          <h2 className="mb-4 text-lg font-bold text-sigeb-blue-dark">Nueva sesión</h2>
+        <Card className="mb-6 border-[3px] border-brutal-tinta shadow-brutal-sm">
+          <h2 className="mb-4 font-brut text-lg font-black uppercase tracking-wide text-brutal-tinta">Nueva sesión</h2>
           <div className="grid gap-4 md:grid-cols-2">
             <Select
               label="Comité"
@@ -168,7 +168,7 @@ export function PanelSesiones() {
           </div>
 
           <div className="mt-4">
-            <p className="mb-2 text-sm font-semibold text-gray-700">
+            <p className="mb-2 text-sm font-semibold text-brutal-tinta/80">
               Agenda — solicitudes evaluadas ({evaluadas.length} disponibles)
             </p>
             {evaluadas.length === 0 ? (
@@ -180,16 +180,17 @@ export function PanelSesiones() {
                 {evaluadas.map((s) => (
                   <label
                     key={s.id}
-                    className="flex items-center gap-2 rounded border border-gray-200 px-3 py-2 text-sm text-gray-700"
+                    className="flex cursor-pointer items-center gap-2 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-blanco px-3 py-2 font-mono text-sm text-brutal-tinta"
                   >
                     <input
                       type="checkbox"
                       checked={agenda.includes(s.id)}
                       onChange={() => toggleAgenda(s.id)}
+                      className="h-4 w-4 accent-brutal-tinta"
                     />
                     <span>
                       {s.convocatoria?.beca?.nombre}
-                      <span className="block text-xs text-gray-500">
+                      <span className="block text-xs text-brutal-tinta/50">
                         {s.convocatoria?.nombre}
                       </span>
                     </span>
@@ -211,16 +212,16 @@ export function PanelSesiones() {
       )}
 
       {detalle && (
-        <Card className="mb-6 border-2 border-sigeb-blue">
+        <Card className="mb-6 border-[3px] border-brutal-tinta shadow-brutal-sm">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <div>
               <div className="flex flex-wrap items-center gap-3">
-                <h3 className="text-lg font-bold text-sigeb-blue-dark">
+                <h3 className="font-brut text-lg font-black uppercase tracking-wide text-brutal-tinta">
                   {detalle.comite?.nombre}
                 </h3>
                 <Badge estado={detalle.estado} />
               </div>
-              <p className="text-sm text-gray-600">
+              <p className="font-mono text-sm text-brutal-tinta/60">
                 {formatearFecha(detalle.fecha)} · {detalle.lugar ?? 'Sin lugar'}
                 {detalle.quorumMinimo ? ` · Quórum ${detalle.quorumMinimo}` : ''}
               </p>
@@ -237,18 +238,18 @@ export function PanelSesiones() {
             </div>
           </div>
 
-          <p className="mb-2 text-sm font-semibold text-gray-700">Agenda ({detalle.agenda.length})</p>
+          <p className="mb-2 font-brut text-sm font-bold uppercase tracking-wide text-brutal-tinta">Agenda ({detalle.agenda.length})</p>
           {detalle.agenda.length === 0 ? (
-            <p className="text-sm text-gray-500">Sin solicitudes en la agenda.</p>
+            <p className="text-sm text-brutal-tinta/50">Sin solicitudes en la agenda.</p>
           ) : (
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-brutal-tinta/20">
               {detalle.agenda.map((item) => (
                 <li key={item.id} className="flex items-center justify-between py-2">
-                  <span className="text-sm text-sigeb-blue-dark">
+                  <span className="font-mono text-sm text-brutal-tinta">
                     {item.solicitud.usuario.nombres}
-                    <span className="block text-xs text-gray-500">CUI {item.solicitud.usuario.cui}</span>
+                    <span className="block text-xs text-brutal-tinta/50">CUI {item.solicitud.usuario.cui}</span>
                   </span>
-                  <span className="text-xs text-gray-500">{item.solicitud.estado}</span>
+                  <Badge estado={item.solicitud.estado} />
                 </li>
               ))}
             </ul>
@@ -256,11 +257,11 @@ export function PanelSesiones() {
 
           {detalle.decisiones.length > 0 && (
             <div className="mt-4">
-              <p className="mb-2 text-sm font-semibold text-gray-700">Decisiones</p>
-              <ul className="divide-y divide-gray-100">
+              <p className="mb-2 font-brut text-sm font-bold uppercase tracking-wide text-brutal-tinta">Decisiones</p>
+              <ul className="divide-y divide-brutal-tinta/20">
                 {detalle.decisiones.map((d) => (
-                  <li key={d.id} className="py-2 text-sm">
-                    <span className="font-medium text-gray-700">Solicitud {d.solicitudId.slice(0, 8)}</span>{' '}
+                  <li key={d.id} className="py-2 font-mono text-sm">
+                    <span className="font-bold text-brutal-tinta">Solicitud {d.solicitudId.slice(0, 8)}</span>{' '}
                     <Badge estado={d.resultado} />
                   </li>
                 ))}
@@ -286,11 +287,11 @@ export function PanelSesiones() {
                   </h3>
                   <Badge estado={sesion.estado} />
                 </div>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-brutal-tinta/70">
                   {formatearFecha(sesion.fecha)}
                   {sesion.lugar ? ` · ${sesion.lugar}` : ''}
                 </p>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-brutal-tinta/70">
                   {sesion._count?.agenda ?? 0} solicitudes · {sesion._count?.votos ?? 0} votos
                 </p>
               </div>

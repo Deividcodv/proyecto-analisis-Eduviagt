@@ -106,10 +106,10 @@ export function PanelSolicitudes() {
   return (
     <div>
       {error && (
-        <p className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p>
+        <p className="mb-4 rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-4 text-sm font-bold text-brutal-rojo">{error}</p>
       )}
       {exito && (
-        <p className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">{exito}</p>
+        <p className="mb-4 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-lima/30 p-4 text-sm font-bold text-brutal-tinta">{exito}</p>
       )}
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
@@ -128,15 +128,15 @@ export function PanelSolicitudes() {
       </div>
 
       {asignando && (
-        <Card className="mb-6 border-2 border-sigeb-blue">
-          <h3 className="mb-2 text-lg font-bold text-sigeb-blue-dark">
+        <Card className="mb-6 border-[3px] border-brutal-tinta shadow-brutal-sm">
+          <h3 className="mb-2 font-brut text-lg font-black uppercase tracking-wide text-brutal-tinta">
             Asignar evaluadores a la solicitud
           </h3>
-          <p className="mb-4 text-sm text-gray-600">
+          <p className="mb-4 font-mono text-sm text-brutal-tinta/60">
             {asignando.convocatoria?.nombre} · {asignando.convocatoria?.beca?.nombre}
           </p>
           {evaluadores.length === 0 ? (
-            <p className="text-sm text-amber-700">
+            <p className="font-mono text-sm text-brutal-rojo">
               No hay usuarios con rol EVALUADOR registrados en el sistema.
             </p>
           ) : (
@@ -144,16 +144,17 @@ export function PanelSolicitudes() {
               {evaluadores.map((ev) => (
                 <label
                   key={ev.id}
-                  className="flex items-center gap-2 rounded border border-gray-200 px-3 py-2 text-sm text-gray-700"
+                  className="flex cursor-pointer items-center gap-2 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-blanco px-3 py-2 font-mono text-sm text-brutal-tinta"
                 >
                   <input
                     type="checkbox"
                     checked={seleccionados.includes(ev.id)}
                     onChange={() => toggleEvaluador(ev.id)}
+                    className="h-4 w-4 accent-brutal-tinta"
                   />
                   <span>
                     {ev.nombres}
-                    <span className="block text-xs text-gray-500">{ev.email}</span>
+                    <span className="block text-xs text-brutal-tinta/50">{ev.email}</span>
                   </span>
                 </label>
               ))}
@@ -186,15 +187,15 @@ export function PanelSolicitudes() {
                       </h3>
                       <Badge estado={solicitud.estado} />
                     </div>
-                    <p className="text-sm text-gray-600">{solicitud.convocatoria?.nombre}</p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-brutal-tinta/70">{solicitud.convocatoria?.nombre}</p>
+                    <p className="text-sm text-brutal-tinta/70">
                       Creada el {formatearFecha(solicitud.createdAt)} ·{' '}
                       {solicitud._count?.documentos ?? 0} documentos
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {score && score.completo && score.score != null && (
-                      <span className="rounded-lg bg-green-100 px-3 py-1 text-sm font-bold text-green-800">
+                      <span className="rounded-brutal border-[3px] border-brutal-tinta bg-brutal-lima px-3 py-1 font-brut text-sm font-bold text-brutal-tinta shadow-brutal-sm">
                         Score: {score.score.toFixed(2)}
                       </span>
                     )}
@@ -209,12 +210,12 @@ export function PanelSolicitudes() {
                   </div>
                 </div>
                 {score && (
-                  <div className="rounded-lg bg-gray-50 p-3">
-                    <p className="mb-2 text-sm font-semibold text-sigeb-blue-dark">
+                  <div className="rounded-brutal border-[3px] border-brutal-tinta bg-brutal-papel p-3">
+                    <p className="mb-2 font-brut text-sm font-bold uppercase tracking-wide text-brutal-tinta">
                       Score por evaluador
                     </p>
                     {score.evaluadores.length === 0 ? (
-                      <p className="text-sm text-gray-500">
+                      <p className="font-mono text-sm text-brutal-tinta/50">
                         Aún no hay evaluadores asignados.
                       </p>
                     ) : (
@@ -222,19 +223,19 @@ export function PanelSolicitudes() {
                         {score.evaluadores.map((ev) => (
                           <div
                             key={ev.evaluador.id}
-                            className="flex flex-wrap items-center justify-between gap-2 text-sm"
+                            className="flex flex-wrap items-center justify-between gap-2 font-mono text-sm"
                           >
-                            <span className="font-medium text-gray-700">
+                            <span className="font-bold text-brutal-tinta">
                               {ev.evaluador.nombres}
-                              <span className="text-gray-500">
+                              <span className="text-brutal-tinta/50">
                                 {' '}({ev.completados}/{ev.total})
                               </span>
                             </span>
                             <span
                               className={
                                 ev.completo
-                                  ? 'font-bold text-green-700'
-                                  : 'font-semibold text-gray-500'
+                                  ? 'rounded-brutal border-2 border-brutal-tinta bg-brutal-lima px-2 py-0.5 font-bold text-brutal-tinta'
+                                  : 'font-semibold text-brutal-tinta/50'
                               }
                             >
                               {ev.completo ? `${ev.score?.toFixed(2) ?? '—'}` : 'Pendiente'}

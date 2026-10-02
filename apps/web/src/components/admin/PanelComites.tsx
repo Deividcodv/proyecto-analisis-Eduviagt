@@ -135,10 +135,10 @@ export function PanelComites() {
   return (
     <div>
       {error && (
-        <p className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p>
+        <p className="mb-4 rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-4 text-sm font-bold text-brutal-rojo">{error}</p>
       )}
       {exito && (
-        <p className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">{exito}</p>
+        <p className="mb-4 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-lima/30 p-4 text-sm font-bold text-brutal-tinta">{exito}</p>
       )}
 
       <div className="mb-6 flex justify-end">
@@ -149,7 +149,7 @@ export function PanelComites() {
 
       {mostrarForm && (
         <Card className="mb-6">
-          <h2 className="mb-4 text-lg font-bold text-sigeb-blue-dark">Nuevo comité evaluador</h2>
+          <h2 className="mb-4 font-brut text-lg font-black uppercase tracking-wide text-brutal-tinta">Nuevo comité evaluador</h2>
           <div className="grid gap-4 md:grid-cols-2">
             <Input
               label="Nombre"
@@ -171,11 +171,11 @@ export function PanelComites() {
       )}
 
       {detalle && (
-        <Card className="mb-6 border-2 border-sigeb-blue">
+        <Card className="mb-6 border-[3px] border-brutal-tinta shadow-brutal-sm">
           <div className="mb-4 flex items-center justify-between gap-2">
             <div>
-              <h3 className="text-lg font-bold text-sigeb-blue-dark">{detalle.nombre}</h3>
-              <p className="text-sm text-gray-600">
+              <h3 className="font-brut text-lg font-black uppercase tracking-wide text-brutal-tinta">{detalle.nombre}</h3>
+              <p className="font-mono text-sm text-brutal-tinta/60">
                 {detalle.descripcion ?? 'Sin descripción'} · {detalle.miembros.length} miembros
               </p>
             </div>
@@ -219,22 +219,22 @@ export function PanelComites() {
           </div>
 
           {detalle.miembros.length === 0 ? (
-            <p className="text-sm text-gray-500">El comité no tiene miembros.</p>
+            <p className="font-mono text-sm text-brutal-tinta/50">El comité no tiene miembros.</p>
           ) : (
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-brutal-tinta/20">
               {detalle.miembros.map((miembro) => (
                 <li
                   key={miembro.id}
                   className="flex flex-wrap items-center justify-between gap-2 py-2"
                 >
                   <div>
-                    <p className="text-sm font-medium text-sigeb-blue-dark">
+                    <p className="font-mono text-sm font-bold text-brutal-tinta">
                       {miembro.usuario.nombres}
-                      <span className="ml-2 rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                      <span className="ml-2 rounded-brutal border-2 border-brutal-tinta bg-brutal-cyan px-2 py-0.5 text-xs font-bold text-brutal-tinta">
                         {miembro.rol}
                       </span>
                     </p>
-                    <p className="text-xs text-gray-500">{miembro.usuario.email}</p>
+                    <p className="font-mono text-xs text-brutal-tinta/50">{miembro.usuario.email}</p>
                   </div>
                   <Button
                     variant="ghost"
@@ -261,7 +261,7 @@ export function PanelComites() {
             >
               <div>
                 <h3 className="text-lg font-semibold text-sigeb-blue-dark">{comite.nombre}</h3>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-brutal-tinta/70">
                   {comite.descripcion ?? 'Sin descripción'} · {comite._count?.miembros ?? 0} miembros
                 </p>
               </div>
