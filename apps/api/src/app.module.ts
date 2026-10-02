@@ -12,6 +12,8 @@ import { SolicitudesModule } from './solicitudes/solicitudes.module';
 import { EvaluacionesModule } from './evaluaciones/evaluaciones.module';
 import { ComitesModule } from './comites/comites.module';
 import { SesionesModule } from './sesiones/sesiones.module';
+import { ReportesModule } from './reportes/reportes.module';
+import { AsistenteModule } from './asistente/asistente.module';
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { SesionesModule } from './sesiones/sesiones.module';
     EvaluacionesModule,
     ComitesModule,
     SesionesModule,
+    ReportesModule,
+    AsistenteModule,
   ],
   controllers: [],
   providers: [],
