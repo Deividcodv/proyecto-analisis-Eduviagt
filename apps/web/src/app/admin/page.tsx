@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { fetchConToken } from '@/lib/api-auth';
 import { Container } from '@/components/ui/Container';
@@ -14,6 +14,7 @@ import { InternalPageHeader } from '@/components/ui/InternalPageHeader';
 import { PanelSolicitudes } from '@/components/admin/PanelSolicitudes';
 import { PanelComites } from '@/components/admin/PanelComites';
 import { PanelSesiones } from '@/components/admin/PanelSesiones';
+import { PanelUsuarios } from '@/components/admin/PanelUsuarios';
 import { formatearFecha, type Beca, type Convocatoria } from '@/lib/api';
 
 export default function AdminPage() {
@@ -185,10 +186,10 @@ function PanelConvocatorias() {
   return (
     <div>
       {error && (
-        <p className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p>
+        <p className="mb-4 rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-4 text-sm font-bold text-brutal-rojo">{error}</p>
       )}
       {exito && (
-        <p className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">{exito}</p>
+        <p className="mb-4 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-lima/30 p-4 text-sm font-bold text-brutal-tinta">{exito}</p>
       )}
 
       <div className="mb-6 flex justify-end">
@@ -199,7 +200,7 @@ function PanelConvocatorias() {
 
       {mostrarForm && (
         <Card className="mb-6">
-          <h2 className="mb-4 text-lg font-bold text-sigeb-blue-dark">
+          <h2 className="mb-4 font-brut text-lg font-black uppercase tracking-wide text-brutal-tinta">
             Nueva convocatoria
           </h2>
           <div className="grid gap-4 md:grid-cols-2">
@@ -257,8 +258,8 @@ function PanelConvocatorias() {
                   </h3>
                   <Badge estado={convocatoria.estado} />
                 </div>
-                <p className="text-sm text-gray-600">{convocatoria.beca.nombre}</p>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-brutal-tinta/70">{convocatoria.beca.nombre}</p>
+                <p className="text-sm text-brutal-tinta/70">
                   Cierra el {formatearFecha(convocatoria.fechaCierre)} ·{' '}
                   {convocatoria._count?.solicitudes ?? 0} solicitudes
                 </p>
@@ -291,7 +292,8 @@ function PanelConvocatorias() {
 
 interface Permiso {
   id: string;
-  nombre: string;
+  modulo: string;
+  accion: string;
   descripcion?: string;
 }
 
@@ -303,6 +305,31 @@ interface Rol {
 }
 
 function PanelSeguridad() {
+  const [subtab, setSubtab] = useState<'matriz' | 'usuarios'>('matriz');
+
+  return (
+    <div>
+      <div className="mb-6 flex flex-wrap gap-2">
+        <Button
+          variant={subtab === 'matriz' ? 'primary' : 'ghost'}
+          onClick={() => setSubtab('matriz')}
+        >
+          Matriz de roles
+        </Button>
+        <Button
+          variant={subtab === 'usuarios' ? 'primary' : 'ghost'}
+          onClick={() => setSubtab('usuarios')}
+        >
+          Usuarios
+        </Button>
+      </div>
+
+      {subtab === 'matriz' ? <MatrizRoles /> : <PanelUsuarios />}
+    </div>
+  );
+}
+
+function MatrizRoles() {
   const [roles, setRoles] = useState<Rol[] | null>(null);
   const [permisos, setPermisos] = useState<Permiso[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -363,53 +390,81 @@ function PanelSeguridad() {
     return <div className="flex justify-center py-20"><Spinner /></div>;
   }
 
+  const modulos = Array.from(new Set(permisos.map((p) => p.modulo)));
+
   return (
     <div>
       {error && (
-        <p className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p>
+        <p className="mb-4 rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-4 text-sm font-bold text-brutal-rojo">{error}</p>
       )}
       {exito && (
-        <p className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">{exito}</p>
+        <p className="mb-4 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-lima/30 p-4 text-sm font-bold text-brutal-tinta">{exito}</p>
       )}
 
-      <div className="space-y-6">
-        {roles.map((rol) => (
-          <Card
-            key={rol.id}
-            className="grid gap-6 md:grid-cols-[220px_1fr]"
-          >
-            <div>
-              <h3 className="text-lg font-bold text-sigeb-blue-dark">{rol.nombre}</h3>
-              <p className="text-sm text-gray-600">{rol.descripcion ?? 'Sin descripción'}</p>
-            </div>
-            <div>
-              <p className="mb-2 text-sm font-semibold text-gray-700">Permisos</p>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {permisos.map((permiso) => (
-                  <label
-                    key={permiso.id}
-                    className="flex items-center gap-2 rounded border border-gray-200 px-3 py-2 text-sm text-gray-700"
+      <div className="overflow-x-auto rounded-brutal border-[3px] border-brutal-tinta bg-brutal-blanco">
+        <table className="w-full min-w-[860px] text-left font-mono text-sm">
+          <thead className="border-b-[3px] border-brutal-tinta bg-brutal-tinta">
+            <tr>
+              <th className="px-4 py-3 align-bottom text-xs font-bold uppercase tracking-wide text-brutal-papel">
+                Módulo / Acción
+              </th>
+              {roles.map((rol) => (
+                <th
+                  key={rol.id}
+                  className="px-3 py-3 text-center align-bottom text-xs font-black uppercase tracking-wide text-brutal-gold"
+                >
+                  {rol.nombre}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-brutal-tinta/20">
+            {modulos.map((modulo) => (
+              <React.Fragment key={modulo}>
+                <tr className="bg-brutal-gold/40">
+                  <td
+                    colSpan={roles.length + 1}
+                    className="px-4 py-2 font-brut text-xs font-black uppercase tracking-wide text-brutal-tinta"
                   >
-                    <input
-                      type="checkbox"
-                      checked={(seleccion[rol.id] ?? new Set()).has(permiso.id)}
-                      onChange={(e) =>
-                        togglePermiso(rol.id, permiso.id, e.target.checked)
-                      }
-                    />
-                    {permiso.nombre}
-                  </label>
-                ))}
-              </div>
-              <Button
-                className="mt-4"
-                onClick={() => guardar(rol.id)}
-                disabled={enviando}
-              >
-                {enviando ? 'Guardando...' : 'Guardar permisos'}
-              </Button>
-            </div>
-          </Card>
+                    ▸ {modulo}
+                  </td>
+                </tr>
+                {permisos
+                  .filter((p) => p.modulo === modulo)
+                  .map((permiso) => (
+                    <tr key={permiso.id} className="hover:bg-brutal-cyan/10">
+                      <td className="px-4 py-2 font-bold text-brutal-tinta">{permiso.accion}</td>
+                      {roles.map((rol) => (
+                        <td key={rol.id} className="px-3 py-2 text-center">
+                          <input
+                            type="checkbox"
+                            checked={(seleccion[rol.id] ?? new Set()).has(permiso.id)}
+                            onChange={(e) =>
+                              togglePermiso(rol.id, permiso.id, e.target.checked)
+                            }
+                            className="h-5 w-5 accent-brutal-tinta"
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h3 className="mt-6 mb-3 font-brut text-lg font-black uppercase tracking-wide text-brutal-tinta">
+        Guardar por rol
+      </h3>
+      <div className="flex flex-wrap gap-3">
+        {roles.map((rol) => (
+          <div key={rol.id} className="flex items-center gap-2">
+            <span className="brut-label text-sm font-bold text-brutal-tinta">{rol.nombre}</span>
+            <Button onClick={() => guardar(rol.id)} disabled={enviando} className="!px-4 !py-2 text-xs">
+              {enviando ? 'Guardando...' : 'Guardar'}
+            </Button>
+          </div>
         ))}
       </div>
     </div>

@@ -3,10 +3,12 @@ import {
   Post,
   Get,
   Body,
+  Req,
   UseGuards,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -36,8 +38,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Iniciar sesión' })
   @ApiResponse({ status: 200, description: 'Login exitoso con tokens' })
   @ApiResponse({ status: 401, description: 'Credenciales inválidas' })
-  async login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  async login(@Body() dto: LoginDto, @Req() req: Request) {
+    return this.authService.login(dto, req.ip);
   }
 
   @Post('refresh')
@@ -46,8 +48,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Refrescar access token' })
   @ApiResponse({ status: 200, description: 'Nuevo access token' })
   @ApiResponse({ status: 401, description: 'Refresh token inválido' })
-  async refresh(@Body() dto: RefreshTokenDto) {
-    return this.authService.refreshToken(dto.refreshToken);
+  async refresh(@Body() dto: RefreshTokenDto, @Req() req: Request) {
+    return this.authService.refreshToken(dto.refreshToken, req.ip);
   }
 
   @Get('perfil')

@@ -16,9 +16,18 @@ export class TransformInterceptor<T>
   implements NestInterceptor<T, ApiResponse<T>>
 {
   intercept(
-    _context: ExecutionContext,
+    context: ExecutionContext,
     next: CallHandler,
   ): Observable<ApiResponse<T>> {
-    return next.handle().pipe(map((data) => ({ data })));
+    const response = context.switchToHttp().getResponse();
+    return next.handle().pipe(
+      map((data) => {
+        // Evita envolver respuestas ya enviadas (p.ej. descargas de CSV)
+        if (response.headersSent) {
+          return data;
+        }
+        return { data };
+      }),
+    );
   }
 }

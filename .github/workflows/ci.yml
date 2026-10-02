@@ -56,6 +56,31 @@ jobs:
 
       - name: Build
         run: npm run build
+      - name: Smoke CI (S5)
+        env:
+          DATABASE_URL: postgresql://sigeb:sigeb123@localhost:5432/sigeb_test
+          JWT_SECRET: test-secret-key
+          JWT_REFRESH_SECRET: test-refresh-secret-key
+        run: |
+          cd apps/api
+          npx prisma db seed
+          node dist/main.js > /tmp/api.log 2>&1 &
+          API_PID=$!
+          trap 'kill "$API_PID" || true' EXIT
+          cd ../..
+          set +e
+          bash -x .github/scripts/smoke-ci.sh > /tmp/smoke-trace.log 2>&1
+          SMOKE_CODE=$?
+          set -e
+          if [ "$SMOKE_CODE" -ne 0 ]; then
+            echo "===== smoke-trace.log ====="
+            tail -n 200 /tmp/smoke-trace.log || true
+            echo "===== api.log ====="
+            tail -n 150 /tmp/api.log || true
+            exit "$SMOKE_CODE"
+          fi
+          tail -n 5 /tmp/smoke-trace.log
+
 
 
   deploy-staging:

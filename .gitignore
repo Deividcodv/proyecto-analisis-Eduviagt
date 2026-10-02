@@ -1,0 +1,28 @@
+﻿# Dependencies
+node_modules/
+
+# Env / secretos
+.env
+.env.local
+apps/api/.env
+
+# Build
+dist/
+build/
+.next/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Prisma
+apps/api/prisma/*.db
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
