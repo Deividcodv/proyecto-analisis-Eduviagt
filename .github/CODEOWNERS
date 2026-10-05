@@ -1,1 +1,24 @@
-* @Deividcodv
+* @Hamilton313 @hctor2 @TitosDoritos18
+
+/apps/api/src/auth/            @TitosDoritos18
+/apps/api/src/common/          @TitosDoritos18
+/apps/api/src/audit/           @TitosDoritos18
+/apps/api/src/notificaciones/  @TitosDoritos18
+/apps/api/src/users/           @TitosDoritos18
+
+/apps/api/src/comites/         @hctor2
+/apps/api/src/convocatorias/   @hctor2
+/apps/api/src/solicitudes/     @hctor2
+
+/apps/api/src/catalogos/       @TitosDoritos18
+/apps/api/src/sesiones/        @TitosDoritos18
+/apps/api/src/evaluaciones/    @TitosDoritos18
+/apps/api/src/reportes/        @TitosDoritos18
+/apps/api/src/asistente/       @TitosDoritos18
+
+/apps/web/src/components/ui/   @Hamilton313
+/apps/web/src/app/admin/       @Hamilton313
+/apps/web/src/app/             @hctor2
+/apps/web/src/components/home/ @hctor2
+
+/.github/                      @Hamilton313

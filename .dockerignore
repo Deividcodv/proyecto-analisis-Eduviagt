@@ -1,0 +1,18 @@
+# Sintexas sensibles en compilación (US-F7, CI/CD)
+**/node_modules
+**/.next
+**/dist
+**/coverage
+storage
+.git
+.github
+.env
+.env.*
+!.env.example
+*.log
+doc
+scripts
+.aider
+skills-src
+.dockerignore
+submodules
