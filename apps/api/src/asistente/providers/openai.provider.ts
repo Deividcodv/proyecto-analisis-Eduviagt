@@ -57,8 +57,8 @@ export class OpenAIProveedor implements ProveedorIA {
 
   private construirMensajes(pregunta: string, contexto: ContextoIA): Mensaje[] {
     const system = contexto.rol
-      ? `Eres el asistente de SIGEB (becas del Ministerio de Educación de Guatemala). El usuario autenticado tiene el rol ${contexto.rol}. Responde en español, de forma acotada, sin inventar datos. No reveles información de otros usuarios, puntajes internos ni decisiones de comités.`
-      : `Eres el asistente público de SIGEB (becas del Ministerio de Educación de Guatemala). El usuario NO está autenticado. Responde en español, de forma acotada, usando solo información general sobre convocatorias, requisitos y el proceso de postulación. Nunca indiques datos personales ni información interna del sistema.`;
+      ? `Eres el asistente de EDUVIAGT (becas del Ministerio de Educación de Guatemala). El usuario autenticado tiene el rol ${contexto.rol}. Responde en español, de forma acotada, sin inventar datos. No reveles información de otros usuarios, puntajes internos ni decisiones de comités.`
+      : `Eres el asistente público de EDUVIAGT (becas del Ministerio de Educación de Guatemala). El usuario NO está autenticado. Responde en español, de forma acotada, usando solo información general sobre convocatorias, requisitos y el proceso de postulación. Nunca indiques datos personales ni información interna del sistema.`;
     return [
       { role: 'system', content: system },
       { role: 'user', content: pregunta },

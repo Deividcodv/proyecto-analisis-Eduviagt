@@ -22,8 +22,11 @@ export class SesionesController {
   @Post()
   @Permisos('sesion:crear')
   @ApiOperation({ summary: 'Crear sesión con agenda de solicitudes EVALUADA' })
-  crearSesion(@Body() dto: CrearSesionDto) {
-    return this.sesionesService.crearSesion(dto);
+  crearSesion(
+    @Body() dto: CrearSesionDto,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.sesionesService.crearSesion(dto, usuario);
   }
 
   @Get()

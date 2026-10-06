@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Put, Body, Param, ParseUUIDPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  ParseUUIDPipe,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -6,7 +16,11 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { EvaluacionesService } from './evaluaciones.service';
-import { AsignarEvaluadoresDto, RegistrarPuntajeDto } from './evaluaciones.dto';
+import {
+  AsignarEvaluadoresDto,
+  ImparcialidadDto,
+  RegistrarPuntajeDto,
+} from './evaluaciones.dto';
 import { Permisos } from '../common/decorators/permisos.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
@@ -53,5 +67,29 @@ export class EvaluacionesController {
     @CurrentUser() usuario: AuthenticatedUser,
   ) {
     return this.evaluacionesService.registrarPuntaje(id, criterioId, dto, usuario);
+  }
+
+  @Patch('solicitudes/:id/imparcialidad')
+  @Permisos('evaluacion:editar')
+  @ApiOperation({ summary: 'Confirmar la declaración de imparcialidad' })
+  @ApiResponse({ status: 400, description: 'Ya registró puntajes' })
+  confirmarImparcialidad(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ImparcialidadDto,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.evaluacionesService.confirmarImparcialidad(id, dto, usuario);
+  }
+
+  @Delete('solicitudes/:id/evaluadores/:evaluadorId')
+  @Permisos('evaluacion:crear')
+  @ApiOperation({ summary: 'Quitar un evaluador de una solicitud (admin)' })
+  @ApiResponse({ status: 400, description: 'El evaluador ya registró puntajes' })
+  quitarEvaluador(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('evaluadorId', ParseUUIDPipe) evaluadorId: string,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.evaluacionesService.quitarEvaluador(id, evaluadorId, usuario);
   }
 }

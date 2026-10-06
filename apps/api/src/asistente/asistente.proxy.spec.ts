@@ -13,11 +13,13 @@ describe('AsistenteIAProxy (US-38)', () => {
     config = { get: jest.fn().mockReturnValue(undefined) };
     fallback = { responder: jest.fn() };
     openai = { responder: jest.fn() };
+    /* eslint-disable @typescript-eslint/no-explicit-any */
     proxy = new AsistenteIAProxy(
       config as any,
       fallback as any,
       openai as any,
     );
+    /* eslint-enable @typescript-eslint/no-explicit-any */
   });
 
   it('sin AI_API_KEY usa el fallback por KB y no toca el LLM', async () => {
