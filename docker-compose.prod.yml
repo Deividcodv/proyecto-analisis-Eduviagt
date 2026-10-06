@@ -1,0 +1,73 @@
+# Compose de despliegue (producción / staging).
+# Uso:
+#   cp .env.example .env        # definir JWT_SECRET, DB_PASSWORD, etc.
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# El web enruta /api hacia el servicio api vía NEXT_PUBLIC_API_PROXY:
+# en next.config.js el rewrite usa ese proxy en runtime.
+
+name: sigeb
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sigeb}
+      POSTGRES_USER: ${POSTGRES_USER:-sigeb}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD en .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sigeb} -d ${POSTGRES_DB:-sigeb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sigeb}:${DB_PASSWORD}@postgres:5432/${POSTGRES_DB:-sigeb}
+      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET en .env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-}
+      STORAGE_PATH: /data/storage
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3001}
+      PORT: 3000
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      CHROME_EXECUTABLE_PATH: /usr/bin/chromium
+    ports:
+      - "${API_PORT:-3000}:3000"
+    volumes:
+      - storage_data:/data/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/catalogos/generos').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_PROXY: http://api:3000/api
+      PORT: 3000
+    ports:
+      - "${WEB_PORT:-3001}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  storage_data:

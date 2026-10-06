@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="EDUVIAGT">
+  <defs>
+    <linearGradient id="edu-azul" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3D8EC7"/>
+      <stop offset="1" stop-color="#0F3D63"/>
+    </linearGradient>
+  </defs>
+  <!-- Recuadro institucional -->
+  <rect x="40" y="40" width="432" height="432" rx="56" ry="56" fill="url(#edu-azul)"/>
+  <rect x="60" y="60" width="392" height="392" rx="42" ry="42" fill="none" stroke="#FFFFFF" stroke-opacity="0.85" stroke-width="6"/>
+
+  <!-- Libro abierto (páginas que ascienden: la "vía" hacia la educación) -->
+  <g fill="#FFFFFF">
+    <!-- Página izquierda -->
+    <path d="M256 208 C 212 176, 156 176, 116 196 L 116 312 C 158 292, 214 292, 256 326 Z"/>
+    <!-- Página derecha -->
+    <path d="M256 208 C 300 176, 356 176, 396 196 L 396 312 C 354 292, 298 292, 256 326 Z"/>
+  </g>
+  <!-- Lomo del libro -->
+  <path d="M256 208 L 256 326" stroke="#D4A72C" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- Birrete graduación dorado -->
+  <g fill="#D4A72C">
+    <path d="M256 150 L 160 196 L 256 242 L 352 196 Z"/>
+    <rect x="248" y="238" width="16" height="34" rx="4"/>
+    <path d="M256 272 L 304 248 L 304 282 Q 304 296 256 296 Q 208 296 208 282 L 208 248 Z" fill="#F2C94C"/>
+  </g>
+
+  <!-- Vuelo del quetzal: trayectoria dorada -->
+  <path d="M 120 120 C 170 96, 320 96, 396 132" fill="none" stroke="#D4A72C" stroke-width="10" stroke-linecap="round" stroke-dasharray="4 26"/>
+  <circle cx="396" cy="128" r="12" fill="#D4A72C"/>
+</svg>
