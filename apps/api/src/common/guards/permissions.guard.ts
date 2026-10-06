@@ -1,15 +1,22 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, Inject } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ForbiddenException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import {
+  PERMISSION_SERVICE,
+  IPermissionService,
+} from './permission.service';
 import { PERMISSIONS_KEY } from '../decorators/permisos.decorator';
-import { buildPermissionChain } from './permission-chain';
+
+interface UsuarioConId {
+  id: string;
+}
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly prisma: PrismaService,
+    @Inject(PERMISSION_SERVICE)
+    private readonly permissionService: IPermissionService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -23,16 +30,17 @@ export class PermissionsGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest();
-    const user = request.user;
+    const user = request.user as UsuarioConId | undefined;
 
     if (!user?.id) {
       return false;
     }
 
-    const chain = buildPermissionChain(this.prisma);
-
     for (const permiso of requiredPermissions) {
-      const decision = await chain.handle(user.id, permiso);
+      const decision = await this.permissionService.tienePermiso(
+        user.id,
+        permiso,
+      );
       if (decision !== 'ALLOW') {
         throw new ForbiddenException(
           `No tienes el permiso requerido: ${permiso}`,

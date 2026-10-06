@@ -1,7 +1,10 @@
 import { ForbiddenException, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PermissionsGuard } from './permissions.guard';
-import { PrismaService } from '../../prisma/prisma.service';
+import {
+  IPermissionService,
+  PermissionDecision,
+} from './permission.service';
 
 function mockExecutionContext(user?: { id: string }): ExecutionContext {
   return {
@@ -11,11 +14,10 @@ function mockExecutionContext(user?: { id: string }): ExecutionContext {
   } as unknown as ExecutionContext;
 }
 
-function mockPrisma() {
+function mockPermissionService(decision?: PermissionDecision) {
   return {
-    rolPermiso: { findFirst: jest.fn().mockResolvedValue(null) },
-    usuarioPermiso: { findFirst: jest.fn().mockResolvedValue(null) },
-  } as unknown as PrismaService;
+    tienePermiso: jest.fn().mockResolvedValue(decision),
+  } as unknown as IPermissionService;
 }
 
 describe('PermissionsGuard', () => {
@@ -24,7 +26,10 @@ describe('PermissionsGuard', () => {
       getAllAndOverride: jest.fn().mockReturnValue(undefined),
     } as unknown as Reflector;
 
-    const guard = new PermissionsGuard(reflector, mockPrisma());
+    const guard = new PermissionsGuard(
+      reflector,
+      mockPermissionService('DENY'),
+    );
     await expect(
       guard.canActivate(mockExecutionContext({ id: 'user-1' })),
     ).resolves.toBe(true);
@@ -35,23 +40,24 @@ describe('PermissionsGuard', () => {
       getAllAndOverride: jest.fn().mockReturnValue(['convocatoria:crear']),
     } as unknown as Reflector;
 
-    const guard = new PermissionsGuard(reflector, mockPrisma());
+    const guard = new PermissionsGuard(
+      reflector,
+      mockPermissionService('DENY'),
+    );
     await expect(
       guard.canActivate(mockExecutionContext({ id: 'user-1' })),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('permite cuando el usuario tiene el permiso (override PERMITIR)', async () => {
-    const prisma = mockPrisma();
-    (prisma.usuarioPermiso.findFirst as jest.Mock).mockResolvedValue({
-      efecto: 'PERMITIR',
-    });
-
     const reflector = {
       getAllAndOverride: jest.fn().mockReturnValue(['permiso:editar']),
     } as unknown as Reflector;
 
-    const guard = new PermissionsGuard(reflector, prisma);
+    const guard = new PermissionsGuard(
+      reflector,
+      mockPermissionService('ALLOW'),
+    );
     await expect(
       guard.canActivate(mockExecutionContext({ id: 'user-1' })),
     ).resolves.toBe(true);
@@ -62,7 +68,10 @@ describe('PermissionsGuard', () => {
       getAllAndOverride: jest.fn().mockReturnValue(['convocatoria:crear']),
     } as unknown as Reflector;
 
-    const guard = new PermissionsGuard(reflector, mockPrisma());
+    const guard = new PermissionsGuard(
+      reflector,
+      mockPermissionService('ALLOW'),
+    );
     await expect(guard.canActivate(mockExecutionContext())).resolves.toBe(
       false,
     );
