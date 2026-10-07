@@ -7,6 +7,7 @@ import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { Card } from '@/components/ui/Card';
+import { Icon } from '@/components/ui/Icon';
 import {
   listarUsuarios,
   listarRoles,
@@ -235,7 +236,7 @@ export function PanelUsuarios() {
           <tbody className="divide-y divide-brutal-tinta/20">
             {filtrados.map((usuario) => (
               <tr key={usuario.id} className="hover:bg-brutal-cyan/10">
-                <td className="px-4 py-3 text-xs text-brutal-tinta/60">{usuario.cui}</td>
+                <td className="px-4 py-3 text-xs text-brutal-tinta/80">{usuario.cui}</td>
                 <td className="px-4 py-3 font-bold text-brutal-tinta">{usuario.nombres}</td>
                 <td className="px-4 py-3 text-brutal-tinta/70">{usuario.email}</td>
                 <td className="px-4 py-3">
@@ -272,7 +273,7 @@ export function PanelUsuarios() {
             ))}
             {filtrados.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-brutal-tinta/50">
+                <td colSpan={6} className="px-4 py-10 text-center text-brutal-tinta/75">
                   No hay usuarios que coincidan con la búsqueda.
                 </td>
               </tr>
@@ -361,14 +362,14 @@ function MatrizPermisosUsuario({
     <Card className="mb-6">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="font-brut text-lg font-black uppercase tracking-wide text-brutal-tinta">
-          Permisos individuales — <span className="text-sigeb-blue">{nombre}</span>
+          Permisos individuales — <span className="text-brutal-cyan">{nombre}</span>
         </h2>
         <Button variant="ghost" onClick={onClose}>
           Cerrar
         </Button>
       </div>
       <p className="mb-4 font-mono text-sm text-brutal-tinta/70">
-        Haz clic para alternar: vacío = heredar del rol · ✓ = PERMITIR · ✗ = DENEGAR.
+        Haz clic para alternar: vacío = heredar del rol, Permitir o Denegar.
       </p>
       <div className="overflow-x-auto rounded-brutal border-[3px] border-brutal-tinta">
         <table className="w-full text-left font-mono text-sm">
@@ -422,7 +423,10 @@ function PermisosPorModulo({
           colSpan={3}
           className="px-4 py-2 font-brut text-xs font-black uppercase tracking-wide text-brutal-tinta"
         >
-          ▸ {modulo}
+          <span className="inline-flex items-center gap-1">
+            <Icon name="chevron" className="h-3 w-3 -rotate-90" />
+            {modulo}
+          </span>
         </td>
       </tr>
       {permisos.map((permiso) => (
@@ -437,14 +441,22 @@ function PermisosPorModulo({
                   ? 'border-brutal-tinta bg-brutal-lima text-brutal-tinta shadow-brutal-sm'
                   : estados[permiso.id] === 'DENEGAR'
                     ? 'border-brutal-tinta bg-brutal-rojo text-brutal-blanco shadow-brutal-sm'
-                    : 'border-brutal-tinta border-dashed bg-brutal-blanco text-brutal-tinta/60'
+                    : 'border-brutal-tinta border-dashed bg-brutal-blanco text-brutal-tinta/80'
               }`}
             >
-              {estados[permiso.id] === 'PERMITIR'
-                ? '✓ PERMITIR'
-                : estados[permiso.id] === 'DENEGAR'
-                  ? '✗ DENEGAR'
-                  : '— Herencia'}
+              {estados[permiso.id] === 'PERMITIR' ? (
+                <>
+                  <Icon name="check" className="h-3.5 w-3.5" />
+                  Permitir
+                </>
+              ) : estados[permiso.id] === 'DENEGAR' ? (
+                <>
+                  <Icon name="cerrar" className="h-3.5 w-3.5" />
+                  Denegar
+                </>
+              ) : (
+                '— Herencia'
+              )}
             </button>
           </td>
         </tr>

@@ -9,6 +9,7 @@ import { registrar } from '@/lib/auth';
 import { Container } from '@/components/ui/Container';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { Icon } from '@/components/ui/Icon';
 import { Spinner } from '@/components/ui/Spinner';
 
 const schema = z
@@ -60,12 +61,14 @@ export default function RegistroPage() {
   if (exito) {
     return (
       <Container className="flex min-h-[60vh] items-center justify-center py-16">
-        <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-sm">
-          <div className="mb-4 text-4xl">✓</div>
-          <h1 className="mb-2 text-2xl font-bold text-sigeb-blue-dark">
+        <div className="w-full max-w-md rounded-brutal border-[3px] border-brutal-tinta bg-brutal-blanco p-8 text-center shadow-brutal">
+          <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-brutal border-[3px] border-brutal-tinta bg-brutal-lima text-brutal-tinta">
+            <Icon name="check" className="h-7 w-7" />
+          </div>
+          <h1 className="mb-2 font-brut text-2xl font-black uppercase tracking-wide text-brutal-tinta">
             ¡Cuenta creada!
           </h1>
-          <p className="mb-6 text-gray-600">
+          <p className="mb-6 text-brutal-tinta/70">
             Tu registro fue exitoso. Ahora puedes iniciar sesión para comenzar a
             postularte.
           </p>
@@ -79,12 +82,15 @@ export default function RegistroPage() {
 
   return (
     <Container className="flex min-h-[70vh] items-center justify-center py-16">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm">
-        <h1 className="mb-6 text-center text-2xl font-bold text-sigeb-blue-dark">
+      <div className="w-full max-w-md rounded-brutal border-[3px] border-brutal-tinta bg-brutal-blanco p-8 shadow-brutal">
+        <p className="brut-label mb-2 inline-block rounded-brutal border-2 border-brutal-tinta bg-brutal-cyan px-3 py-1 text-xs font-bold text-brutal-tinta">
+          Programa de becas
+        </p>
+        <h1 className="mb-6 font-brut text-2xl font-black uppercase tracking-wide text-brutal-tinta">
           Crear una cuenta
         </h1>
         {error && (
-          <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mb-4 rounded-brutal border-[3px] border-brutal-rojo bg-red-50 px-4 py-3 text-sm font-bold text-brutal-rojo">
             {error}
           </div>
         )}
@@ -132,9 +138,9 @@ export default function RegistroPage() {
             {enviando ? <Spinner /> : 'Registrarse'}
           </Button>
         </form>
-        <p className="mt-6 text-center text-sm text-gray-600">
+        <p className="mt-6 text-center text-sm text-brutal-tinta/70">
           ¿Ya tienes cuenta?{' '}
-          <Link href="/login" className="font-semibold text-sigeb-blue hover:underline">
+          <Link href="/login" className="font-brut font-bold text-brutal-cyan hover:bg-brutal-cyan">
             Inicia sesión
           </Link>
         </p>

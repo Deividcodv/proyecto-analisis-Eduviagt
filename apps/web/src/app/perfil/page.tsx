@@ -186,7 +186,7 @@ function PerfilContent() {
               <h2 className="font-brut text-xl font-black uppercase tracking-wide text-brutal-tinta">
                 Información personal
               </h2>
-              <p className="font-mono text-xs text-brutal-tinta/60">
+              <p className="font-mono text-xs text-brutal-tinta/80">
                 CUI {perfil?.cui} · {perfil?.rol.nombre}
               </p>
             </div>
