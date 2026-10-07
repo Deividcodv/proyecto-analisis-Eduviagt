@@ -16,8 +16,10 @@ import {
   AgregarMiembroDto,
 } from './comites.dto';
 import { Permisos } from '../common/decorators/permisos.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
 
-@ApiTags('Comités')
+@ApiTags('Comit�s')
 @Controller('comites')
 @ApiBearerAuth()
 export class ComitesController {
@@ -25,9 +27,9 @@ export class ComitesController {
 
   @Post()
   @Permisos('comite:crear')
-  @ApiOperation({ summary: 'Crear comité evaluador' })
-  crearComite(@Body() dto: CrearComiteDto) {
-    return this.comitesService.crearComite(dto);
+  @ApiOperation({ summary: 'Crear comit� evaluador' })
+  crearComite(@Body() dto: CrearComiteDto, @CurrentUser() usuario: AuthenticatedUser) {
+    return this.comitesService.crearComite(dto, usuario);
   }
 
   @Get()
@@ -50,15 +52,19 @@ export class ComitesController {
   actualizarComite(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ActualizarComiteDto,
+    @CurrentUser() usuario: AuthenticatedUser,
   ) {
-    return this.comitesService.actualizarComite(id, dto);
+    return this.comitesService.actualizarComite(id, dto, usuario);
   }
 
   @Delete(':id')
   @Permisos('comite:editar')
   @ApiOperation({ summary: 'Eliminar comité' })
-  eliminarComite(@Param('id', ParseUUIDPipe) id: string) {
-    return this.comitesService.eliminarComite(id);
+  eliminarComite(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.comitesService.eliminarComite(id, usuario);
   }
 
   @Post(':id/miembros')
@@ -67,8 +73,9 @@ export class ComitesController {
   agregarMiembro(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AgregarMiembroDto,
+    @CurrentUser() usuario: AuthenticatedUser,
   ) {
-    return this.comitesService.agregarMiembro(id, dto);
+    return this.comitesService.agregarMiembro(id, dto, usuario);
   }
 
   @Delete(':id/miembros/:usuarioId')
@@ -77,7 +84,8 @@ export class ComitesController {
   eliminarMiembro(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('usuarioId', ParseUUIDPipe) usuarioId: string,
+    @CurrentUser() usuario: AuthenticatedUser,
   ) {
-    return this.comitesService.eliminarMiembro(id, usuarioId);
+    return this.comitesService.eliminarMiembro(id, usuarioId, usuario);
   }
 }
