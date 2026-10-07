@@ -11,9 +11,11 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import { Response } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -21,14 +23,18 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { SolicitudesService } from './solicitudes.service';
+import { ConstanciasService } from './constancias.service';
 import {
   CreateSolicitudDto,
   TransicionSolicitudDto,
+  SolicitarCorreccionDto,
   PerfilAcademicoDto,
   PerfilFinancieroDto,
   MarcarEstadoDocumentoDto,
+  GuardarRespuestasDto,
 } from './dto';
 import { Permisos } from '../common/decorators/permisos.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
 
@@ -57,7 +63,10 @@ export function documentoFileFilter(
 @Controller('solicitudes')
 @ApiBearerAuth()
 export class SolicitudesController {
-  constructor(private readonly solicitudesService: SolicitudesService) {}
+  constructor(
+    private readonly solicitudesService: SolicitudesService,
+    private readonly constanciasService: ConstanciasService,
+  ) {}
 
   @Post()
   @Permisos('solicitud:crear')
@@ -76,6 +85,15 @@ export class SolicitudesController {
   @ApiOperation({ summary: 'Listar mis solicitudes (admin: todas)' })
   findAll(@CurrentUser() usuario: AuthenticatedUser) {
     return this.solicitudesService.findAll(usuario);
+  }
+
+  @Get('consulta/:codigo')
+  @Public()
+  @ApiOperation({ summary: 'Consulta pública del estado de una solicitud por código' })
+  @ApiResponse({ status: 200, description: 'Estado de la solicitud' })
+  @ApiResponse({ status: 404, description: 'Código no encontrado' })
+  consultaPublica(@Param('codigo') codigo: string) {
+    return this.solicitudesService.consultaPublica(codigo);
   }
 
   @Get(':id/checklist')
@@ -111,6 +129,20 @@ export class SolicitudesController {
     return this.solicitudesService.transicion(id, dto, usuario);
   }
 
+  @Post(':id/solicitar-correccion')
+  @Permisos('solicitud:editar')
+  @ApiOperation({
+    summary: 'Solicitar una corrección (comité) respetando maxCorrecciones',
+  })
+  @ApiResponse({ status: 400, description: 'Se agotaron las subsanaciones' })
+  solicitarCorreccion(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SolicitarCorreccionDto,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.solicitudesService.solicitarCorreccion(id, dto, usuario);
+  }
+
   @Put(':id/perfil-academico')
   @Permisos('solicitud:editar')
   @ApiOperation({ summary: 'Guardar perfil académico (con campos "otro")' })
@@ -131,6 +163,19 @@ export class SolicitudesController {
     @CurrentUser() usuario: AuthenticatedUser,
   ) {
     return this.solicitudesService.guardarPerfilFinanciero(id, dto, usuario);
+  }
+
+  @Put(':id/respuestas')
+  @Permisos('solicitud:editar')
+  @ApiOperation({
+    summary: 'Guardar respuestas del formulario dinámico de la convocatoria',
+  })
+  respuestas(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: GuardarRespuestasDto,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.solicitudesService.guardarRespuestas(id, dto, usuario);
   }
 
   @Post(':id/documentos/:tipoId')
@@ -180,7 +225,33 @@ export class SolicitudesController {
       id,
       tipoId,
       dto.estado,
+      dto.comentario,
       usuario,
     );
+  }
+
+  @Get(':id/constancia')
+  @Permisos('solicitud:ver')
+  @ApiOperation({
+    summary:
+      'Descargar constancia de beca en PDF (solo solicitudes APROBADAS)',
+  })
+  @ApiResponse({ status: 200, description: 'PDF de constancia' })
+  @ApiResponse({ status: 400, description: 'Solicitud no aprobada' })
+  @ApiResponse({ status: 403, description: 'Sin acceso a la solicitud' })
+  async descargarConstancia(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: AuthenticatedUser,
+    @Res() res: Response,
+  ) {
+    const pdf = await this.constanciasService.generarConstancia(id, usuario);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="constancia-${id.slice(0, 8)}.pdf"`,
+    );
+    res.setHeader('Content-Length', pdf.length);
+    res.send(pdf);
   }
 }

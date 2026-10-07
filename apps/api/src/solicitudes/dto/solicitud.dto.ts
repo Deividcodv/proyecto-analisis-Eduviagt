@@ -6,6 +6,7 @@ import {
   IsNumber,
   IsInt,
   IsBoolean,
+  IsObject,
   Min,
   Max,
   MaxLength,
@@ -13,6 +14,7 @@ import {
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SolicitudTransicion } from '../solicitud-state-machine';
+import { SECCIONES_CAMPO_FORMULARIO } from '../../convocatorias/dto/convocatoria.dto';
 
 const TRANSICIONES: SolicitudTransicion[] = [
   'enviar',
@@ -38,6 +40,14 @@ export class TransicionSolicitudDto {
   @ApiPropertyOptional({ description: 'Comentario registrado en el historial' })
   @IsOptional()
   @IsString()
+  comentario?: string;
+}
+
+export class SolicitarCorreccionDto {
+  @ApiPropertyOptional({ description: 'Motivo de la corrección solicitada' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
   comentario?: string;
 }
 
@@ -109,6 +119,12 @@ export class MarcarEstadoDocumentoDto {
   @ApiProperty({ description: 'Estado a asignar al documento más reciente del tipo (retro S3)' })
   @IsIn(['RECHAZADO'])
   estado!: 'RECHAZADO';
+
+  @ApiPropertyOptional({ description: 'Motivo/comentario del rechazo (se muestra al postulante)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  comentario?: string;
 }
 
 export class PerfilFinancieroDto {
@@ -135,4 +151,18 @@ export class PerfilFinancieroDto {
   @IsOptional()
   @IsString()
   descripcionSituacion?: string;
+}
+
+export class GuardarRespuestasDto {
+  @ApiProperty({ enum: SECCIONES_CAMPO_FORMULARIO })
+  @IsIn(SECCIONES_CAMPO_FORMULARIO)
+  seccion!: (typeof SECCIONES_CAMPO_FORMULARIO)[number];
+
+  @ApiProperty({
+    type: Object,
+    description: 'Valores capturados: { [campoId]: valor }',
+    example: { tipoVivienda: 'Propia', ingresoMensualFamiliar: 2500 },
+  })
+  @IsObject()
+  valores!: Record<string, unknown>;
 }

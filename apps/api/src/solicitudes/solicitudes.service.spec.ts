@@ -1,6 +1,11 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { SolicitudesService } from './solicitudes.service';
+import { SolicitudPerfilService } from './solicitud-perfil.service';
+import { SolicitudDocumentoService } from './solicitud-documento.service';
+import { SolicitudChecklistService } from './solicitud-checklist.service';
+import { NotificacionesService } from '../notificaciones/notificaciones.service';
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
+import { AuthzService } from '../common/services/authz.service';
 
 const postulante: AuthenticatedUser = {
   id: 'u-postulante',
@@ -11,8 +16,13 @@ const postulante: AuthenticatedUser = {
 };
 
 describe('SolicitudesService', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let prisma: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let storage: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let audit: any;
+  let authz: AuthzService;
   let service: SolicitudesService;
 
   beforeEach(() => {
@@ -24,14 +34,34 @@ describe('SolicitudesService', () => {
       solicitudPerfilAcademico: { upsert: jest.fn() },
       historialEstado: { create: jest.fn() },
       genero: { findUnique: jest.fn() },
+      usuario: { findMany: jest.fn().mockResolvedValue([]) },
+      notificacion: {
+        create: jest.fn(),
+        createMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
     };
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    prisma.$transaction = jest.fn(async (fn: (tx: any) => Promise<unknown>) =>
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+      fn(prisma),
+    );
+    authz = new AuthzService();
     storage = {
       save: jest.fn(),
       delete: jest.fn(),
       read: jest.fn(),
       exists: jest.fn(),
     };
-    service = new SolicitudesService(prisma, storage);
+    audit = { log: jest.fn() };
+    service = new SolicitudesService(
+      prisma,
+      audit,
+      authz,
+      new SolicitudPerfilService(prisma, authz),
+      new SolicitudDocumentoService(prisma, storage, audit, authz),
+      new SolicitudChecklistService(prisma, authz),
+      new NotificacionesService(prisma),
+    );
   });
 
   describe('guardarPerfilAcademico (US-13: opcion otro)', () => {
@@ -378,14 +408,26 @@ describe('SolicitudesService', () => {
 
     it('postulante no puede rechazar documentos', async () => {
       await expect(
-        service.marcarEstadoDocumento('s1', 't-cert', 'RECHAZADO', postulante),
+        service.marcarEstadoDocumento(
+          's1',
+          't-cert',
+          'RECHAZADO',
+          undefined,
+          postulante,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
     it('rechaza solicitud inexistente', async () => {
       prisma.solicitud.findUnique.mockResolvedValue(null);
       await expect(
-        service.marcarEstadoDocumento('s1', 't-cert', 'RECHAZADO', admin),
+        service.marcarEstadoDocumento(
+          's1',
+          't-cert',
+          'RECHAZADO',
+          undefined,
+          admin,
+        ),
       ).rejects.toThrow('no encontrada');
     });
 
@@ -393,7 +435,13 @@ describe('SolicitudesService', () => {
       prisma.solicitud.findUnique.mockResolvedValue({ id: 's1', estado: 'EN_REVISION' });
       prisma.solicitudDocumento.findFirst.mockResolvedValue(null);
       await expect(
-        service.marcarEstadoDocumento('s1', 't-cert', 'RECHAZADO', admin),
+        service.marcarEstadoDocumento(
+          's1',
+          't-cert',
+          'RECHAZADO',
+          undefined,
+          admin,
+        ),
       ).rejects.toThrow('No hay documento cargado');
     });
 
@@ -410,13 +458,14 @@ describe('SolicitudesService', () => {
         's1',
         't-cert',
         'RECHAZADO',
+        undefined,
         coordinador,
       );
 
       expect(result.estado).toBe('RECHAZADO');
       expect(prisma.solicitudDocumento.update).toHaveBeenCalledWith({
         where: { id: 'd1' },
-        data: { estado: 'RECHAZADO' },
+        data: { estado: 'RECHAZADO', comentarioRechazo: null },
         include: { documentoTipo: true },
       });
       expect(prisma.solicitudDocumento.findFirst).toHaveBeenCalledWith({
@@ -445,6 +494,165 @@ describe('SolicitudesService', () => {
         expect.arrayContaining(['Documento "Certificado académico" pendiente']),
       );
       expect(result.completo).toBe(false);
+    });
+
+    it('el checklist exige los campos requeridos del formulario dinámico', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        ...base,
+        perfilAcademico: { generoId: 'g1', nivelAcademicoId: 'n1' },
+        perfilFinanciero: { ingresoFamiliar: 2500 },
+        documentos: [],
+        respuestas: null,
+        formularioSnapshot: [
+          {
+            id: 'tipoVivienda',
+            seccion: 'adicional',
+            etiqueta: 'Tipo de vivienda',
+            tipo: 'seleccion',
+            requerido: true,
+          },
+        ],
+      });
+
+      const result = await service.obtenerChecklist('s1', postulante);
+      expect(result.camposExtra).toHaveLength(1);
+      expect(result.pendientes).toEqual(
+        expect.arrayContaining(['Campo "Tipo de vivienda" pendiente']),
+      );
+      expect(result.completo).toBe(false);
+    });
+  });
+
+  describe('consultaPublica (US-46)', () => {
+    it('devuelve el estado publico sin datos sensibles del postulante', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        id: 's1',
+        estado: 'APROBADA',
+        createdAt: new Date('2026-08-01'),
+        updatedAt: new Date('2026-08-10'),
+        convocatoria: {
+          nombre: 'Beca de Excelencia',
+          beca: { nombre: 'Excelencia Academica' },
+        },
+        historial: [
+          {
+            estado: 'BORRADOR',
+            comentario: 'Solicitud creada',
+            createdAt: new Date('2026-08-01'),
+          },
+          {
+            estado: 'APROBADA',
+            comentario: 'Decision del comite',
+            createdAt: new Date('2026-08-10'),
+          },
+        ],
+      });
+
+      const result = await service.consultaPublica('s1');
+
+      expect(result.codigo).toBe('s1');
+      expect(result.estado).toBe('APROBADA');
+      expect(result.beca).toBe('Excelencia Academica');
+      expect(result.convocatoria).toBe('Beca de Excelencia');
+      expect(result.historial).toHaveLength(2);
+      expect(result).not.toHaveProperty('usuarioId');
+      expect(result).not.toHaveProperty('documentos');
+      expect(result).not.toHaveProperty('perfilAcademico');
+    });
+
+    it('lanza NotFoundException si el codigo no existe', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(null);
+      await expect(service.consultaPublica('no-existe')).rejects.toThrow(
+        'No se encontr',
+      );
+    });
+  });
+
+  describe('guardarRespuestas (formulario dinámico)', () => {
+    const snapshot = [
+      {
+        id: 'tipoVivienda',
+        seccion: 'adicional',
+        etiqueta: 'Tipo de vivienda',
+        tipo: 'seleccion',
+        requerido: true,
+        opciones: ['Propia', 'Rentada'],
+      },
+      {
+        id: 'ingresoMensual',
+        seccion: 'socioeconomico',
+        etiqueta: 'Ingreso mensual',
+        tipo: 'numero',
+        requerido: true,
+      },
+    ];
+
+    it('guarda las respuestas de la seccion y convierte numeros', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        id: 's1',
+        usuarioId: 'u-postulante',
+        estado: 'BORRADOR',
+        respuestas: null,
+        formularioSnapshot: snapshot,
+      });
+      prisma.solicitud.update.mockResolvedValue({
+        id: 's1',
+        respuestas: { socioeconomico: { ingresoMensual: 2500 } },
+      });
+
+      const result = await service.guardarRespuestas(
+        's1',
+        { seccion: 'socioeconomico', valores: { ingresoMensual: '2500' } },
+        postulante,
+      );
+
+      expect(prisma.solicitud.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 's1' },
+          data: expect.objectContaining({
+            respuestas: { socioeconomico: { ingresoMensual: 2500 } },
+          }),
+        }),
+      );
+      expect(result.respuestas).toEqual({
+        socioeconomico: { ingresoMensual: 2500 },
+      });
+    });
+
+    it('rechaza si falta un campo requerido de la seccion', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        id: 's1',
+        usuarioId: 'u-postulante',
+        estado: 'BORRADOR',
+        respuestas: null,
+        formularioSnapshot: snapshot,
+      });
+
+      await expect(
+        service.guardarRespuestas(
+          's1',
+          { seccion: 'adicional', valores: {} },
+          postulante,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rechaza editar respuestas fuera de BORRADOR/CORRECCION', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        id: 's1',
+        usuarioId: 'u-postulante',
+        estado: 'ENVIADA',
+        respuestas: null,
+        formularioSnapshot: snapshot,
+      });
+
+      await expect(
+        service.guardarRespuestas(
+          's1',
+          { seccion: 'adicional', valores: { tipoVivienda: 'Propia' } },
+          postulante,
+        ),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });
