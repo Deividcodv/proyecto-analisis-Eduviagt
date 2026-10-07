@@ -3,6 +3,7 @@ import { AsistenteIAProxy } from './asistente.proxy';
 import { RespuestaIA } from './asistente.types';
 
 describe('AsistenteService (US-37)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let prisma: any;
   let proxy: { responder: jest.Mock };
   let service: AsistenteService;

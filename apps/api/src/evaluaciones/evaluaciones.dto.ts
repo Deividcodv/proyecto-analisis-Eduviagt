@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsNumber,
   IsOptional,
   IsString,
@@ -36,4 +37,13 @@ export class RegistrarPuntajeDto {
   @IsString()
   @MaxLength(500)
   observaciones?: string;
+}
+
+export class ImparcialidadDto {
+  @ApiProperty({
+    description:
+      'Declara no tener conflicto de interés con la solicitud evaluada',
+  })
+  @IsBoolean()
+  confirma!: boolean;
 }

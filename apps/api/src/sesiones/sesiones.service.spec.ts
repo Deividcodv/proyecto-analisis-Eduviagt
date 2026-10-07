@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { SesionesService } from './sesiones.service';
+import { NotificacionesService } from '../notificaciones/notificaciones.service';
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
 
 const miembro: AuthenticatedUser = {
@@ -15,7 +16,10 @@ const miembro: AuthenticatedUser = {
 };
 
 describe('SesionesService', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let prisma: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let audit: any;
   let service: SesionesService;
 
   beforeEach(() => {
@@ -33,8 +37,30 @@ describe('SesionesService', () => {
       decision: { create: jest.fn() },
       historialEstado: { create: jest.fn() },
       convocatoria: { findUnique: jest.fn(), update: jest.fn() },
+      usuario: { findMany: jest.fn().mockResolvedValue([]) },
+      notificacion: {
+        create: jest.fn().mockResolvedValue({
+          id: 'n1',
+          usuarioId: 'u1',
+          tipo: 'SOLICITUD_APROBADA',
+          titulo: 'x',
+          cuerpo: null,
+          createdAt: new Date(),
+        }),
+        createMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
     };
-    service = new SesionesService(prisma);
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    prisma.$transaction = jest.fn(async (fn: (tx: any) => Promise<unknown>) =>
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+      fn(prisma),
+    );
+    audit = { log: jest.fn() };
+    service = new SesionesService(
+      prisma,
+      audit,
+      new NotificacionesService(prisma),
+    );
   });
 
   describe('crearSesion (US-31)', () => {
@@ -48,7 +74,7 @@ describe('SesionesService', () => {
 
     it('rechaza comité inexistente', async () => {
       prisma.comite.findUnique.mockResolvedValue(null);
-      await expect(service.crearSesion(dto)).rejects.toThrow(NotFoundException);
+      await expect(service.crearSesion(dto, miembro)).rejects.toThrow(NotFoundException);
     });
 
     it('rechaza solicitudes inexistentes', async () => {
@@ -57,7 +83,7 @@ describe('SesionesService', () => {
         { id: 's1', estado: 'EVALUADA', convocatoriaId: 'conv1' },
       ]);
       await expect(
-        service.crearSesion({ ...dto, solicitudesIds: ['s1', 's2'] }),
+        service.crearSesion({ ...dto, solicitudesIds: ['s1', 's2'] }, miembro),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -67,7 +93,7 @@ describe('SesionesService', () => {
         { id: 's1', estado: 'BORRADOR', convocatoriaId: 'conv1' },
       ]);
       await expect(
-        service.crearSesion({ ...dto, solicitudesIds: ['s1'] }),
+        service.crearSesion({ ...dto, solicitudesIds: ['s1'] }, miembro),
       ).rejects.toThrow('solo admite solicitudes EVALUADA');
     });
 
@@ -77,7 +103,7 @@ describe('SesionesService', () => {
         { id: 's1', estado: 'EVALUADA', convocatoriaId: 'conv1' },
         { id: 's2', estado: 'EVALUADA', convocatoriaId: 'conv2' },
       ]);
-      await expect(service.crearSesion(dto)).rejects.toThrow(
+      await expect(service.crearSesion(dto, miembro)).rejects.toThrow(
         'misma convocatoria',
       );
     });
@@ -90,7 +116,7 @@ describe('SesionesService', () => {
       ]);
       prisma.sesion.create.mockResolvedValue({ id: 'ses1' });
 
-      const result = await service.crearSesion(dto);
+      const result = await service.crearSesion(dto, miembro);
 
       expect(result.id).toBe('ses1');
       expect(prisma.sesion.create).toHaveBeenCalledWith({
@@ -221,7 +247,11 @@ describe('SesionesService', () => {
     const mockResto = () => {
       prisma.solicitud.update.mockResolvedValue({});
       prisma.historialEstado.create.mockResolvedValue({});
-      prisma.sesion.update.mockResolvedValue({ id: 'ses1', estado: 'FINALIZADA' });
+      prisma.sesion.update.mockResolvedValue({
+      id: 'ses1',
+      estado: 'FINALIZADA',
+      decisiones: [],
+    });
     };
 
     it('rechaza sesión inexistente', async () => {

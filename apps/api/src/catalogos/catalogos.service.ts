@@ -140,6 +140,28 @@ export class CatalogosService {
     });
   }
 
+  findAllBecas() {
+    return this.prisma.beca.findMany({
+      where: { activa: true },
+      orderBy: { nombre: 'asc' },
+    });
+  }
+
+  // ============ INSTITUCIONES EDUCATIVAS ============
+  findAllInstituciones(nivel?: string, busqueda?: string) {
+    return this.prisma.institucionEducativa.findMany({
+      where: {
+        activa: true,
+        ...(nivel ? { nivel } : {}),
+        ...(busqueda
+          ? { nombre: { contains: busqueda, mode: 'insensitive' as const } }
+          : {}),
+      },
+      orderBy: { nombre: 'asc' },
+      take: 50,
+    });
+  }
+
   async createDocumento(dto: CreateCatalogoDto) {
     await this.assertUnique('documentoTipo', dto.nombre);
     return this.prisma.documentoTipo.create({ data: { nombre: dto.nombre, activo: dto.activo ?? true } });
