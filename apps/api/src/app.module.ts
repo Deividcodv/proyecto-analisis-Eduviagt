@@ -7,17 +7,20 @@ import { UsersModule } from './users/users.module';
 import { StorageModule } from './storage/storage.module';
 import { CatalogosModule } from './catalogos/catalogos.module';
 import { ConvocatoriasModule } from './convocatorias/convocatorias.module';
-import { AuditModule } from './audit/audit.module';
 import { SolicitudesModule } from './solicitudes/solicitudes.module';
 import { EvaluacionesModule } from './evaluaciones/evaluaciones.module';
 import { ComitesModule } from './comites/comites.module';
 import { SesionesModule } from './sesiones/sesiones.module';
 import { ReportesModule } from './reportes/reportes.module';
+import { NotificacionesModule } from './notificaciones/notificaciones.module';
+import { AuditModule } from './audit/audit.module';
 import { AsistenteModule } from './asistente/asistente.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
     PrismaModule,
     CommonModule,
     StorageModule,
@@ -25,12 +28,13 @@ import { AsistenteModule } from './asistente/asistente.module';
     UsersModule,
     CatalogosModule,
     ConvocatoriasModule,
-    AuditModule,
     SolicitudesModule,
     EvaluacionesModule,
     ComitesModule,
     SesionesModule,
     ReportesModule,
+    NotificacionesModule,
+    AuditModule,
     AsistenteModule,
   ],
   controllers: [],
