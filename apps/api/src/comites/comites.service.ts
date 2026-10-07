@@ -4,6 +4,8 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
+import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
 import {
   CrearComiteDto,
   ActualizarComiteDto,
@@ -12,10 +14,21 @@ import {
 
 @Injectable()
 export class ComitesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
-  async crearComite(dto: CrearComiteDto) {
-    return this.prisma.comite.create({ data: dto });
+  async crearComite(dto: CrearComiteDto, usuario: AuthenticatedUser) {
+    const comite = await this.prisma.comite.create({ data: dto });
+    await this.audit.log({
+      usuarioId: usuario.id,
+      accion: 'crear',
+      entidad: 'comite',
+      entidadId: comite.id,
+      detalle: { nombre: dto.nombre },
+    });
+    return comite;
   }
 
   async listarComites() {
@@ -48,24 +61,46 @@ export class ComitesService {
     return comite;
   }
 
-  async actualizarComite(id: string, dto: ActualizarComiteDto) {
+  async actualizarComite(
+    id: string,
+    dto: ActualizarComiteDto,
+    usuario: AuthenticatedUser,
+  ) {
     const existente = await this.prisma.comite.findUnique({ where: { id } });
     if (!existente) {
       throw new NotFoundException(`Comité con id ${id} no encontrado`);
     }
-    return this.prisma.comite.update({ where: { id }, data: dto });
+    const actualizado = await this.prisma.comite.update({ where: { id }, data: dto });
+    await this.audit.log({
+      usuarioId: usuario.id,
+      accion: 'editar',
+      entidad: 'comite',
+      entidadId: id,
+      detalle: { ...dto },
+    });
+    return actualizado;
   }
 
-  async eliminarComite(id: string) {
+  async eliminarComite(id: string, usuario: AuthenticatedUser) {
     const existente = await this.prisma.comite.findUnique({ where: { id } });
     if (!existente) {
       throw new NotFoundException(`Comité con id ${id} no encontrado`);
     }
     await this.prisma.comite.delete({ where: { id } });
+    await this.audit.log({
+      usuarioId: usuario.id,
+      accion: 'eliminar',
+      entidad: 'comite',
+      entidadId: id,
+    });
     return { eliminado: true };
   }
 
-  async agregarMiembro(comiteId: string, dto: AgregarMiembroDto) {
+  async agregarMiembro(
+    comiteId: string,
+    dto: AgregarMiembroDto,
+    usuario: AuthenticatedUser,
+  ) {
     const comite = await this.prisma.comite.findUnique({
       where: { id: comiteId },
     });
@@ -73,10 +108,10 @@ export class ComitesService {
       throw new NotFoundException(`Comité con id ${comiteId} no encontrado`);
     }
 
-    const usuario = await this.prisma.usuario.findUnique({
+    const usuarioDb = await this.prisma.usuario.findUnique({
       where: { id: dto.usuarioId },
     });
-    if (!usuario) {
+    if (!usuarioDb) {
       throw new NotFoundException(
         `Usuario con id ${dto.usuarioId} no encontrado`,
       );
@@ -93,7 +128,7 @@ export class ComitesService {
       throw new BadRequestException('El usuario ya es miembro del comité');
     }
 
-    return this.prisma.comiteMiembro.create({
+    const miembro = await this.prisma.comiteMiembro.create({
       data: {
         comiteId,
         usuarioId: dto.usuarioId,
@@ -101,9 +136,23 @@ export class ComitesService {
       },
       include: { usuario: { select: { id: true, nombres: true, email: true } } },
     });
+
+    await this.audit.log({
+      usuarioId: usuario.id,
+      accion: 'agregar-miembro',
+      entidad: 'comite',
+      entidadId: comiteId,
+      detalle: { usuarioId: dto.usuarioId, rol: dto.rol },
+    });
+
+    return miembro;
   }
 
-  async eliminarMiembro(comiteId: string, usuarioId: string) {
+  async eliminarMiembro(
+    comiteId: string,
+    usuarioId: string,
+    usuario: AuthenticatedUser,
+  ) {
     const miembro = await this.prisma.comiteMiembro.findFirst({
       where: { comiteId, usuarioId, activo: true },
     });
@@ -113,6 +162,13 @@ export class ComitesService {
       );
     }
     await this.prisma.comiteMiembro.delete({ where: { id: miembro.id } });
+    await this.audit.log({
+      usuarioId: usuario.id,
+      accion: 'eliminar-miembro',
+      entidad: 'comite',
+      entidadId: comiteId,
+      detalle: { usuarioId },
+    });
     return { eliminado: true };
   }
 }

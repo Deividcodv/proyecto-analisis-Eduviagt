@@ -49,28 +49,43 @@ enum SolicitudDocumentoEstado {
   RECHAZADO
 }
 
+enum BecaCobertura {
+  PARCIAL
+  COMPLETA
+}
+
 // ==========================================
 // SEGURIDAD Y USUARIOS
 // ==========================================
 
 model Usuario {
-  id           String         @id @default(uuid())
-  cui          String         @unique
-  nombres      String
-  email        String         @unique
-  passwordHash String
-  rolId        String
-  estado       UsuarioEstado  @default(ACTIVO)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id              String         @id @default(uuid())
+  cui             String         @unique
+  nombres         String
+  email           String         @unique
+  passwordHash    String
+  telefono        String?
+  fechaNacimiento DateTime?
+  direccion       String?
+  generoId        String?
+  departamentoId  String?
+  municipioId     String?
+  rolId           String
+  estado          UsuarioEstado  @default(ACTIVO)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   rol              Rol              @relation(fields: [rolId], references: [id])
+  genero           Genero?          @relation(fields: [generoId], references: [id])
+  departamento     Departamento?    @relation(fields: [departamentoId], references: [id])
+  municipio        Municipio?       @relation(fields: [municipioId], references: [id])
   solicitudes      Solicitud[]
   usuarioPermisos  UsuarioPermiso[]
   comiteMiembros   ComiteMiembro[]
   evaluaciones     Evaluacion[]
   votos            Voto[]
   auditLogs        AuditLog[]
+  notificaciones   Notificacion[]
 
   @@map("usuario")
 }
@@ -138,6 +153,7 @@ model Genero {
   activo Boolean @default(true)
 
   perfiles SolicitudPerfilAcademico[]
+  usuarios Usuario[]
 
   @@map("genero")
 }
@@ -147,7 +163,8 @@ model NivelAcademico {
   nombre String  @unique
   activo Boolean @default(true)
 
-  perfiles SolicitudPerfilAcademico[]
+  perfiles      SolicitudPerfilAcademico[]
+  convocatorias Convocatoria[]
 
   @@map("nivel_academico")
 }
@@ -159,6 +176,7 @@ model Departamento {
 
   municipios Municipio[]
   perfiles   SolicitudPerfilAcademico[]
+  usuarios   Usuario[]
 
   @@map("departamento")
 }
@@ -171,9 +189,25 @@ model Municipio {
 
   departamento Departamento           @relation(fields: [departamentoId], references: [id])
   perfiles     SolicitudPerfilAcademico[]
+  usuarios     Usuario[]
 
   @@unique([nombre, departamentoId])
   @@map("municipio")
+}
+
+model InstitucionEducativa {
+  id           String   @id @default(uuid())
+  nombre       String
+  nivel        String
+  sector       String?
+  departamento String?
+  municipio    String?
+  activa       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  @@index([nivel])
+  @@index([nombre])
+  @@map("institucion_educativa")
 }
 
 // ==========================================
@@ -216,13 +250,19 @@ model Convocatoria {
   nombre          String
   descripcion     String?
   becaId          String
+  nivelAcademicoId String?
+  cobertura       BecaCobertura?
+  formulario      Json?
   estado          ConvocatoriaEstado  @default(BORRADOR)
   fechaApertura   DateTime?
   fechaCierre     DateTime?
+  evaluadoresMinimos Int              @default(2)
+  maxCorrecciones    Int              @default(3)
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
   beca                 Beca                 @relation(fields: [becaId], references: [id])
+  nivelAcademico       NivelAcademico?      @relation(fields: [nivelAcademicoId], references: [id])
   documentosRequeridos ConvocatoriaDocRequerido[]
   solicitudes          Solicitud[]
 
@@ -252,6 +292,8 @@ model Solicitud {
   usuarioId         String
   estado            SolicitudEstado @default(BORRADOR)
   correccionesCount Int             @default(0)
+  respuestas        Json?
+  formularioSnapshot Json?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
@@ -307,14 +349,15 @@ model SolicitudPerfilFinanciero {
 }
 
 model SolicitudDocumento {
-  id              String                    @id @default(uuid())
-  solicitudId     String
-  documentoTipoId String
-  archivoUrl      String
-  estado          SolicitudDocumentoEstado  @default(PENDIENTE)
-  version         Int                       @default(1)
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
+  id                 String                   @id @default(uuid())
+  solicitudId        String
+  documentoTipoId    String
+  archivoUrl         String
+  estado             SolicitudDocumentoEstado @default(PENDIENTE)
+  version            Int                      @default(1)
+  comentarioRechazo  String?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
 
   solicitud     Solicitud     @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
   documentoTipo DocumentoTipo @relation(fields: [documentoTipoId], references: [id])
@@ -362,6 +405,7 @@ model Evaluacion {
   puntaje              Float?
   observaciones        String?
   completada           Boolean  @default(false)
+  confirmImparcialidad Boolean  @default(false)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -488,6 +532,25 @@ model AuditLog {
   usuario Usuario @relation(fields: [usuarioId], references: [id])
 
   @@map("audit_log")
+}
+
+// ==========================================
+// NOTIFICACIONES
+// ==========================================
+
+model Notificacion {
+  id        String    @id @default(uuid())
+  usuarioId String
+  tipo      String
+  titulo    String
+  cuerpo    String?
+  leidaAt   DateTime?
+  createdAt DateTime  @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@map("notificacion")
 }
 
 // ==========================================

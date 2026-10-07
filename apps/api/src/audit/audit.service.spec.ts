@@ -1,6 +1,7 @@
 import { AuditService } from './audit.service';
 
 describe('AuditService', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let prisma: any;
   let service: AuditService;
 

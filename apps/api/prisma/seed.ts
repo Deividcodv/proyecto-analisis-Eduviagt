@@ -3,6 +3,256 @@ import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
+interface InstitucionSeed {
+  nombre: string;
+  nivel: string;
+  sector?: string;
+  departamento?: string;
+  municipio?: string;
+}
+
+const INSTITUCIONES_EDUCATIVAS: InstitucionSeed[] = [
+  // ==================== UNIVERSITARIOS ====================
+  { nombre: 'Universidad de San Carlos de Guatemala', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Universidad Rafael Landívar', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad del Valle de Guatemala', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad Mariano Gálvez de Guatemala', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad Francisco Marroquín', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad Rural de Guatemala', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad del Istmo', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad Panamericana de Guatemala', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad Mesoamericana', nivel: 'UNIVERSITARIO', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'PRIVADO' },
+  { nombre: 'Universidad Galileo', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad San Pablo de Guatemala', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad InterNaciones', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad de Occidente', nivel: 'UNIVERSITARIO', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'PRIVADO' },
+  { nombre: 'Universidad Da Vinci de Guatemala', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad Regional de Guatemala', nivel: 'UNIVERSITARIO', departamento: 'Escuintla', municipio: 'Escuintla', sector: 'PRIVADO' },
+  { nombre: 'Universidad Juan José Arévalo Bermejo', nivel: 'UNIVERSITARIO', departamento: 'Sololá', municipio: 'Sololá', sector: 'PRIVADO' },
+  { nombre: 'Universidad Americana', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad de la Guardia de Honor Presidencial', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad de las Fuerzas Armadas - ESFOR', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+
+  // ==================== DIVERSIFICADO ====================
+  { nombre: 'Instituto Nacional de Educación Radiofonica (INER)', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Instituto Rafael Aqueche', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Instituto Normal para Señoritas de Oriente', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Instituto de Educación Básica por Contacto', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Liceo Guatemala', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Colegio Americano de Guatemala', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Colegio San José de la Salle', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Colegio Don Bosco', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Colegio Loyola', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Colegio Maria Montessori', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Colegio Monte Carmelo', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Instituto Técnico y Vocacional Pedro Molina', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Instituto Técnico Central', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional Mixto de Educación de Quetzaltenango', nivel: 'DIVERSIFICADO', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'OFICIAL' },
+  { nombre: 'Instituto de Secundaria Varones "Manuel Estrada Cabrera"', nivel: 'DIVERSIFICADO', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'OFICIAL' },
+  { nombre: 'Colegio San Atanasio', nivel: 'DIVERSIFICADO', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'PRIVADO' },
+  { nombre: 'Liceo de Quetzaltenango', nivel: 'DIVERSIFICADO', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'PRIVADO' },
+  { nombre: 'Instituto Nacional de Educación Básica Mixto "Luis Toledo Guzmán"', nivel: 'DIVERSIFICADO', departamento: 'Alta Verapaz', municipio: 'Cobán', sector: 'OFICIAL' },
+  { nombre: 'Instituto Bilingüe "Joaquín Noé Salazar"', nivel: 'DIVERSIFICADO', departamento: 'Alta Verapaz', municipio: 'Cobán', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional de Educación Básica Mixto de Salamá', nivel: 'DIVERSIFICADO', departamento: 'Baja Verapaz', municipio: 'Salamá', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional de Educación Básica Mixto de Chimaltenango', nivel: 'DIVERSIFICADO', departamento: 'Chimaltenango', municipio: 'Chimaltenango', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional de Educación Básica Mixto de Chiquimula', nivel: 'DIVERSIFICADO', departamento: 'Chiquimula', municipio: 'Chiquimula', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional de Educación Básica Mixto de Escuintla', nivel: 'DIVERSIFICADO', departamento: 'Escuintla', municipio: 'Escuintla', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional de Educación Básica Mixto de Huehuetenango', nivel: 'DIVERSIFICADO', departamento: 'Huehuetenango', municipio: 'Huehuetenango', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional de Educación Básica Mixto de Puerto Barrios', nivel: 'DIVERSIFICADO', departamento: 'Izabal', municipio: 'Puerto Barrios', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional de Educación Básica Mixto de Jalapa', nivel: 'DIVERSIFICADO', departamento: 'Jalapa', municipio: 'Jalapa', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional de Educación Básica Mixto de Jutiapa', nivel: 'DIVERSIFICADO', departamento: 'Jutiapa', municipio: 'Jutiapa', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional de Educación Básica Mixto de Flores', nivel: 'DIVERSIFICADO', departamento: 'Petén', municipio: 'Flores', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional de Educación Básica Mixto de Retalhuleu', nivel: 'DIVERSIFICADO', departamento: 'Retalhuleu', municipio: 'Retalhuleu', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional de Educación Básica Mixto de Antigua Guatemala', nivel: 'DIVERSIFICADO', departamento: 'Sacatepéquez', municipio: 'Antigua Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional de Educación Básica Mixto de San Marcos', nivel: 'DIVERSIFICADO', departamento: 'San Marcos', municipio: 'San Marcos', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional de Educación Básica Mixto de Cuilapa', nivel: 'DIVERSIFICADO', departamento: 'Santa Rosa', municipio: 'Cuilapa', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional de Educación Básica Mixto de Sololá', nivel: 'DIVERSIFICADO', departamento: 'Sololá', municipio: 'Sololá', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional de Educación Básica Mixto de Mazatenango', nivel: 'DIVERSIFICADO', departamento: 'Suchitepéquez', municipio: 'Mazatenango', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional de Educación Básica Mixto de Totonicapán', nivel: 'DIVERSIFICADO', departamento: 'Totonicapán', municipio: 'Totonicapán', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional de Educación Básica Mixto de Zacapa', nivel: 'DIVERSIFICADO', departamento: 'Zacapa', municipio: 'Zacapa', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional Central para Varones', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional para Señoritas "Belén"', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Escuela Normal Mixta Intercultural "Vida Nueva"', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Centro Educativo Técnico Laboral KINAL', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Liceo Javier', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Colegio La Salle de Guatemala', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Colegio Suizo Americano', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Mixco', sector: 'PRIVADO' },
+  { nombre: 'Colegio Bilingüe Villalobos', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Villa Nueva', sector: 'PRIVADO' },
+  { nombre: 'Instituto Normal de Occidente', nivel: 'DIVERSIFICADO', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'OFICIAL' },
+  { nombre: 'Colegio Mixto Quetzalteco', nivel: 'DIVERSIFICADO', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'PRIVADO' },
+  { nombre: 'Instituto Nacional de Ciencias Comerciales (INCC)', nivel: 'DIVERSIFICADO', departamento: 'Escuintla', municipio: 'Escuintla', sector: 'OFICIAL' },
+  { nombre: 'Instituto ITC San Benito', nivel: 'DIVERSIFICADO', departamento: 'Petén', municipio: 'San Benito', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional de Educación Diversificada de Huehuetenango', nivel: 'DIVERSIFICADO', departamento: 'Huehuetenango', municipio: 'Huehuetenango', sector: 'OFICIAL' },
+  { nombre: 'Colegio Le Kuali', nivel: 'DIVERSIFICADO', departamento: 'Huehuetenango', municipio: 'Huehuetenango', sector: 'PRIVADO' },
+  { nombre: 'Instituto Nacional Mixto de Educación Básica de Antigua Guatemala', nivel: 'DIVERSIFICADO', departamento: 'Sacatepéquez', municipio: 'Antigua Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Colegio Integral San José', nivel: 'DIVERSIFICADO', departamento: 'Sacatepéquez', municipio: 'Antigua Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Instituto Nacional de Educación Básica de Chiquimula', nivel: 'DIVERSIFICADO', departamento: 'Chiquimula', municipio: 'Chiquimula', sector: 'OFICIAL' },
+  { nombre: 'Colegio Mixto Rosaura Recinos', nivel: 'DIVERSIFICADO', departamento: 'Chiquimula', municipio: 'Chiquimula', sector: 'PRIVADO' },
+  { nombre: 'Instituto Nacional de Educación Básica de Jutiapa', nivel: 'DIVERSIFICADO', departamento: 'Jutiapa', municipio: 'Jutiapa', sector: 'OFICIAL' },
+  { nombre: 'Instituto Adolfo V. Hall de Occidente', nivel: 'DIVERSIFICADO', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'OFICIAL' },
+
+  // ==================== BÁSICO ====================
+  { nombre: 'Escuela Oficial Rural Mixta "Liceo Guatemala"', nivel: 'BASICO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Urbana Mixta "Rafael Aqueche"', nivel: 'BASICO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Urbana Mixta "Manuel Estrada Cabrera"', nivel: 'BASICO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Colegio San Carlos', nivel: 'BASICO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Colegio Miguel Ángel Asturias', nivel: 'BASICO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Escuela Oficial Rural Mixta de Mixco', nivel: 'BASICO', departamento: 'Guatemala', municipio: 'Mixco', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Villa Nueva', nivel: 'BASICO', departamento: 'Guatemala', municipio: 'Villa Nueva', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Quetzaltenango', nivel: 'BASICO', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Cobán', nivel: 'BASICO', departamento: 'Alta Verapaz', municipio: 'Cobán', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Salamá', nivel: 'BASICO', departamento: 'Baja Verapaz', municipio: 'Salamá', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Chimaltenango', nivel: 'BASICO', departamento: 'Chimaltenango', municipio: 'Chimaltenango', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Chiquimula', nivel: 'BASICO', departamento: 'Chiquimula', municipio: 'Chiquimula', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Escuintla', nivel: 'BASICO', departamento: 'Escuintla', municipio: 'Escuintla', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Huehuetenango', nivel: 'BASICO', departamento: 'Huehuetenango', municipio: 'Huehuetenango', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Puerto Barrios', nivel: 'BASICO', departamento: 'Izabal', municipio: 'Puerto Barrios', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Jalapa', nivel: 'BASICO', departamento: 'Jalapa', municipio: 'Jalapa', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Jutiapa', nivel: 'BASICO', departamento: 'Jutiapa', municipio: 'Jutiapa', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Flores', nivel: 'BASICO', departamento: 'Petén', municipio: 'Flores', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Retalhuleu', nivel: 'BASICO', departamento: 'Retalhuleu', municipio: 'Retalhuleu', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Antigua Guatemala', nivel: 'BASICO', departamento: 'Sacatepéquez', municipio: 'Antigua Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de San Marcos', nivel: 'BASICO', departamento: 'San Marcos', municipio: 'San Marcos', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Cuilapa', nivel: 'BASICO', departamento: 'Santa Rosa', municipio: 'Cuilapa', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Sololá', nivel: 'BASICO', departamento: 'Sololá', municipio: 'Sololá', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Mazatenango', nivel: 'BASICO', departamento: 'Suchitepéquez', municipio: 'Mazatenango', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Totonicapán', nivel: 'BASICO', departamento: 'Totonicapán', municipio: 'Totonicapán', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Zacapa', nivel: 'BASICO', departamento: 'Zacapa', municipio: 'Zacapa', sector: 'OFICIAL' },
+
+  // ==================== PREPRIMARIA ====================
+  { nombre: 'Centro de Educación Inicial "Santa María"', nivel: 'PREPRIMARIA', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Centro de Educación Inicial "San José"', nivel: 'PREPRIMARIA', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Centro de Educación Inicial "Los Ángeles"', nivel: 'PREPRIMARIA', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'OFICIAL' },
+  { nombre: 'Centro de Educación Inicial "San Pedro"', nivel: 'PREPRIMARIA', departamento: 'Alta Verapaz', municipio: 'Cobán', sector: 'OFICIAL' },
+];
+
+const MUNICIPIOS_POR_DEPARTAMENTO: Record<string, string[]> = {
+  'Alta Verapaz': [
+    'Cobán', 'Santa Cruz Verapaz', 'San Cristóbal Verapaz', 'Tactic', 'Tamahú',
+    'San Miguel Tucurú', 'Panzós', 'Senahú', 'San Pedro Carchá', 'San Juan Chamelco',
+    'Lanquín', 'Cahabón', 'Chisec', 'Chahal', 'Fray Bartolomé de las Casas',
+    'Santa Catalina La Tinta', 'Raxruhá',
+  ],
+  'Baja Verapaz': [
+    'Salamá', 'San Miguel Chicaj', 'Rabinal', 'Cubulco', 'Granados', 'El Chol',
+    'San Jerónimo', 'Purulhá',
+  ],
+  'Chimaltenango': [
+    'Chimaltenango', 'San José Poaquil', 'San Martín Jilotepeque', 'San Juan Comalapa',
+    'Santa Apolonia', 'Tecpán Guatemala', 'Patzún', 'Pochuta', 'Patzicía',
+    'San Andrés Itzapa', 'Santa Cruz Balanyá', 'Acatenango', 'Yepocapa', 'Zaragoza',
+    'El Tejar', 'Parramos',
+  ],
+  'Chiquimula': [
+    'Chiquimula', 'Camotán', 'Jocotán', 'San Juan Ermita', 'San José La Arada',
+    'San Jacinto', 'Ipala', 'Esquipulas', 'Concepción Las Minas', 'Quezaltepeque', 'Olopa',
+  ],
+  'El Progreso': [
+    'Guastatoya', 'El Jícaro', 'San Agustín Acasaguastlán', 'San Cristóbal Acasaguastlán',
+    'Sansare', 'Sanarate', 'San Antonio La Paz', 'Morazán',
+  ],
+  'Escuintla': [
+    'Escuintla', 'Santa Lucía Cotzumalguapa', 'La Democracia', 'Siquinalá', 'Masagua',
+    'Tiquisate', 'La Gomera', 'Guanagazapa', 'San José', 'Iztapa', 'Palín',
+    'San Vicente Pacaya', 'Nueva Concepción',
+  ],
+  'Guatemala': [
+    'Guatemala', 'Amatitlán', 'Chinautla', 'Chuarrancho', 'Fraijanes', 'Mixco',
+    'Palencia', 'San José del Golfo', 'San José Pinula', 'San Juan Sacatepéquez',
+    'San Miguel Petapa', 'San Pedro Ayampuc', 'San Pedro Sacatepéquez', 'San Raymundo',
+    'Santa Catarina Pinula', 'Villa Canales', 'Villa Nueva',
+  ],
+  'Huehuetenango': [
+    'Huehuetenango', 'Chiantla', 'Malacatancito', 'Cuilco', 'Nentón', 'San Pedro Soloma',
+    'San Juan Ixcoy', 'San Rafael La Independencia', 'San Antonio Huista',
+    'San Sebastián Huehuetenango', 'Santa Bárbara', 'San Pedro Necta',
+    'Santiago Chimaltenango', 'Aguacatán', 'San Miguel Acatán', 'San Rafael Petzal',
+    'San Mateo Ixtatán', 'Colotenango', 'San Ildefonso Ixtahuacán', 'San Gaspar Ixchil',
+    'San Juan Atitán', 'Santa Eulalia', 'Todos Santos Cuchumatán', 'Concepción Huista',
+    'Jacaltenango', 'La Democracia', 'La Libertad', 'Santa Ana Huista', 'Tectitán',
+    'Santa Cruz Barillas', 'San Sebastián Coatán', 'Unión Cantinil', 'Petatán',
+  ],
+  'Izabal': [
+    'Puerto Barrios', 'Morales', 'Los Amates', 'Livingston', 'El Estor',
+  ],
+  'Jalapa': [
+    'Jalapa', 'San Pedro Pinula', 'San Luis Jilotepeque', 'San Manuel Chaparrón',
+    'San Carlos Alzatate', 'Monjas', 'Mataquescuintla',
+  ],
+  'Jutiapa': [
+    'Jutiapa', 'Agua Blanca', 'Asunción Mita', 'Atescatempa', 'Comapa', 'Conguaco',
+    'El Adelanto', 'El Progreso', 'Jalpatagua', 'Jerez', 'Moyuta', 'Pasaco',
+    'Quesada', 'San José Acatempa', 'Santa Catarina Mita', 'Yupiltepeque', 'Zapotitlán',
+  ],
+  'Petén': [
+    'Flores', 'San Benito', 'Santa Ana', 'Dolores', 'San Francisco', 'San José',
+    'La Libertad', 'San Andrés', 'Sayaxché', 'Melchor de Mencos', 'Poptún',
+    'San Luis', 'Las Cruces', 'El Chal',
+  ],
+  'Quetzaltenango': [
+    'Quetzaltenango', 'Salcajá', 'Olintepeque', 'San Carlos Sija', 'Sibilia',
+    'Cabricán', 'Cajolá', 'San Miguel Sigüilá', 'San Juan Ostuncalco', 'San Mateo',
+    'Concepción Chiquirichapa', 'San Martín Sacatepéquez', 'Almolonga', 'Cantel',
+    'Huitán', 'Zunil', 'Colomba', 'San Francisco La Unión', 'El Palmar',
+    'Coatepeque', 'Génova', 'Flores Costa Cuca', 'La Esperanza', 'Palestina de Los Altos',
+  ],
+  'Quiché': [
+    'Santa Cruz del Quiché', 'Chiché', 'Chinique', 'Zacualpa', 'Chichicastenango',
+    'Patzité', 'San Antonio Ilotenango', 'San Pedro Jocopilas', 'Cunén',
+    'San Juan Cotzal', 'Chajul', 'San Bartolomé Jocotenango', 'Sacapulas', 'Nebaj',
+    'Canillá', 'Joyabaj', 'Ixcán', 'Pachalum', 'Uspantán', 'Chicamán',
+    'San Andrés Sajcabajá',
+  ],
+  'Retalhuleu': [
+    'Retalhuleu', 'San Sebastián', 'Santa Cruz Muluá', 'San Martín Zapotitlán',
+    'San Felipe', 'San Andrés Villa Seca', 'Champerico', 'Nuevo San Carlos', 'El Asintal',
+  ],
+  'Sacatepéquez': [
+    'Antigua Guatemala', 'Jocotenango', 'Pastores', 'Sumpango', 'Santo Domingo Xenacoj',
+    'Santiago Sacatepéquez', 'San Bartolomé Milpas Altas', 'San Lucas Sacatepéquez',
+    'Santa Lucía Milpas Altas', 'Magdalena Milpas Altas', 'Santa María de Jesús',
+    'Ciudad Vieja', 'San Miguel Dueñas', 'Alotenango', 'San Antonio Aguas Calientes',
+    'Santa Catarina Barahona',
+  ],
+  'San Marcos': [
+    'San Marcos', 'San Pedro Sacatepéquez', 'Comitancillo', 'San Antonio Sacatepéquez',
+    'San Miguel Ixtahuacán', 'Concepción Tutuapa', 'Tacaná', 'Sibinal', 'Tajumulco',
+    'San José Ojetenam', 'San José El Rodeo', 'San Lorenzo', 'Sipacapa', 'Malacatán',
+    'Catarina', 'Ayutla', 'Ocós', 'Pajapita', 'El Tumbador', 'El Quetzal',
+    'La Reforma', 'Nuevo Progreso', 'San Cristóbal Cucho', 'Tejutla', 'La Blanca',
+    'Río Blanco', 'San Rafael Pie de la Cuesta', 'Ixchiguán', 'Esquipulas Palo Gordo',
+    'San Pablo',
+  ],
+  'Santa Rosa': [
+    'Cuilapa', 'Barberena', 'Santa Rosa de Lima', 'Casillas', 'San Rafael Las Flores',
+    'Oratorio', 'San Juan Tecuaco', 'Chiquimulilla', 'Guazacapán', 'Pueblo Nuevo Viñas',
+    'Santa María Ixhuatán', 'Taxisco', 'Nueva Santa Rosa', 'Santa Cruz Naranjo',
+  ],
+  'Sololá': [
+    'Sololá', 'San José Chacayá', 'Santa María Visitación', 'Santa Lucía Utatlán',
+    'Nahualá', 'Santa Catarina Ixtahuacán', 'Santa Clara La Laguna', 'Concepción',
+    'San Andrés Semetabaj', 'Panajachel', 'Santa Catarina Palopó', 'San Antonio Palopó',
+    'San Lucas Tolimán', 'San Juan La Laguna', 'San Pedro La Laguna', 'Santiago Atitlán',
+    'San Pablo La Laguna', 'San Marcos La Laguna', 'Santa Cruz La Laguna',
+  ],
+  'Suchitepéquez': [
+    'Mazatenango', 'Cuyotenango', 'San Francisco Zapotitlán', 'San Bernardino',
+    'San José El Ídolo', 'Santo Domingo Suchitepéquez', 'San Lorenzo', 'Samayac',
+    'San Pablo Jocopilas', 'San Antonio Suchitepéquez', 'San Miguel Panán',
+    'San Gabriel', 'Chicacao', 'Patulul', 'Santa Bárbara', 'Santo Tomás La Unión',
+    'Río Bravo', 'Pueblo Nuevo', 'Zunilito', 'San Juan Bautista', 'San José La Máquina',
+  ],
+  'Totonicapán': [
+    'Totonicapán', 'San Cristóbal Totonicapán', 'San Francisco El Alto',
+    'San Andrés Xecul', 'Momostenango', 'Santa María Chiquimula', 'Santa Lucía La Reforma',
+    'San Bartolo',
+  ],
+  'Zacapa': [
+    'Zacapa', 'Estanzuela', 'Río Hondo', 'Gualán', 'Teculután', 'Usumatlán',
+    'Cabañas', 'San Diego', 'La Unión', 'Huité', 'San Jorge',
+  ],
+};
+
 async function main() {
   console.log('🌱 Seeding database...');
 
@@ -249,7 +499,14 @@ async function main() {
   // ==========================================
   // GÉNEROS
   // ==========================================
-  const generos = ['Masculino', 'Femenino', 'Otro'];
+  await prisma.genero.deleteMany({
+    where: { nombre: { startsWith: 'Smoke' } },
+  });
+  await prisma.genero.updateMany({
+    where: { nombre: 'Otro' },
+    data: { nombre: 'Prefiero no especificar' },
+  });
+  const generos = ['Masculino', 'Femenino', 'Prefiero no especificar'];
   for (const nombre of generos) {
     await prisma.genero.upsert({
       where: { nombre },
@@ -277,7 +534,7 @@ async function main() {
   // ==========================================
   const departamentos = [
     'Alta Verapaz', 'Baja Verapaz', 'Chimaltenango', 'Chiquimula',
-    'El Proverbio', 'Escuintla', 'Guatemala', 'Huehuetenango',
+    'El Progreso', 'Escuintla', 'Guatemala', 'Huehuetenango',
     'Izabal', 'Jalapa', 'Jutiapa', 'Petén',
     'Quetzaltenango', 'Quiché', 'Retalhuleu', 'Sacatepéquez',
     'San Marcos', 'Santa Rosa', 'Sololá', 'Suchitepéquez',
@@ -294,23 +551,36 @@ async function main() {
   console.log('✅ Departamentos creados');
 
   // ==========================================
-  // MUNICIPIOS (muestra por departamento)
+  // MUNICIPIOS (catálogo completo por departamento)
   // ==========================================
-  const guatemala = await prisma.departamento.findUnique({ where: { nombre: 'Guatemala' } });
-  if (guatemala) {
-    const municipiosGuatemala = [
-      'Guatemala', 'Mixco', 'Villa Nueva', 'Quetzaltenango',
-      'San Juan Sacatepéquez', 'San José Pinula', 'Florida',
-    ];
-    for (const nombre of municipiosGuatemala) {
+  await prisma.municipio.deleteMany({
+    where: {
+      departamento: { nombre: 'Guatemala' },
+      nombre: { in: ['Quetzaltenango', 'Florida'] },
+    },
+  });
+  for (const [nombreDepartamento, municipios] of Object.entries(
+    MUNICIPIOS_POR_DEPARTAMENTO,
+  )) {
+    const departamento = await prisma.departamento.findUnique({
+      where: { nombre: nombreDepartamento },
+    });
+    if (!departamento) continue;
+    for (const nombre of municipios) {
       await prisma.municipio.upsert({
-        where: { nombre_departamentoId: { nombre, departamentoId: guatemala.id } },
+        where: {
+          nombre_departamentoId: { nombre, departamentoId: departamento.id },
+        },
         update: {},
-        create: { nombre, departamentoId: guatemala.id },
+        create: { nombre, departamentoId: departamento.id },
       });
     }
   }
-  console.log('✅ Municipios creados (muestra)');
+  console.log(`✅ Municipios creados (${Object.values(MUNICIPIOS_POR_DEPARTAMENTO).flat().length} en 22 departamentos)`);
+  await prisma.municipio.deleteMany({
+    where: { departamento: { nombre: 'El Proverbio' } },
+  });
+  await prisma.departamento.deleteMany({ where: { nombre: 'El Proverbio' } });
 
   // ==========================================
   // TIPOS DE DOCUMENTO
@@ -318,7 +588,7 @@ async function main() {
   const documentos = [
     'Certificado académico',
     'Constancia de estudios',
-    'Cédula de depletedción',
+    'Cédula de depleción',
     'Fotografía',
     'Comprobante de ingresos',
     'Carta de recomendación',
@@ -333,6 +603,52 @@ async function main() {
   console.log('✅ Tipos de documento creados');
 
   // ==========================================
+  // INSTITUCIONES EDUCATIVAS
+  // ==========================================
+  for (const inst of INSTITUCIONES_EDUCATIVAS) {
+    const existente = await prisma.institucionEducativa.findFirst({
+      where: { nombre: inst.nombre, nivel: inst.nivel },
+    });
+    if (existente) {
+      await prisma.institucionEducativa.update({
+        where: { id: existente.id },
+        data: {
+          sector: inst.sector ?? null,
+          departamento: inst.departamento ?? null,
+          municipio: inst.municipio ?? null,
+          activa: true,
+        },
+      });
+    } else {
+      await prisma.institucionEducativa.create({
+        data: {
+          nombre: inst.nombre,
+          nivel: inst.nivel,
+          sector: inst.sector ?? null,
+          departamento: inst.departamento ?? null,
+          municipio: inst.municipio ?? null,
+          activa: true,
+        },
+      });
+    }
+  }
+  console.log(
+    `✅ Instituciones educativas creadas (${INSTITUCIONES_EDUCATIVAS.length})`,
+  );
+  const INSTITUCIONES_ELIMINADAS = [
+    'Universidad Autónoma de Quetzaltenango',
+    'Universidad Guatemala de América del Norte',
+    'Universidad Landívar',
+    'Universidad Popular de la Ciudad de Guatemala',
+    'Universidad Regional Autónoma de los Andes',
+    'Universidad da Vinci de Guatemala',
+  ];
+  await prisma.institucionEducativa.deleteMany({
+    where: { nombre: { in: INSTITUCIONES_ELIMINADAS } },
+  });
+  console.log('✅ Instituciones obsoletas eliminadas');
+
+  // ==========================================
   // USUARIO ADMIN POR DEFECTO
   // ==========================================
   const adminRoleData = await prisma.rol.findUnique({ where: { nombre: 'ADMIN' } });
@@ -340,10 +656,10 @@ async function main() {
 
   await prisma.usuario.upsert({
     where: { cui: '1234567890123' },
-    update: {},
+    update: { nombres: 'Administrador EDUVIAGT' },
     create: {
       cui: '1234567890123',
-      nombres: 'Administrador SIGEB',
+      nombres: 'Administrador EDUVIAGT',
       email: 'admin@sigeb.gov.gt',
       passwordHash: hashedPassword,
       rolId: adminRoleData!.id,
@@ -426,7 +742,7 @@ async function main() {
   const conocimiento = [
     {
       titulo: '¿Qué es una beca?',
-      contenido: 'Una beca es un apoyo económico otorgado al estudiante para cubrir gastos de estudios, como matrícula, colegiatura o materiales. En SIGEB el Ministerio de Educación administra las becas mediante convocatorias públicas.',
+      contenido: 'Una beca es un apoyo económico otorgado al estudiante para cubrir gastos de estudios, como matrícula, colegiatura o materiales. En EDUVIAGT el Ministerio de Educación administra las becas mediante convocatorias públicas.',
       tags: ['beca', 'definicion', 'que es'],
     },
     {
@@ -435,7 +751,7 @@ async function main() {
       tags: ['requisitos', 'postular', 'documentos', 'CUI'],
     },
     {
-      titulo: 'Cómo crear una cuenta en SIGEB',
+      titulo: 'Cómo crear una cuenta en EDUVIAGT',
       contenido: 'El proceso comienza en el módulo de Registro. Debes ingresar tu número de CUI (13 dígitos), nombres completos según DPI y un correo electrónico activo. Con esos datos el sistema te asigna el rol POSTULANTE y podrás iniciar sesión en la plataforma.',
       tags: ['registro', 'crear cuenta', 'cui', 'usuario'],
     },
@@ -446,7 +762,7 @@ async function main() {
     },
     {
       titulo: 'Proceso de postulación paso a paso',
-      contenido: 'El proceso de postulación en SIGEB es: 1) Registrarse e iniciar sesión como postulante. 2) Seleccionar una convocatoria ABIERTA. 3) Crear la solicitud (inicia en BORRADOR). 4) Completar el perfil académico y financiero. 5) Cargar los documentos requeridos. 6) Revisar el checklist y enviar la solicitud. 7) Esperar la evaluación.',
+      contenido: 'El proceso de postulación en EDUVIAGT es: 1) Registrarse e iniciar sesión como postulante. 2) Seleccionar una convocatoria ABIERTA. 3) Crear la solicitud (inicia en BORRADOR). 4) Completar el perfil académico y financiero. 5) Cargar los documentos requeridos. 6) Revisar el checklist y enviar la solicitud. 7) Esperar la evaluación.',
       tags: ['proceso', 'postulación', 'pasos', 'solicitud', 'como postular'],
     },
     {
@@ -501,7 +817,7 @@ async function main() {
     },
     {
       titulo: 'Cómo consultar el estado de mi solicitud',
-      contenido: 'Inicia sesión en SIGEB y entra a tus solicitudes. Ahí verás el estado actual (BORRADOR, ENVIADA, EN_REVISION, EVALUADA, APROBADA o RECHAZADA) y el historial de cambios.',
+      contenido: 'Inicia sesión en EDUVIAGT y entra a tus solicitudes. Ahí verás el estado actual (BORRADOR, ENVIADA, EN_REVISION, EVALUADA, APROBADA o RECHAZADA) y el historial de cambios.',
       tags: ['consultar estado', 'seguimiento', 'estado'],
     },
     {
@@ -521,7 +837,7 @@ async function main() {
     },
     {
       titulo: 'Perfil académico',
-      contenido: 'El perfil académico incluye género, nivel académico, institución, carrera y promedio. Puedes seleccionar opciones predefinidas o la opción "otro" y escribir tu propia respuesta.',
+      contenido: 'El perfil académico incluye tu género (desde tu cuenta), nivel académico, institución, carrera y promedio. Para el nivel académico y la institución puedes seleccionar opciones predefinidas o la opción "otro" y escribir tu propia respuesta.',
       tags: ['perfil academico', 'genero', 'nivel', 'promedio', 'institucion'],
     },
     {
@@ -546,17 +862,17 @@ async function main() {
     },
     {
       titulo: 'Soporte y contactos',
-      contenido: 'Para dudas sobre tu postulación contacta al equipo de SIGEB del Ministerio de Educación durante horario de atención. El sistema registra cada acción sensible para auditoría.',
+      contenido: 'Para dudas sobre tu postulación contacta al equipo de EDUVIAGT del Ministerio de Educación durante horario de atención. El sistema registra cada acción sensible para auditoría.',
       tags: ['soporte', 'contacto', 'ayuda', 'atencion'],
     },
     {
       titulo: 'Seguridad de datos',
-      contenido: 'SIGEB protege tus datos personales: las contraseñas se guardan encriptadas, los accesos se registran y cada transición sensible queda en el registro de auditoría.',
+      contenido: 'EDUVIAGT protege tus datos personales: las contraseñas se guardan encriptadas, los accesos se registran y cada transición sensible queda en el registro de auditoría.',
       tags: ['seguridad', 'datos', 'privacidad', 'auditoria'],
     },
     {
       titulo: 'Roles del sistema',
-      contenido: 'SIGEB tiene los roles ADMIN, POSTULANTE, EVALUADOR, COORDINADOR_COMITE y MIEMBRO_COMITE. Cada rol tiene permisos asignados; el ADMIN gestiona roles y permisos.',
+      contenido: 'EDUVIAGT tiene los roles ADMIN, POSTULANTE, EVALUADOR, COORDINADOR_COMITE y MIEMBRO_COMITE. Cada rol tiene permisos asignados; el ADMIN gestiona roles y permisos.',
       tags: ['roles', 'permisos', 'admin', 'evaluador', 'coordinador', 'miembro'],
     },
     {

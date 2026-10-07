@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Body,
   Req,
   UseGuards,
@@ -14,6 +15,7 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { UpdatePerfilDto } from './dto/update-perfil.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
@@ -60,5 +62,18 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'No autenticado' })
   async getProfile(@CurrentUser('id') userId: string) {
     return this.authService.getProfile(userId);
+  }
+
+  @Patch('perfil')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Actualizar datos del perfil del usuario autenticado' })
+  @ApiResponse({ status: 200, description: 'Perfil actualizado' })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  async updateProfile(
+    @CurrentUser('id') userId: string,
+    @Body() dto: UpdatePerfilDto,
+  ) {
+    return this.authService.updatePerfil(userId, dto);
   }
 }

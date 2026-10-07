@@ -8,9 +8,10 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { AuditService } from '../audit/audit.service';
+import { UpdatePerfilDto } from './dto/update-perfil.dto';
 
 @Injectable()
 export class AuthService {
@@ -117,7 +118,7 @@ export class AuthService {
   async refreshToken(refreshToken: string, ip?: string) {
     try {
       const payload = this.jwtService.verify(refreshToken, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET') || 'sigeb-jwt-refresh-secret-dev',
+        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
       });
 
       const user = await this.prisma.usuario.findUnique({
@@ -132,7 +133,7 @@ export class AuthService {
         { sub: user.id, email: user.email },
         {
           expiresIn: this.configService.get<string>('JWT_ACCESS_EXPIRATION') || '15m',
-          secret: this.configService.get<string>('JWT_SECRET') || 'sigeb-jwt-secret-dev',
+          secret: this.configService.getOrThrow<string>('JWT_SECRET'),
         },
       );
 
@@ -153,18 +154,116 @@ export class AuthService {
   async getProfile(userId: string) {
     const user = await this.prisma.usuario.findUnique({
       where: { id: userId },
-      include: { rol: true },
+      include: {
+        rol: true,
+        genero: true,
+        departamento: true,
+        municipio: true,
+      },
     });
 
     if (!user) {
       throw new NotFoundException('Usuario no encontrado');
     }
 
+    return this.aplanarPerfil(user);
+  }
+
+  async updatePerfil(userId: string, dto: UpdatePerfilDto) {
+    const user = await this.prisma.usuario.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
+    if (dto.generoId) {
+      const genero = await this.prisma.genero.findUnique({
+        where: { id: dto.generoId },
+      });
+      if (!genero) {
+        throw new NotFoundException('Género no encontrado');
+      }
+    }
+
+    if (dto.departamentoId) {
+      const departamento = await this.prisma.departamento.findUnique({
+        where: { id: dto.departamentoId },
+      });
+      if (!departamento) {
+        throw new NotFoundException('Departamento no encontrado');
+      }
+    }
+
+    if (dto.municipioId) {
+      const municipio = await this.prisma.municipio.findUnique({
+        where: { id: dto.municipioId },
+      });
+      if (!municipio) {
+        throw new NotFoundException('Municipio no encontrado');
+      }
+    }
+
+    const updated = await this.prisma.usuario.update({
+      where: { id: userId },
+      data: {
+        nombres: dto.nombres ?? undefined,
+        telefono: dto.telefono ?? undefined,
+        fechaNacimiento: dto.fechaNacimiento ? new Date(dto.fechaNacimiento) : undefined,
+        direccion: dto.direccion ?? undefined,
+        generoId: dto.generoId ?? undefined,
+        departamentoId: dto.departamentoId ?? undefined,
+        municipioId: dto.municipioId ?? undefined,
+      },
+      include: {
+        rol: true,
+        genero: true,
+        departamento: true,
+        municipio: true,
+      },
+    });
+
+    await this.audit.log({
+      usuarioId: userId,
+      accion: 'update_perfil',
+      entidad: 'usuario',
+      entidadId: userId,
+    });
+
+    return this.aplanarPerfil(updated);
+  }
+
+  private aplanarPerfil(user: {
+    id: string;
+    cui: string;
+    nombres: string;
+    email: string;
+    telefono: string | null;
+    fechaNacimiento: Date | null;
+    direccion: string | null;
+    rol: { id: string; nombre: string };
+    genero?: { id: string; nombre: string } | null;
+    departamento?: { id: string; nombre: string } | null;
+    municipio?: { id: string; nombre: string } | null;
+  }) {
     return {
       id: user.id,
       cui: user.cui,
       nombres: user.nombres,
       email: user.email,
+      telefono: user.telefono,
+      fechaNacimiento: user.fechaNacimiento,
+      direccion: user.direccion,
+      genero: user.genero
+        ? { id: user.genero.id, nombre: user.genero.nombre }
+        : null,
+      departamento: user.departamento
+        ? { id: user.departamento.id, nombre: user.departamento.nombre }
+        : null,
+      municipio: user.municipio
+        ? { id: user.municipio.id, nombre: user.municipio.nombre }
+        : null,
       rol: {
         id: user.rol.id,
         nombre: user.rol.nombre,
@@ -178,11 +277,11 @@ export class AuthService {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         expiresIn: this.configService.get<string>('JWT_ACCESS_EXPIRATION') || '15m',
-        secret: this.configService.get<string>('JWT_SECRET') || 'sigeb-jwt-secret-dev',
+        secret: this.configService.getOrThrow<string>('JWT_SECRET'),
       }),
       this.jwtService.signAsync(payload, {
         expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRATION') || '7d',
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET') || 'sigeb-jwt-refresh-secret-dev',
+        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
       }),
     ]);
 
