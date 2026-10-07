@@ -32,8 +32,8 @@ async function bootstrap() {
 
   // Swagger
   const config = new DocumentBuilder()
-    .setTitle('SIGEB API')
-    .setDescription('Sistema Integral de Gestión de Becas - API')
+    .setTitle('EDUVIAGT API')
+    .setDescription('EDUVIAGT - Sistema Integral de Gestión de Becas (API)')
     .setVersion('1.0')
     .addBearerAuth()
     .build();
@@ -42,7 +42,7 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(`🚀 SIGEB API running on http://localhost:${port}`);
+  console.log(`🚀 EDUVIAGT API running on http://localhost:${port}`);
   console.log(`📚 Swagger docs: http://localhost:${port}/api/docs`);
 }
 bootstrap();
