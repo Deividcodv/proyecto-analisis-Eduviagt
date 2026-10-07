@@ -1,18 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
-
-const rutaPorRol = (rol: string): string => {
-  const r = (rol || '').toUpperCase();
-  if (r === 'EVALUADOR') return '/evaluador';
-  if (r === 'COORDINADOR_COMITE') return '/coordinador';
-  if (r === 'MIEMBRO_COMITE') return '/comite';
-  if (r !== 'POSTULANTE') return '/admin';
-  return '/dashboard';
-};
+import { MenuAcciones } from '@/components/layout/MenuAcciones';
 
 export function UserMenu() {
   const { usuario, cargando, logout } = useAuth();
@@ -23,15 +14,17 @@ export function UserMenu() {
   if (!usuario) {
     return (
       <div className="hidden gap-3 md:flex">
-        <Button href="/login" variant="ghost">
+        <Button
+          href="/login"
+          variant="ghost"
+          className="!border-brutal-papel !bg-transparent !text-brutal-papel hover:!bg-brutal-gold hover:!text-brutal-tinta"
+        >
           Iniciar sesión
         </Button>
         <Button href="/registro">Registrarse</Button>
       </div>
     );
   }
-
-  const ruta = rutaPorRol(usuario.rol);
 
   const handleLogout = () => {
     logout();
@@ -40,13 +33,14 @@ export function UserMenu() {
 
   return (
     <div className="hidden items-center gap-3 md:flex">
-      <Link
-        href={ruta}
-        className="text-sm font-medium text-sigeb-blue-dark hover:text-sigeb-blue"
-      >
+      <MenuAcciones />
+      <span className="font-mono text-xs text-brutal-papel">
         Hola, {usuario.nombres.split(' ')[0]}
-      </Link>
-      <Button onClick={handleLogout} variant="ghost">
+      </span>
+      <Button
+        onClick={handleLogout}
+        className="!border-brutal-rojo !bg-brutal-rojo !text-brutal-papel hover:!bg-brutal-tinta hover:!text-brutal-papel"
+      >
         Cerrar sesión
       </Button>
     </div>

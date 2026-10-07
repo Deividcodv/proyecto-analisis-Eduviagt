@@ -29,7 +29,7 @@ export function Convocatorias() {
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className="h-44 animate-pulse rounded-xl bg-gray-200"
+            className="h-44 animate-pulse rounded-xl border-2 border-brutal-tinta/20 bg-brutal-tinta/10"
           />
         ))}
       </div>
@@ -70,7 +70,7 @@ export function Convocatorias() {
                 {convocatoria.beca.nombre}
               </span>
             </div>
-            <h3 className="mb-2 text-lg font-bold text-sigeb-blue-dark">
+            <h3 className="mb-2 text-lg font-bold text-brutal-tinta">
               {convocatoria.nombre}
             </h3>
             {convocatoria.descripcion && (
