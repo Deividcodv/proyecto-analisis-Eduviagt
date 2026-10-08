@@ -4,19 +4,11 @@ import { useEffect, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Spinner } from '@/components/ui/Spinner';
+import { rutaPorRol } from '@/lib/rol';
 
 interface ProtectedRouteProps {
   children: ReactNode;
   roles?: string[];
-}
-
-function rutaPorRol(rol: string): string {
-  const r = (rol || '').toUpperCase();
-  if (r === 'EVALUADOR') return '/evaluador';
-  if (r === 'COORDINADOR_COMITE') return '/coordinador';
-  if (r === 'MIEMBRO_COMITE') return '/comite';
-  if (r !== 'POSTULANTE') return '/admin';
-  return '/dashboard';
 }
 
 export function ProtectedRoute({ children, roles }: ProtectedRouteProps) {

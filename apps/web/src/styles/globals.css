@@ -3,24 +3,98 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 244, 247, 250;
-  --background-end-rgb: 255, 255, 255;
+  --foreground-rgb: 24, 35, 58;
+  --background-rgb: 245, 247, 250;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  background: rgb(var(--background-rgb));
 }
 
-/* SIGEB Custom Styles */
+/* Brutalista: fondo con trama de puntos sutil en todo el body */
+.brut-body {
+  background-color: var(--brut-papel, #f5f7fa);
+  background-image: radial-gradient(rgba(24, 35, 58, 0.07) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+}
+
+/* Franja diagonal decorativa (estampa "ticket" / cinta) */
+.brut-cinta {
+  position: relative;
+  overflow: hidden;
+}
+.brut-cinta::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 220%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 18px,
+    rgba(61, 142, 199, 0.12) 18px,
+    rgba(61, 142, 199, 0.12) 36px
+  );
+  pointer-events: none;
+}
+
+/* Remarque de texto máximo para hero */
+.text-mega {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+/* Etiqueta tipo "sticker" brutalista */
+.brut-label {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Celdas de tablas bordeadas */
+.brut-cell {
+  border: 2px solid #18233a;
+}
+
+/* Scrollbar retro */
+::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+::-webkit-scrollbar-track {
+  background: #e3e8ef;
+  border-left: 2px solid #18233a;
+}
+::-webkit-scrollbar-thumb {
+  background: #3d8ec7;
+  border: 2px solid #18233a;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #0f3d63;
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* Números de ancho fijo (conteos, códigos, countdown) */
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
 }

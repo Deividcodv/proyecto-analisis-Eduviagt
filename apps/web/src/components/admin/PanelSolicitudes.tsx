@@ -53,6 +53,15 @@ export function PanelSolicitudes() {
     }
   };
 
+  const refrescarScore = async (id: string) => {
+    try {
+      const score = await fetchConToken<ScoreSolicitud>(`/solicitudes/${id}/score`);
+      setScores((s) => ({ ...s, [id]: score }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo obtener el score');
+    }
+  };
+
   const abrirAsignacion = (solicitud: Solicitud) => {
     setAsignando(solicitud);
     setSeleccionados([]);
@@ -84,6 +93,69 @@ export function PanelSolicitudes() {
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudieron asignar los evaluadores');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const quitarEvaluador = async (
+    solicitudId: string,
+    evaluadorId: string,
+    nombre: string,
+  ) => {
+    if (!window.confirm(`¿Quitar a ${nombre} de esta solicitud?`)) return;
+    setEnviando(true);
+    setError(null);
+    setExito(null);
+    try {
+      await fetchConToken(`/solicitudes/${solicitudId}/evaluadores/${evaluadorId}`, {
+        method: 'DELETE',
+      });
+      setExito(`Evaluador ${nombre} removido de la solicitud.`);
+      await refrescarScore(solicitudId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo quitar al evaluador');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const solicitarCorreccion = async (solicitud: Solicitud) => {
+    const comentario = window.prompt('Motivo de la corrección (opcional):') ?? undefined;
+    setEnviando(true);
+    setError(null);
+    setExito(null);
+    try {
+      await fetchConToken(`/solicitudes/${solicitud.id}/solicitar-correccion`, {
+        method: 'POST',
+        body: { comentario },
+      });
+      setExito('Corrección solicitada al postulante.');
+      cargar();
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : 'No se pudo solicitar la corrección',
+      );
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const marcarEvaluada = async (solicitud: Solicitud) => {
+    setEnviando(true);
+    setError(null);
+    setExito(null);
+    try {
+      await fetchConToken(`/solicitudes/${solicitud.id}/transicion`, {
+        method: 'POST',
+        body: { accion: 'evaluar' },
+      });
+      setExito('Solicitud marcada como EVALUADA.');
+      cargar();
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : 'No se pudo marcar la solicitud como evaluada',
+      );
     } finally {
       setEnviando(false);
     }
@@ -132,7 +204,7 @@ export function PanelSolicitudes() {
           <h3 className="mb-2 font-brut text-lg font-black uppercase tracking-wide text-brutal-tinta">
             Asignar evaluadores a la solicitud
           </h3>
-          <p className="mb-4 font-mono text-sm text-brutal-tinta/60">
+          <p className="mb-4 font-mono text-sm text-brutal-tinta/80">
             {asignando.convocatoria?.nombre} · {asignando.convocatoria?.beca?.nombre}
           </p>
           {evaluadores.length === 0 ? (
@@ -154,7 +226,7 @@ export function PanelSolicitudes() {
                   />
                   <span>
                     {ev.nombres}
-                    <span className="block text-xs text-brutal-tinta/50">{ev.email}</span>
+                    <span className="block text-xs text-brutal-tinta/75">{ev.email}</span>
                   </span>
                 </label>
               ))}
@@ -182,7 +254,7 @@ export function PanelSolicitudes() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="flex flex-wrap items-center gap-3">
-                      <h3 className="text-lg font-semibold text-sigeb-blue-dark">
+                      <h3 className="text-lg font-bold text-brutal-tinta">
                         {solicitud.convocatoria?.beca?.nombre ?? 'Beca'}
                       </h3>
                       <Badge estado={solicitud.estado} />
@@ -207,6 +279,24 @@ export function PanelSolicitudes() {
                         Asignar evaluadores
                       </Button>
                     )}
+                    {solicitud.estado === 'EN_REVISION' && (
+                      <Button
+                        variant="ghost"
+                        onClick={() => solicitarCorreccion(solicitud)}
+                        disabled={enviando}
+                      >
+                        Solicitar corrección
+                      </Button>
+                    )}
+                    {solicitud.estado === 'EN_REVISION' &&
+                      score?.minimoAlcanzado && (
+                        <Button
+                          onClick={() => marcarEvaluada(solicitud)}
+                          disabled={enviando}
+                        >
+                          Marcar evaluada
+                        </Button>
+                      )}
                   </div>
                 </div>
                 {score && (
@@ -214,8 +304,13 @@ export function PanelSolicitudes() {
                     <p className="mb-2 font-brut text-sm font-bold uppercase tracking-wide text-brutal-tinta">
                       Score por evaluador
                     </p>
+                    <p className="mb-3 font-mono text-xs font-bold text-brutal-tinta/80">
+                      Evaluadores completos: {score.evaluadoresCompletos}/
+                      {score.evaluadoresMinimos}{' '}
+                      {score.minimoAlcanzado ? '· mínimo alcanzado' : '· mínimo pendiente'}
+                    </p>
                     {score.evaluadores.length === 0 ? (
-                      <p className="font-mono text-sm text-brutal-tinta/50">
+                      <p className="font-mono text-sm text-brutal-tinta/75">
                         Aún no hay evaluadores asignados.
                       </p>
                     ) : (
@@ -227,18 +322,35 @@ export function PanelSolicitudes() {
                           >
                             <span className="font-bold text-brutal-tinta">
                               {ev.evaluador.nombres}
-                              <span className="text-brutal-tinta/50">
+                              <span className="text-brutal-tinta/75">
                                 {' '}({ev.completados}/{ev.total})
                               </span>
                             </span>
-                            <span
-                              className={
-                                ev.completo
-                                  ? 'rounded-brutal border-2 border-brutal-tinta bg-brutal-lima px-2 py-0.5 font-bold text-brutal-tinta'
-                                  : 'font-semibold text-brutal-tinta/50'
-                              }
-                            >
-                              {ev.completo ? `${ev.score?.toFixed(2) ?? '—'}` : 'Pendiente'}
+                            <span className="flex items-center gap-2">
+                              <span
+                                className={
+                                  ev.completo
+                                    ? 'rounded-brutal border-2 border-brutal-tinta bg-brutal-lima px-2 py-0.5 font-bold text-brutal-tinta'
+                                    : 'font-semibold text-brutal-tinta/75'
+                                }
+                              >
+                                {ev.completo ? `${ev.score?.toFixed(2) ?? '—'}` : 'Pendiente'}
+                              </span>
+                              {solicitud.estado === 'EN_REVISION' && (
+                                <Button
+                                  variant="ghost"
+                                  onClick={() =>
+                                    quitarEvaluador(
+                                      solicitud.id,
+                                      ev.evaluador.id,
+                                      ev.evaluador.nombres,
+                                    )
+                                  }
+                                  disabled={enviando || ev.completados > 0}
+                                >
+                                  Quitar
+                                </Button>
+                              )}
                             </span>
                           </div>
                         ))}

@@ -173,7 +173,7 @@ export function PanelSesiones() {
             </p>
             {evaluadas.length === 0 ? (
               <p className="text-sm text-amber-700">
-                No hay solicitudes en estado EVALUADA para agregar a la agenda.
+                No hay solicitudes evaluadas para agregar a la agenda.
               </p>
             ) : (
               <div className="grid gap-2 sm:grid-cols-2">
@@ -190,7 +190,7 @@ export function PanelSesiones() {
                     />
                     <span>
                       {s.convocatoria?.beca?.nombre}
-                      <span className="block text-xs text-brutal-tinta/50">
+                      <span className="block text-xs text-brutal-tinta/75">
                         {s.convocatoria?.nombre}
                       </span>
                     </span>
@@ -221,7 +221,7 @@ export function PanelSesiones() {
                 </h3>
                 <Badge estado={detalle.estado} />
               </div>
-              <p className="font-mono text-sm text-brutal-tinta/60">
+              <p className="font-mono text-sm text-brutal-tinta/80">
                 {formatearFecha(detalle.fecha)} · {detalle.lugar ?? 'Sin lugar'}
                 {detalle.quorumMinimo ? ` · Quórum ${detalle.quorumMinimo}` : ''}
               </p>
@@ -240,14 +240,14 @@ export function PanelSesiones() {
 
           <p className="mb-2 font-brut text-sm font-bold uppercase tracking-wide text-brutal-tinta">Agenda ({detalle.agenda.length})</p>
           {detalle.agenda.length === 0 ? (
-            <p className="text-sm text-brutal-tinta/50">Sin solicitudes en la agenda.</p>
+            <p className="text-sm text-brutal-tinta/75">Sin solicitudes en la agenda.</p>
           ) : (
             <ul className="divide-y divide-brutal-tinta/20">
               {detalle.agenda.map((item) => (
                 <li key={item.id} className="flex items-center justify-between py-2">
                   <span className="font-mono text-sm text-brutal-tinta">
                     {item.solicitud.usuario.nombres}
-                    <span className="block text-xs text-brutal-tinta/50">CUI {item.solicitud.usuario.cui}</span>
+                    <span className="block text-xs text-brutal-tinta/75">CUI {item.solicitud.usuario.cui}</span>
                   </span>
                   <Badge estado={item.solicitud.estado} />
                 </li>
@@ -282,7 +282,7 @@ export function PanelSesiones() {
             >
               <div>
                 <div className="flex flex-wrap items-center gap-3">
-                  <h3 className="text-lg font-semibold text-sigeb-blue-dark">
+                  <h3 className="text-lg font-bold text-brutal-tinta">
                     {sesion.comite?.nombre}
                   </h3>
                   <Badge estado={sesion.estado} />

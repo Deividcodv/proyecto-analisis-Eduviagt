@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '@/context/AuthContext';
+import { rutaPorRol } from '@/lib/rol';
 import { Container } from '@/components/ui/Container';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -36,14 +37,7 @@ export default function LoginPage() {
     setEnviando(true);
     try {
       const usuario = await login(values.email, values.password);
-      const rol = (usuario.rol || '').toUpperCase();
-      if (rol === 'EVALUADOR') {
-        router.replace('/evaluador');
-      } else if (rol !== 'POSTULANTE') {
-        router.replace('/admin');
-      } else {
-        router.replace('/dashboard');
-      }
+      router.replace(rutaPorRol(usuario.rol));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo iniciar sesión');
     } finally {
@@ -53,12 +47,15 @@ export default function LoginPage() {
 
   return (
     <Container className="flex min-h-[70vh] items-center justify-center py-16">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm">
-        <h1 className="mb-6 text-center text-2xl font-bold text-sigeb-blue-dark">
+      <div className="w-full max-w-md rounded-brutal border-[3px] border-brutal-tinta bg-brutal-blanco p-8 shadow-brutal">
+        <p className="brut-label mb-2 inline-block rounded-brutal border-2 border-brutal-tinta bg-brutal-cyan px-3 py-1 text-xs font-bold text-brutal-tinta">
+          Acceso seguro
+        </p>
+        <h1 className="mb-6 font-brut text-2xl font-black uppercase tracking-wide text-brutal-tinta">
           Iniciar sesión
         </h1>
         {error && (
-          <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mb-4 rounded-brutal border-[3px] border-brutal-rojo bg-red-50 px-4 py-3 text-sm font-bold text-brutal-rojo">
             {error}
           </div>
         )}
@@ -83,9 +80,9 @@ export default function LoginPage() {
             {enviando ? <Spinner /> : 'Ingresar'}
           </Button>
         </form>
-        <p className="mt-6 text-center text-sm text-gray-600">
+        <p className="mt-6 text-center text-sm text-brutal-tinta/70">
           ¿No tienes cuenta?{' '}
-          <Link href="/registro" className="font-semibold text-sigeb-blue hover:underline">
+          <Link href="/registro" className="font-brut font-bold text-brutal-cyan hover:bg-brutal-cyan">
             Regístrate
           </Link>
         </p>

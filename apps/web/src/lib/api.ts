@@ -1,6 +1,49 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '/api';
+const esServidor = typeof window === 'undefined';
+
+export const API_URL = esServidor
+  ? (process.env.API_INTERNAL_URL ?? 'http://localhost:3000/api')
+  : (process.env.NEXT_PUBLIC_API_URL ?? '/api');
 
 export interface Beca {
+  id: string;
+  nombre: string;
+}
+
+export type BecaCobertura = 'PARCIAL' | 'COMPLETA';
+
+export const ETIQUETA_COBERTURA: Record<BecaCobertura, string> = {
+  PARCIAL: 'Beca parcial',
+  COMPLETA: 'Beca completa',
+};
+
+export type TipoCampoFormulario =
+  | 'texto'
+  | 'textarea'
+  | 'numero'
+  | 'fecha'
+  | 'seleccion'
+  | 'booleano'
+  | 'archivo';
+
+export type SeccionCampoFormulario =
+  | 'academico'
+  | 'socioeconomico'
+  | 'personal'
+  | 'adicional';
+
+export interface CampoFormulario {
+  id: string;
+  seccion: SeccionCampoFormulario;
+  etiqueta: string;
+  tipo: TipoCampoFormulario;
+  requerido?: boolean;
+  ayuda?: string;
+  opciones?: string[];
+  documentoTipoId?: string;
+  claveBase?: string;
+}
+
+export interface NivelAcademicoResumen {
   id: string;
   nombre: string;
 }
@@ -12,6 +55,10 @@ export interface Convocatoria {
   estado: string;
   fechaApertura: string;
   fechaCierre: string;
+  evaluadoresMinimos?: number;
+  maxCorrecciones?: number;
+  cobertura?: BecaCobertura | null;
+  nivelAcademico?: NivelAcademicoResumen | null;
   beca: Beca;
   _count?: { solicitudes?: number };
 }
@@ -35,6 +82,7 @@ export interface CriterioEvaluacion {
 
 export interface ConvocatoriaDetalle extends Convocatoria {
   documentosRequeridos: ConvocatoriaDocRequerido[];
+  formulario?: CampoFormulario[] | null;
   beca: Beca & { criteriosEvaluacion: CriterioEvaluacion[] };
 }
 
@@ -55,6 +103,9 @@ export interface Solicitud {
     id: string;
     nombre: string;
     beca: Beca;
+    evaluadoresMinimos?: number;
+    maxCorrecciones?: number;
+    _count?: { documentosRequeridos?: number };
   };
   _count?: { documentos?: number };
 }
@@ -83,12 +134,15 @@ export interface SolicitudPerfilFinanciero {
 export interface SolicitudDetalle extends Solicitud {
   perfilAcademico?: SolicitudPerfilAcademico | null;
   perfilFinanciero?: SolicitudPerfilFinanciero | null;
+  respuestas?: Record<string, Record<string, unknown>> | null;
+  formularioSnapshot?: CampoFormulario[] | null;
   documentos?: {
     id: string;
     documentoTipoId: string;
     archivoUrl: string;
     estado: string;
     version: number;
+    comentarioRechazo?: string | null;
     documentoTipo: DocumentoTipo;
   }[];
   historial?: HistorialEstado[];
@@ -99,6 +153,9 @@ export interface SolicitudChecklistDocumento {
   nombre: string;
   obligatorio: boolean;
   cargado: boolean;
+  estado: string;
+  version: number;
+  comentarioRechazo: string | null;
   archivoUrl: string | null;
 }
 
@@ -107,6 +164,7 @@ export interface SolicitudChecklist {
   estado: string;
   perfilAcademico: boolean;
   perfilFinanciero: boolean;
+  camposExtra?: CampoFormulario[];
   documentos: SolicitudChecklistDocumento[];
   pendientes: string[];
   completo: boolean;
@@ -130,6 +188,15 @@ export interface Genero {
 export interface NivelAcademico {
   id: string;
   nombre: string;
+}
+
+export interface InstitucionEducativa {
+  id: string;
+  nombre: string;
+  nivel: string;
+  sector: string | null;
+  departamento: string | null;
+  municipio: string | null;
 }
 
 export interface Municipio {
@@ -184,6 +251,8 @@ export interface Sesion {
   updatedAt: string;
   comite?: { id: string; nombre: string };
   _count?: { agenda?: number; votos?: number };
+  miembros?: number;
+  votantes?: number;
 }
 
 export interface SesionVoto {
@@ -237,7 +306,26 @@ export interface ScoreSolicitud {
   solicitudId: string;
   score: number | null;
   completo: boolean;
+  evaluadoresMinimos: number;
+  evaluadoresCompletos: number;
+  minimoAlcanzado: boolean;
   evaluadores: EvaluadorScore[];
+}
+
+export interface Notificacion {
+  id: string;
+  tipo: string;
+  titulo: string;
+  cuerpo: string | null;
+  leidaAt: string | null;
+  createdAt: string;
+}
+
+export interface ListaNotificaciones {
+  total: number;
+  page: number;
+  pageSize: number;
+  items: Notificacion[];
 }
 
 export interface ListaResponse<T> {
