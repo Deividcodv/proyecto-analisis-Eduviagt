@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [develop, master]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
@@ -20,7 +24,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U sigeb -d sigeb_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -33,6 +37,12 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
+
+      - name: Cache Puppeteer browser (constancia PDF / US-F7)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/puppeteer
+          key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
       - name: Install dependencies
         run: npm ci
@@ -56,11 +66,18 @@ jobs:
 
       - name: Build
         run: npm run build
-      - name: Smoke CI (S5)
+
+      - name: Install Chromium system deps (US-F7 constancia PDF)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libgbm1 libasound2t64 libxshmfence1
+
+      - name: Smoke CI (Sprints 3-5 + S6/S7 + F7 constancia PDF)
         env:
           DATABASE_URL: postgresql://sigeb:sigeb123@localhost:5432/sigeb_test
           JWT_SECRET: test-secret-key
           JWT_REFRESH_SECRET: test-refresh-secret-key
+          STORAGE_PATH: /tmp/sigeb-storage
         run: |
           cd apps/api
           npx prisma db seed
@@ -73,30 +90,111 @@ jobs:
           SMOKE_CODE=$?
           set -e
           if [ "$SMOKE_CODE" -ne 0 ]; then
-            echo "===== smoke-trace.log ====="
+            echo "===== smoke-trace.log (ultimas 200 lineas) ====="
             tail -n 200 /tmp/smoke-trace.log || true
-            echo "===== api.log ====="
+            echo "===== api.log (ultimas 150 lineas) ====="
             tail -n 150 /tmp/api.log || true
             exit "$SMOKE_CODE"
           fi
           tail -n 5 /tmp/smoke-trace.log
 
+  docker-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: false
+          tags: sigeb/api:check
+
+      - name: Build Web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: false
+          tags: sigeb/web:check
 
   deploy-staging:
-    needs: lint-and-test
+    needs: [lint-and-test, docker-build]
     if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
+    environment: staging
     steps:
-      - name: Deploy to staging
-        run: echo "Deploy to staging server"
-        # Add deployment commands here
+      - uses: actions/checkout@v4
+
+      - name: Verificar secretos de deploy
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          [ -n "${DEPLOY_HOST}" ] || { echo "Falta el secreto DEPLOY_HOST en el entorno ${{ github.environment }}"; exit 1; }
+          [ -n "${DEPLOY_USER}" ] || { echo "Falta el secreto DEPLOY_USER en el entorno ${{ github.environment }}"; exit 1; }
+
+      - name: Deploy to staging (PM2)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script: |
+            set -e
+            cd ${{ secrets.DEPLOY_PATH }}
+            git stash || true
+            git pull origin develop
+            npm ci
+            cd apps/api
+            DATABASE_URL=${{ secrets.DEPLOY_DATABASE_URL }} npx prisma migrate deploy
+            npx prisma generate
+            cd ../..
+            npm run build
+            DATABASE_URL=${{ secrets.DEPLOY_DATABASE_URL }} JWT_SECRET=${{ secrets.DEPLOY_JWT_SECRET }} pm2 restart sigeb-api --update-env || true
+            pm2 restart sigeb-web --update-env || true
+            pm2 save || true
 
   deploy-production:
-    needs: lint-and-test
+    needs: [lint-and-test, docker-build]
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
+    environment: production
     steps:
-      - name: Deploy to production
-        run: echo "Deploy to production server"
-        # Add deployment commands here
+      - uses: actions/checkout@v4
+
+      - name: Verificar secretos de deploy
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          [ -n "${DEPLOY_HOST}" ] || { echo "Falta el secreto DEPLOY_HOST en el entorno ${{ github.environment }}"; exit 1; }
+          [ -n "${DEPLOY_USER}" ] || { echo "Falta el secreto DEPLOY_USER en el entorno ${{ github.environment }}"; exit 1; }
+
+      - name: Deploy to production (PM2)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script: |
+            set -e
+            cd ${{ secrets.DEPLOY_PATH }}
+            git stash || true
+            git pull origin master
+            npm ci
+            cd apps/api
+            DATABASE_URL=${{ secrets.DEPLOY_DATABASE_URL }} npx prisma migrate deploy
+            npx prisma generate
+            cd ../..
+            npm run build
+            DATABASE_URL=${{ secrets.DEPLOY_DATABASE_URL }} JWT_SECRET=${{ secrets.DEPLOY_JWT_SECRET }} pm2 restart sigeb-api --update-env || true
+            pm2 restart sigeb-web --update-env || true
+            pm2 save || true
