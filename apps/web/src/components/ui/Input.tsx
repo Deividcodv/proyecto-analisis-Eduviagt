@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import type { InputHTMLAttributes } from 'react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -5,29 +6,34 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: string;
 }
 
-export function Input({ label, error, className = '', id, ...rest }: InputProps) {
-  const inputId = id ?? rest.name;
+export const Input = forwardRef<HTMLInputElement, InputProps>(
+  function Input({ label, error, className = '', id, ...rest }, ref) {
+    const inputId = id ?? rest.name;
 
-  return (
-    <div className="w-full">
-      {label && (
-        <label
-          htmlFor={inputId}
-          className="mb-1 block text-sm font-medium text-sigeb-blue-dark"
-        >
-          {label}
-        </label>
-      )}
-      <input
-        id={inputId}
-        className={`w-full rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 ${
-          error
-            ? 'border-red-400 focus:ring-red-200'
-            : 'border-gray-300 focus:border-sigeb-blue focus:ring-sigeb-blue/20'
-        } ${className}`}
-        {...rest}
-      />
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-    </div>
-  );
-}
+    return (
+      <div className="w-full">
+        {label && (
+          <label
+            htmlFor={inputId}
+            className="mb-1 block font-brut text-xs font-bold uppercase tracking-wide text-brutal-tinta"
+          >
+            {label}
+          </label>
+        )}
+        <input
+          id={inputId}
+          ref={ref}
+          className={`rounded-brutal border-[3px] px-3 py-2 text-sm text-brutal-tinta transition-all placeholder:text-brutal-tinta/50 focus:outline-none ${
+            error
+              ? 'border-brutal-rojo bg-red-50 text-brutal-tinta'
+              : 'border-brutal-tinta bg-brutal-blanco text-brutal-tinta focus:bg-brutal-cyan/10'
+          } ${className}`}
+          {...rest}
+        />
+        {error && <p className="mt-1 font-mono text-xs font-bold text-brutal-rojo">{error}</p>}
+      </div>
+    );
+  },
+);
+
+Input.displayName = 'Input';

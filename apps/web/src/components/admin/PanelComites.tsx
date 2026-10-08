@@ -175,7 +175,7 @@ export function PanelComites() {
           <div className="mb-4 flex items-center justify-between gap-2">
             <div>
               <h3 className="font-brut text-lg font-black uppercase tracking-wide text-brutal-tinta">{detalle.nombre}</h3>
-              <p className="font-mono text-sm text-brutal-tinta/60">
+              <p className="font-mono text-sm text-brutal-tinta/80">
                 {detalle.descripcion ?? 'Sin descripción'} · {detalle.miembros.length} miembros
               </p>
             </div>
@@ -219,7 +219,7 @@ export function PanelComites() {
           </div>
 
           {detalle.miembros.length === 0 ? (
-            <p className="font-mono text-sm text-brutal-tinta/50">El comité no tiene miembros.</p>
+            <p className="font-mono text-sm text-brutal-tinta/75">El comité no tiene miembros.</p>
           ) : (
             <ul className="divide-y divide-brutal-tinta/20">
               {detalle.miembros.map((miembro) => (
@@ -234,7 +234,7 @@ export function PanelComites() {
                         {miembro.rol}
                       </span>
                     </p>
-                    <p className="font-mono text-xs text-brutal-tinta/50">{miembro.usuario.email}</p>
+                    <p className="font-mono text-xs text-brutal-tinta/75">{miembro.usuario.email}</p>
                   </div>
                   <Button
                     variant="ghost"
@@ -260,7 +260,7 @@ export function PanelComites() {
               className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
-                <h3 className="text-lg font-semibold text-sigeb-blue-dark">{comite.nombre}</h3>
+                <h3 className="text-lg font-bold text-brutal-tinta">{comite.nombre}</h3>
                 <p className="text-sm text-brutal-tinta/70">
                   {comite.descripcion ?? 'Sin descripción'} · {comite._count?.miembros ?? 0} miembros
                 </p>

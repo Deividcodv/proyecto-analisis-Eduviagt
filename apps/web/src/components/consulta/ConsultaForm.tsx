@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
-import { http, type ConsultaSolicitud } from '@/lib/api';
+import { httpData, type ConsultaSolicitud } from '@/lib/api';
+import { etiquetaEstado } from '@/lib/etiquetas';
+import { traducirError } from '@/lib/mensajes-error';
 
 export function ConsultaForm() {
   const [codigo, setCodigo] = useState('');
@@ -23,16 +25,12 @@ export function ConsultaForm() {
     setError(null);
     setResultado(null);
     try {
-      const data = await http<ConsultaSolicitud>(
+      const data = await httpData<ConsultaSolicitud>(
         `/solicitudes/consulta/${encodeURIComponent(codigoTrim)}`,
       );
       setResultado(data);
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'No se pudo consultar la solicitud.',
-      );
+      setError(traducirError(err, 'No se pudo consultar la solicitud.'));
     } finally {
       setCargando(false);
     }
@@ -42,7 +40,7 @@ export function ConsultaForm() {
     <div className="mx-auto max-w-2xl space-y-6">
       <form
         onSubmit={consultar}
-        className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:flex-row sm:items-end"
+        className="flex flex-col gap-4 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-blanco p-6 shadow-brutal-sm sm:flex-row sm:items-end"
       >
         <div className="flex-1">
           <Input
@@ -50,7 +48,7 @@ export function ConsultaForm() {
             name="codigo"
             value={codigo}
             onChange={(e) => setCodigo(e.target.value)}
-            placeholder="Ej. 8f7e2c... (código recibido al postular)"
+            placeholder="Escribe tu número de solicitud"
             disabled={cargando}
           />
         </div>
@@ -60,7 +58,7 @@ export function ConsultaForm() {
       </form>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-4 text-sm font-bold text-brutal-rojo">
           {error}
         </div>
       )}
@@ -77,34 +75,36 @@ export function ConsultaForm() {
 }
 
 const coloresEstado: Record<string, string> = {
-  BORRADOR: 'bg-gray-200 text-gray-700',
-  ENVIADA: 'bg-blue-100 text-blue-800',
-  EN_REVISION: 'bg-yellow-100 text-yellow-800',
-  CORRECCION: 'bg-orange-100 text-orange-800',
-  EVALUADA: 'bg-indigo-100 text-indigo-800',
-  APROBADA: 'bg-green-100 text-green-800',
-  RECHAZADA: 'bg-red-100 text-red-800',
+  BORRADOR: 'bg-brutal-tinta/15 text-brutal-tinta',
+  ENVIADA: 'bg-brutal-cyan/20 text-brutal-tinta',
+  EN_REVISION: 'bg-brutal-gold/20 text-brutal-tinta',
+  CORRECCION: 'bg-brutal-naranja/20 text-brutal-tinta',
+  EVALUADA: 'bg-brutal-indigo/20 text-brutal-tinta',
+  APROBADA: 'bg-brutal-lima/30 text-brutal-tinta',
+  RECHAZADA: 'bg-brutal-rojo/20 text-brutal-tinta',
 };
 
 function ResultadoConsulta({ resultado }: { resultado: ConsultaSolicitud }) {
   const etapa = resultado.historial ?? [];
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-      <div className="border-b border-gray-100 bg-sigeb-gray px-6 py-4">
+    <div className="overflow-hidden rounded-brutal border-[3px] border-brutal-tinta bg-brutal-blanco shadow-brutal">
+      <div className="brut-cinta border-b border-brutal-tinta bg-brutal-tinta px-6 py-4 text-brutal-papel">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm text-gray-500">Solicitud</p>
-            <p className="font-mono text-sm font-semibold text-sigeb-blue-dark">
+            <p className="brut-label font-mono text-xs text-brutal-papel/85">
+              Solicitud
+            </p>
+            <p className="font-mono text-sm font-bold text-brutal-gold">
               {resultado.codigo}
             </p>
           </div>
           <span
-            className={`rounded-full px-3 py-1 text-xs font-bold ${
-              coloresEstado[resultado.estado] ?? 'bg-gray-100 text-gray-700'
+            className={`rounded-brutal border-2 border-brutal-tinta px-3 py-1 text-xs font-black ${
+              coloresEstado[resultado.estado] ?? 'bg-brutal-papel text-brutal-tinta'
             }`}
           >
-            {resultado.estado}
+            {etiquetaEstado(resultado.estado)}
           </span>
         </div>
       </div>
@@ -112,12 +112,14 @@ function ResultadoConsulta({ resultado }: { resultado: ConsultaSolicitud }) {
       <div className="px-6 py-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <p className="text-xs text-gray-500">Beca</p>
-            <p className="font-medium text-gray-900">{resultado.beca ?? '—'}</p>
+            <p className="brut-label font-mono text-xs text-brutal-tinta/75">Beca</p>
+            <p className="font-brut font-bold text-brutal-tinta">
+              {resultado.beca ?? '—'}
+            </p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">Convocatoria</p>
-            <p className="font-medium text-gray-900">
+            <p className="brut-label font-mono text-xs text-brutal-tinta/75">Convocatoria</p>
+            <p className="font-brut font-bold text-brutal-tinta">
               {resultado.convocatoria ?? '—'}
             </p>
           </div>
@@ -125,18 +127,20 @@ function ResultadoConsulta({ resultado }: { resultado: ConsultaSolicitud }) {
 
         {etapa.length > 0 ? (
           <div className="mt-6">
-            <p className="mb-3 text-sm font-semibold text-sigeb-blue-dark">
+            <p className="mb-3 font-brut text-sm font-bold uppercase tracking-wide text-brutal-cyan">
               Historial del proceso
             </p>
-            <ol className="relative space-y-4 border-l-2 border-sigeb-light pl-6">
+            <ol className="relative space-y-4 border-l-[3px] border-brutal-tinta pl-6">
               {etapa.map((hito, i) => (
                 <li key={i} className="relative">
-                  <span className="absolute -left-[31px] top-1 h-3 w-3 rounded-full border-2 border-white bg-sigeb-blue" />
-                  <p className="text-sm font-medium text-gray-900">{hito.estado}</p>
+                  <span className="absolute -left-[27px] top-1 h-4 w-4 rounded-brutal border-2 border-brutal-tinta bg-brutal-gold" />
+                  <p className="font-brut text-sm font-bold uppercase text-brutal-tinta">
+                    {etiquetaEstado(hito.estado)}
+                  </p>
                   {hito.comentario && (
-                    <p className="text-xs text-gray-500">{hito.comentario}</p>
+                    <p className="text-xs text-brutal-tinta/80">{hito.comentario}</p>
                   )}
-                  <p className="text-xs text-gray-400">
+                  <p className="font-mono text-xs text-brutal-tinta/75">
                     {new Date(hito.fecha).toLocaleDateString('es-GT', {
                       day: '2-digit',
                       month: 'short',
@@ -148,7 +152,7 @@ function ResultadoConsulta({ resultado }: { resultado: ConsultaSolicitud }) {
             </ol>
           </div>
         ) : (
-          <p className="mt-4 text-xs text-gray-500">
+          <p className="mt-4 text-xs text-brutal-tinta/75">
             Sin historial registrado aún.
           </p>
         )}
