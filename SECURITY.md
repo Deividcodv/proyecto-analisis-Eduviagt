@@ -1,21 +1,14 @@
-# Security Policy
+﻿# Política de seguridad
 
-## Supported Versions
+## Reportar una vulnerabilidad
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+Escribe a `soporte@sigeb.gov.gt` con:
+- Descripción del problema y pasos para reproducirlo.
+- Impacto potencial.
+- Versión o commit afectado.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+No abras issues públicos para vulnerabilidades. Responderemos en un plazo de 5 días hábiles.
 
-## Reporting a Vulnerability
+## Alcance
 
-Use this section to tell people how to report a vulnerability.
-
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Este repositorio es el proyecto académico EDUVIAGT GT. Aplica a `apps/api` y `apps/web`.

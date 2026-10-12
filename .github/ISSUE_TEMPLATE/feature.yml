@@ -1,0 +1,17 @@
+﻿name: Funcionalidad
+description: Nueva funcionalidad
+title: "feat: "
+labels: ["type: feat"]
+body:
+  - type: textarea
+    id: historia
+    attributes:
+      label: Historia de usuario (US-xxx)
+    validations:
+      required: true
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Criterios de aceptación
+    validations:
+      required: true
