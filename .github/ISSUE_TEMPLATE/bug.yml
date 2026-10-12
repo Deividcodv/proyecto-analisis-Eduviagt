@@ -1,0 +1,24 @@
+name: Bug
+description: Reportar un fallo
+title: "bug: "
+labels: ["type: feat"]
+body:
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para reproducir
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Resultado esperado
+    validations:
+      required: true
+  - type: textarea
+    id: real
+    attributes:
+      label: Resultado actual
+    validations:
+      required: true
+      

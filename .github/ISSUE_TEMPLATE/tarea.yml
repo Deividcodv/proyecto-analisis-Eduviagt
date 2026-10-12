@@ -1,0 +1,17 @@
+﻿name: Tarea
+description: Trabajo de mantenimiento o configuración
+title: "chore: "
+labels: ["type: chore"]
+body:
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: Descripción
+    validations:
+      required: true
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos
+    validations:
+      required: true
