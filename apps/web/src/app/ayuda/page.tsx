@@ -45,7 +45,7 @@ const recursos: {
   },
   {
     titulo: 'Transparencia',
-    texto: 'Conoce cómo EDUVIAGT garantiza procesos auditable y verificables.',
+    texto: 'Conoce cómo EDUVIAGT garantiza procesos auditables y verificables.',
     href: '/transparencia',
     icono: 'escudo',
     acento: 'bg-brutal-indigo',

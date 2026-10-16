@@ -98,13 +98,13 @@ export function LandingPublico() {
       {/* Misión / Visión */}
       <section className="border-b-[3px] border-brutal-tinta bg-brutal-blanco py-16">
         <Container>
-          <p className="brut-label text-xs font-bold text-brutal-gold">// Institucional</p>
+          <p className="brut-label text-xs font-bold text-brutal-gold-dark">// Institucional</p>
           <h2 className="text-mega mb-10 text-3xl font-black text-brutal-tinta md:text-5xl">
             Misión y visión
           </h2>
           <div className="grid gap-6 lg:grid-cols-[1fr_1fr_auto] lg:items-stretch">
             <div className="rounded-brutal border-[3px] border-brutal-tinta border-t-[10px] border-t-brutal-gold bg-brutal-papel p-6 shadow-brutal-sm">
-              <p className="brut-label mb-3 font-mono text-xs font-bold text-brutal-gold">
+              <p className="brut-label mb-3 font-mono text-xs font-bold text-brutal-gold-dark">
                 // Misión
               </p>
               <p className="text-sm leading-relaxed text-brutal-tinta/80">
@@ -222,7 +222,7 @@ export function LandingPublico() {
               </ul>
             </div>
             <div>
-              <p className="brut-label text-xs font-bold text-brutal-gold">// Documentos</p>
+              <p className="brut-label text-xs font-bold text-brutal-gold-dark">// Documentos</p>
               <h2 className="text-mega mb-8 text-3xl font-black text-brutal-tinta md:text-5xl">
                 Documentación
               </h2>
@@ -236,7 +236,7 @@ export function LandingPublico() {
                   </span>
                 ))}
               </div>
-              <p className="mt-6 max-w-xl font-mono text-sm leading-relaxed text-brutal-tinta/60">
+              <p className="mt-6 max-w-xl font-mono text-sm leading-relaxed text-brutal-tinta/80">
                 La lista exacta de documentos se define para cada convocatoria.
                 Revisa los detalles del programa antes de postularte.
               </p>
@@ -262,7 +262,7 @@ export function LandingPublico() {
                 Acceso al sistema
               </Button>
             </div>
-            <p className="font-mono text-[11px] font-bold uppercase tracking-wide text-brutal-tinta/60">
+            <p className="font-mono text-[11px] font-bold uppercase tracking-wide text-brutal-tinta/80">
               <Link href="/consulta" className="underline decoration-brutal-tinta underline-offset-4 hover:bg-brutal-tinta/10">
                 ¿Ya te postulaste? Consulta tu solicitud por código →
               </Link>

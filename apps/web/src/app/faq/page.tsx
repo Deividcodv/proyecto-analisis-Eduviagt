@@ -65,7 +65,7 @@ export default function FaqPage() {
     <main>
       <section className="brut-cinta border-b-[3px] border-brutal-tinta bg-sigeb-blue-dark py-12 text-brutal-papel">
         <Container>
-          <p className="brut-label text-xs font-bold text-brutal-gold">// FAQ</p>
+          <p className="brut-label text-xs font-bold text-brutal-gold">// Preguntas frecuentes</p>
           <h1 className="text-mega text-3xl font-black md:text-5xl">
             Preguntas frecuentes
           </h1>

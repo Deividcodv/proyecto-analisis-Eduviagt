@@ -28,6 +28,13 @@ interface AuditResponse {
   items: AuditItem[];
 }
 
+// Nombres legibles para las acciones que registra la auditoría.
+const ACCION_LABEL: Record<string, string> = {
+  create: 'Crear',
+  update: 'Actualizar',
+  delete: 'Eliminar',
+};
+
 export default function AuditoriaPage() {
   return (
     <ProtectedRoute roles={['ADMIN']}>
@@ -87,7 +94,7 @@ function AuditoriaContent() {
               onChange={(e) => { setEntidad(e.target.value); setPage(1); }}
             />
             <Input
-              placeholder="Acción (ej. create)"
+              placeholder="Acción (ej. crear)"
               value={accion}
               onChange={(e) => { setAccion(e.target.value); setPage(1); }}
             />
@@ -140,7 +147,7 @@ function AuditoriaContent() {
                       <td className="px-3 py-2 text-xs font-bold uppercase">{item.usuario.rol.nombre}</td>
                       <td className="px-3 py-2">
                         <span className="rounded-brutal border border-brutal-tinta/20 bg-brutal-gold/20 px-2 py-0.5 font-mono text-xs font-bold">
-                          {item.accion}
+                          {ACCION_LABEL[item.accion] ?? item.accion}
                         </span>
                       </td>
                       <td className="px-3 py-2 font-mono text-xs">{item.entidad}</td>

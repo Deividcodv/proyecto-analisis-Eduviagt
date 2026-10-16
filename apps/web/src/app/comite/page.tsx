@@ -175,9 +175,10 @@ function ComiteContent() {
                     </p>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono text-xs font-bold text-brutal-tinta">
-                        {votantesUnicos}/{quorumMin} votante(s)
+                        {votantesUnicos}/{quorumMin}{' '}
+                        {votantesUnicos === 1 ? 'votante' : 'votantes'}
                         {detalle.miembros != null &&
-                          ` de ${detalle.miembros} miembro(s)`}
+                          ` de ${detalle.miembros} ${detalle.miembros === 1 ? 'miembro' : 'miembros'}`}
                       </span>
                       <Badge estado={quorumOk ? 'APROBAR' : 'PENDIENTE'} />
                     </div>
@@ -190,7 +191,8 @@ function ComiteContent() {
                   </div>
                   {!quorumOk && (
                     <p className="mt-2 font-mono text-xs text-brutal-naranja">
-                      Faltan {quorumMin - votantesUnicos} voto(s) para alcanzar
+                      Faltan {quorumMin - votantesUnicos}{' '}
+                      {quorumMin - votantesUnicos === 1 ? 'voto' : 'votos'} para alcanzar
                       el quórum.
                     </p>
                   )}

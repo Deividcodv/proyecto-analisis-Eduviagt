@@ -72,7 +72,7 @@ export function Footer() {
           <p className="font-mono text-xs text-brutal-papel/85">
             © 2026 Ministerio de Educación de Guatemala. Todos los derechos reservados.
           </p>
-          <p className="brut-label text-[10px] text-brutal-gold">v1.1 — brutal edition</p>
+          <p className="brut-label text-[10px] text-brutal-gold">Versión 1.1</p>
         </div>
       </Container>
     </footer>

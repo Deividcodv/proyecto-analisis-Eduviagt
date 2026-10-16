@@ -65,12 +65,14 @@ export default async function ConvocatoriasPage({ searchParams }: Props) {
     convocatorias = convocatorias.filter((c) => c.estado !== 'ABIERTA');
   }
 
+  const total = convocatorias.length;
+  const plural = total === 1 ? '' : 's';
   const etiquetaContador =
     estado === 'ABIERTA'
-      ? 'convocatoria(s) abierta(s)'
+      ? `convocatoria${plural} abierta${plural}`
       : estado === 'CERRADA'
-        ? 'convocatoria(s) no abierta(s)'
-        : 'convocatoria(s)';
+        ? `convocatoria${plural} cerrada${plural}`
+        : `convocatoria${plural}`;
 
   return (
     <main>

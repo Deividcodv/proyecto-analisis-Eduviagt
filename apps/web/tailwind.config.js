@@ -30,7 +30,9 @@ module.exports = {
           rosa: '#E8669C',
           indigo: '#5A5CD8',
           teal: '#2A9D8F',
-          gold: '#D4A72C', // oro quetzal
+          gold: '#D4A72C', // oro quetzal (fondos, bordes y acentos)
+          // Oro oscuro solo para TEXTO sobre fondos claros: cumple WCAG AA 4.5:1
+          'gold-dark': '#7A5F17',
         },
       },
       fontFamily: {

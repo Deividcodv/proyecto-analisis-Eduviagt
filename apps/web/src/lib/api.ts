@@ -376,7 +376,7 @@ export async function http<T>(
     const data = await res.json().catch(() => null);
     const mensaje =
       (data as { message?: string } | null)?.message ??
-      `La API respondió con estado ${res.status}`;
+      `No pudimos completar la solicitud. Intenta de nuevo.`;
     throw new Error(Array.isArray(mensaje) ? mensaje.join(', ') : mensaje);
   }
 

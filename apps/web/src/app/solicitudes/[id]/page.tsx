@@ -126,7 +126,7 @@ function SolicitudDetalleContent() {
               className="mt-4"
               onClick={() => router.replace('/dashboard')}
             >
-              Volver al dashboard
+              Volver a mi panel
             </Button>
           </div>
         ) : (
@@ -174,7 +174,7 @@ function SolicitudDetalleContent() {
             onClick={() => router.replace('/dashboard')}
             className="mb-4 inline-block rounded-brutal border-[3px] border-brutal-tinta bg-brutal-blanco px-3 py-1 font-mono text-xs font-bold text-brutal-tinta"
           >
-            ← Volver al dashboard
+            ← Volver a mi panel
           </button>
           <p className="mb-2 inline-block rounded-brutal border-[3px] border-brutal-tinta bg-brutal-gold px-3 py-1 font-brut text-xs font-bold uppercase tracking-wide text-brutal-tinta">
             Mi postulación

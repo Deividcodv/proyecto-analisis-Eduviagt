@@ -49,7 +49,7 @@ export function PanelSolicitudes() {
       const score = await fetchConToken<ScoreSolicitud>(`/solicitudes/${id}/score`);
       setScores((s) => ({ ...s, [id]: score }));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo obtener el score');
+      setError(e instanceof Error ? e.message : 'No se pudo obtener el puntaje');
     }
   };
 
@@ -58,7 +58,7 @@ export function PanelSolicitudes() {
       const score = await fetchConToken<ScoreSolicitud>(`/solicitudes/${id}/score`);
       setScores((s) => ({ ...s, [id]: score }));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo obtener el score');
+      setError(e instanceof Error ? e.message : 'No se pudo obtener el puntaje');
     }
   };
 
@@ -150,7 +150,7 @@ export function PanelSolicitudes() {
         method: 'POST',
         body: { accion: 'evaluar' },
       });
-      setExito('Solicitud marcada como EVALUADA.');
+      setExito('Solicitud marcada como evaluada.');
       cargar();
     } catch (e) {
       setError(
@@ -209,7 +209,7 @@ export function PanelSolicitudes() {
           </p>
           {evaluadores.length === 0 ? (
             <p className="font-mono text-sm text-brutal-rojo">
-              No hay usuarios con rol EVALUADOR registrados en el sistema.
+              No hay usuarios con rol Evaluador registrados en el sistema.
             </p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
@@ -268,11 +268,11 @@ export function PanelSolicitudes() {
                   <div className="flex flex-wrap items-center gap-2">
                     {score && score.completo && score.score != null && (
                       <span className="rounded-brutal border-[3px] border-brutal-tinta bg-brutal-lima px-3 py-1 font-brut text-sm font-bold text-brutal-tinta shadow-brutal-sm">
-                        Score: {score.score.toFixed(2)}
+                        Puntaje: {score.score.toFixed(2)}
                       </span>
                     )}
                     <Button variant="ghost" onClick={() => verScore(solicitud.id)}>
-                      {score ? 'Actualizar score' : 'Ver score'}
+                      {score ? 'Actualizar puntaje' : 'Ver puntaje'}
                     </Button>
                     {solicitud.estado === 'EN_REVISION' && (
                       <Button onClick={() => abrirAsignacion(solicitud)}>
@@ -302,7 +302,7 @@ export function PanelSolicitudes() {
                 {score && (
                   <div className="rounded-brutal border-[3px] border-brutal-tinta bg-brutal-papel p-3">
                     <p className="mb-2 font-brut text-sm font-bold uppercase tracking-wide text-brutal-tinta">
-                      Score por evaluador
+                      Puntaje por evaluador
                     </p>
                     <p className="mb-3 font-mono text-xs font-bold text-brutal-tinta/80">
                       Evaluadores completos: {score.evaluadoresCompletos}/

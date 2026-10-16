@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import { InternalPageHeader } from '@/components/ui/InternalPageHeader';
 import { nombreRol } from '@/lib/rol';
+import { etiquetaEstado } from '@/lib/etiquetas';
 import { MarcoBrutal } from '@/components/reportes/MarcoBrutal';
 import { GraficaDona } from '@/components/reportes/GraficaDona';
 import { GraficaBarras } from '@/components/reportes/GraficaBarras';
@@ -144,7 +145,7 @@ function ReportesContent() {
                   <KpiCard label="Asignadas" value={misEvaluaciones.total} acento="bg-brutal-cyan" />
                   <KpiCard label="Completadas" value={misEvaluaciones.completadas} acento="bg-brutal-lima" />
                   <KpiCard label="Pendientes" value={misEvaluaciones.pendientes} acento="bg-brutal-naranja" />
-                  <KpiCard label="Score promedio" value={misEvaluaciones.scorePromedio ?? '—'} acento="bg-brutal-gold" />
+                  <KpiCard label="Puntaje promedio" value={misEvaluaciones.scorePromedio ?? '—'} acento="bg-brutal-gold" />
                 </div>
                 <div className="mt-6 grid gap-6 lg:grid-cols-2">
                   <MarcoBrutal titulo="Progreso de evaluaciones">
@@ -201,8 +202,8 @@ function ReportesContent() {
               <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                 <KpiCard label="Solicitudes" value={general.solicitudes.total} acento="bg-brutal-cyan" />
                 <KpiCard label="Convocatorias" value={general.convocatorias.total} acento="bg-brutal-gold" />
-                <KpiCard label="Evals completadas" value={general.evaluaciones.completadas} acento="bg-brutal-lima" />
-                <KpiCard label="Score global" value={general.evaluaciones.scorePromedio ?? '—'} acento="bg-brutal-rosa" />
+                <KpiCard label="Evaluaciones completadas" value={general.evaluaciones.completadas} acento="bg-brutal-lima" />
+                <KpiCard label="Puntaje global" value={general.evaluaciones.scorePromedio ?? '—'} acento="bg-brutal-rosa" />
               </div>
 
               <div className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -212,7 +213,7 @@ function ReportesContent() {
 
                 <MarcoBrutal titulo="Convocatorias por estado">
                   <GraficaBarras
-                    labels={general.convocatorias.porEstado.map((e) => e.estado)}
+                    labels={general.convocatorias.porEstado.map((e) => etiquetaEstado(e.estado))}
                     datasets={[{
                       label: 'Convocatorias',
                       data: general.convocatorias.porEstado.map((e) => e.cantidad),

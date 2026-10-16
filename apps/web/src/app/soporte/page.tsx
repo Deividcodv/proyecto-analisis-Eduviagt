@@ -56,7 +56,7 @@ export default function SoportePage() {
         <Container>
           <div className="grid gap-8 lg:grid-cols-2">
             <div>
-              <p className="brut-label mb-4 text-xs font-bold text-brutal-gold">
+              <p className="brut-label mb-4 text-xs font-bold text-brutal-gold-dark">
                 // Asistente virtual
               </p>
               <MiniAsistente />
