@@ -393,7 +393,11 @@ export async function httpData<T>(
   return res.data;
 }
 
-export function formatearFecha(fecha: string) {
+export function formatearFecha(fecha?: string | null) {
+  // La API puede devolver null (fechas opcionales). Sin este guardia,
+  // new Date(null) daba el 1 de enero de 1970 y la web lo mostraba tal cual.
+  if (!fecha) return 'Sin fecha';
+
   const d = new Date(fecha);
   if (Number.isNaN(d.getTime())) return fecha;
   return d.toLocaleDateString('es-GT', {
@@ -401,4 +405,28 @@ export function formatearFecha(fecha: string) {
     month: 'long',
     year: 'numeric',
   });
+}
+
+/**
+ * ¿Se puede postular a esta convocatoria ahora mismo?
+ * Debe estar ABIERTA y dentro de su ventana de fechas. Las convocatorias sin
+ * fechas definidas se consideran siempre abiertas.
+ */
+export function convocatoriaAbierta(
+  convocatoria: Pick<Convocatoria, 'estado' | 'fechaApertura' | 'fechaCierre'>,
+  ahora: Date = new Date(),
+): boolean {
+  if (convocatoria.estado !== 'ABIERTA') return false;
+
+  const apertura = convocatoria.fechaApertura
+    ? new Date(convocatoria.fechaApertura)
+    : null;
+  const cierre = convocatoria.fechaCierre
+    ? new Date(convocatoria.fechaCierre)
+    : null;
+
+  if (apertura && ahora < apertura) return false;
+  if (cierre && ahora > cierre) return false;
+
+  return true;
 }

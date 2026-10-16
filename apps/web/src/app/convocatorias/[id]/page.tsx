@@ -9,6 +9,7 @@ import { CuentaRegresiva } from '@/components/convocatorias/CuentaRegresiva';
 import {
   httpData,
   formatearFecha,
+  convocatoriaAbierta,
   ETIQUETA_COBERTURA,
   type ConvocatoriaDetalle,
 } from '@/lib/api';
@@ -49,7 +50,7 @@ export default async function ConvocatoriaDetallePage({ params }: Props) {
     return notFound();
   }
 
-  const abierta = convocatoria.estado === 'ABIERTA';
+  const abierta = convocatoriaAbierta(convocatoria);
   const codigo = codigoConvocatoria(convocatoria);
   const docs = convocatoria.documentosRequeridos ?? [];
   const criterios = convocatoria.beca?.criteriosEvaluacion ?? [];
