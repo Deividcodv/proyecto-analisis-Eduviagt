@@ -23,6 +23,10 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
+    // Los correos no distinguen mayúsculas: se guardan y se buscan en
+    // minúsculas para que "Juan@Test.com" y "juan@test.com" sean lo mismo.
+    const email = dto.email.trim().toLowerCase();
+
     const existingCui = await this.prisma.usuario.findUnique({
       where: { cui: dto.cui },
     });
@@ -31,8 +35,8 @@ export class AuthService {
       throw new ConflictException('El CUI ya está registrado');
     }
 
-    const existingEmail = await this.prisma.usuario.findUnique({
-      where: { email: dto.email },
+    const existingEmail = await this.prisma.usuario.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } },
     });
 
     if (existingEmail) {
@@ -50,16 +54,28 @@ export class AuthService {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(dto.password, salt);
 
-    const user = await this.prisma.usuario.create({
-      data: {
-        cui: dto.cui,
-        nombres: dto.nombres,
-        email: dto.email,
-        passwordHash,
-        rolId: postulanteRole.id,
-      },
-      include: { rol: true },
-    });
+    let user;
+    try {
+      user = await this.prisma.usuario.create({
+        data: {
+          cui: dto.cui,
+          nombres: dto.nombres,
+          email,
+          passwordHash,
+          rolId: postulanteRole.id,
+        },
+        include: { rol: true },
+      });
+    } catch (error) {
+      // Dos registros a la vez pasan las comprobaciones previas y uno choca
+      // con el índice único; antes eso salía como 500.
+      if ((error as { code?: string })?.code === 'P2002') {
+        throw new ConflictException(
+          'El CUI o el correo electrónico ya están registrados',
+        );
+      }
+      throw error;
+    }
 
     const { passwordHash: _, ...userWithoutPassword } = user;
 
@@ -74,8 +90,10 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, ip?: string) {
-    const user = await this.prisma.usuario.findUnique({
-      where: { email: dto.email },
+    const user = await this.prisma.usuario.findFirst({
+      where: {
+        email: { equals: dto.email.trim().toLowerCase(), mode: 'insensitive' },
+      },
       include: { rol: true },
     });
 
