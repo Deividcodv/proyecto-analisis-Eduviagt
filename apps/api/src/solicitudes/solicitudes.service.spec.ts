@@ -27,7 +27,12 @@ describe('SolicitudesService', () => {
 
   beforeEach(() => {
     prisma = {
-      solicitud: { findUnique: jest.fn(), update: jest.fn() },
+      solicitud: {
+        findUnique: jest.fn(),
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
       convocatoria: { findUnique: jest.fn() },
       documentoTipo: { findUnique: jest.fn() },
       solicitudDocumento: { findFirst: jest.fn(), create: jest.fn(), delete: jest.fn(), update: jest.fn() },
@@ -653,6 +658,76 @@ describe('SolicitudesService', () => {
           postulante,
         ),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('create — ventana de postulación por fechas', () => {
+    const convocatoriaBase = {
+      id: 'c1',
+      estado: 'ABIERTA',
+      formulario: null,
+      fechaApertura: null as Date | null,
+      fechaCierre: null as Date | null,
+    };
+
+    const dias = (n: number) => new Date(Date.now() + n * 86_400_000);
+
+    beforeEach(() => {
+      prisma.solicitud.create.mockResolvedValue({ id: 's1' });
+      prisma.historialEstado.create.mockResolvedValue({ id: 'h1' });
+    });
+
+    it('rechaza la postulación cuando la fecha de cierre ya pasó', async () => {
+      prisma.convocatoria.findUnique.mockResolvedValue({
+        ...convocatoriaBase,
+        fechaCierre: dias(-1),
+      });
+
+      await expect(
+        service.create('u-postulante', { convocatoriaId: 'c1' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('explica con palabras simples que la convocatoria ya cerró', async () => {
+      prisma.convocatoria.findUnique.mockResolvedValue({
+        ...convocatoriaBase,
+        fechaCierre: dias(-1),
+      });
+
+      await expect(
+        service.create('u-postulante', { convocatoriaId: 'c1' }),
+      ).rejects.toThrow('ya cerr');
+    });
+
+    it('rechaza la postulación antes de la fecha de apertura', async () => {
+      prisma.convocatoria.findUnique.mockResolvedValue({
+        ...convocatoriaBase,
+        fechaApertura: dias(1),
+      });
+
+      await expect(
+        service.create('u-postulante', { convocatoriaId: 'c1' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('permite postular dentro de la ventana de fechas', async () => {
+      prisma.convocatoria.findUnique.mockResolvedValue({
+        ...convocatoriaBase,
+        fechaApertura: dias(-2),
+        fechaCierre: dias(2),
+      });
+
+      await expect(
+        service.create('u-postulante', { convocatoriaId: 'c1' }),
+      ).resolves.toEqual({ id: 's1' });
+    });
+
+    it('permite postular si la convocatoria no define fechas', async () => {
+      prisma.convocatoria.findUnique.mockResolvedValue({ ...convocatoriaBase });
+
+      await expect(
+        service.create('u-postulante', { convocatoriaId: 'c1' }),
+      ).resolves.toEqual({ id: 's1' });
     });
   });
 });

@@ -29,6 +29,7 @@ export class ConvocatoriasService {
     if (dto.nivelAcademicoId) {
       await this.assertNivelAcademicoExists(dto.nivelAcademicoId);
     }
+    this.assertFechasCoherentes(dto.fechaApertura, dto.fechaCierre);
     return this.prisma.convocatoria.create({
       data: {
         nombre: dto.nombre,
@@ -61,6 +62,14 @@ export class ConvocatoriasService {
     cobertura?: BecaCobertura;
   }) {
     const where: Prisma.ConvocatoriaWhereInput = { estado: CONVOCATORIA_ESTADO.ABIERTA };
+
+    // El estado ABIERTA no caducaba solo: una convocatoria seguía apareciendo
+    // en el portal (y aceptando postulaciones) después de su fecha de cierre.
+    const ahora = new Date();
+    where.AND = [
+      { OR: [{ fechaApertura: null }, { fechaApertura: { lte: ahora } }] },
+      { OR: [{ fechaCierre: null }, { fechaCierre: { gte: ahora } }] },
+    ];
 
     if (filtros?.busqueda) {
       where.OR = [
@@ -118,7 +127,7 @@ export class ConvocatoriasService {
   }
 
   async update(id: string, dto: UpdateConvocatoriaDto) {
-    await this.findById(id);
+    const actual = await this.findById(id);
 
     if (dto.becaId) {
       await this.assertBecaExists(dto.becaId);
@@ -126,6 +135,13 @@ export class ConvocatoriasService {
     if (dto.nivelAcademicoId) {
       await this.assertNivelAcademicoExists(dto.nivelAcademicoId);
     }
+
+    // Al cambiar solo una de las dos fechas hay que comparar contra la otra ya
+    // guardada; antes no se validaba nada y se podía dejar cierre < apertura.
+    this.assertFechasCoherentes(
+      dto.fechaApertura !== undefined ? dto.fechaApertura : actual.fechaApertura,
+      dto.fechaCierre !== undefined ? dto.fechaCierre : actual.fechaCierre,
+    );
 
     return this.prisma.convocatoria.update({
       where: { id },
@@ -205,6 +221,13 @@ export class ConvocatoriasService {
     }
 
     const documentoTipoIds = dto.items.map((i) => i.documentoTipoId);
+
+    if (new Set(documentoTipoIds).size !== documentoTipoIds.length) {
+      throw new BadRequestException(
+        'Hay tipos de documento repetidos. Quita los que se repiten e inténtalo de nuevo.',
+      );
+    }
+
     const existentes = await this.prisma.documentoTipo.findMany({
       where: { id: { in: documentoTipoIds } },
     });
@@ -248,6 +271,18 @@ export class ConvocatoriasService {
         documentos: { include: { documentoTipo: true } },
       },
     });
+  }
+
+  private assertFechasCoherentes(
+    fechaApertura?: string | Date | null,
+    fechaCierre?: string | Date | null,
+  ) {
+    if (!fechaApertura || !fechaCierre) return;
+    if (new Date(fechaApertura) >= new Date(fechaCierre)) {
+      throw new BadRequestException(
+        'La fecha de cierre debe ser posterior a la fecha de apertura.',
+      );
+    }
   }
 
   private async assertBecaExists(becaId: string) {

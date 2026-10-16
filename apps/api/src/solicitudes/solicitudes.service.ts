@@ -51,6 +51,20 @@ export class SolicitudesService {
       );
     }
 
+    // El estado por sí solo no basta: una convocatoria ABIERTA puede tener la
+    // fecha de cierre ya vencida y seguía aceptando postulaciones.
+    const ahora = new Date();
+    if (convocatoria.fechaApertura && ahora < convocatoria.fechaApertura) {
+      throw new BadRequestException(
+        'La convocatoria todavía no está abierta para postulaciones',
+      );
+    }
+    if (convocatoria.fechaCierre && ahora > convocatoria.fechaCierre) {
+      throw new BadRequestException(
+        'La convocatoria ya cerró. No se aceptan nuevas postulaciones.',
+      );
+    }
+
     const existente = await this.prisma.solicitud.findFirst({
       where: {
         usuarioId,
