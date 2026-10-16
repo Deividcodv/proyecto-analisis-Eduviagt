@@ -7,8 +7,13 @@ Rama: `test/bug-hunt-revision` — BASE `b62070b`.
 | Nivel | Suites | Tests | Resultado |
 |---|---|---|---|
 | Unitario (Jest) | 18 | 155 | ✅ 100% PASS (~14 s, sin BD) |
-| E2E API (Supertest) | 4 | 31 | ✅ 100% PASS (contra `sigeb_test`) |
+| E2E API (Supertest) | 4 | 55 | ✅ 100% PASS (contra `sigeb_test`) |
 | Web (Playwright) | 0 | 0 | ⬜ no existe (Task 4) |
+
+> **Corregido:** la primera captura anotaba 31 tests E2E; era un artefacto de
+> la salida del shell (mismo bug que corrió el reporter de Jest). Los specs E2E
+> no se modifican durante esta campaña, así que el baseline real es
+> **4 suites / 55 tests**.
 
 ## 2. Cobertura unitaria global (`npx jest --coverage`)
 
