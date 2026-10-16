@@ -30,8 +30,8 @@ export const metadata: Metadata = {
     'EDUVIAGT es la plataforma del Ministerio de Educación de Guatemala para administrar el ciclo completo de una beca: publicación de convocatorias, postulación de estudiantes, carga y revisión de documentos, evaluación, decisión de comités evaluadores y consulta de estado.',
   keywords: ['becas', 'MINEDUC', 'Guatemala', 'educación', 'postulación', 'EDUVIAGT'],
   icons: {
-    icon: '/marca.svg',
-    shortcut: '/marca.svg',
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
     apple: '/marca.svg',
   },
 };
