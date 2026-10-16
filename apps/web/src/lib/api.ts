@@ -361,6 +361,9 @@ export async function http<T>(
   const res = await fetch(`${API_URL}${path}`, {
     method,
     headers,
+    // Sin esto, Next.js guarda las respuestas GET en su Data Cache y las sirve
+    // para siempre: una convocatoria recién publicada no aparecía en el portal.
+    cache: 'no-store',
     body:
       body === undefined
         ? undefined

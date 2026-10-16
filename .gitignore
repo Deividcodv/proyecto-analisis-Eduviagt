@@ -46,6 +46,12 @@ apps/api/storage/
 
 # Testing
 coverage/
+apps/web/test-results/
+apps/web/playwright-report/
+apps/web/.playwright/
+
+# Entorno de pruebas local (contiene credenciales)
+.env.test
 
 # Turbo
 .turbo/
