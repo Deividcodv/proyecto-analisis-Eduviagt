@@ -730,4 +730,61 @@ describe('SolicitudesService', () => {
       ).resolves.toEqual({ id: 's1' });
     });
   });
+
+  describe('transicion — reglas del comité', () => {
+    const admin: AuthenticatedUser = {
+      id: 'u-admin',
+      cui: '1234567890123',
+      nombres: 'Admin Demo',
+      email: 'admin@demo.gt',
+      rol: { id: 'r-admin', nombre: 'ADMIN', descripcion: null },
+    };
+
+    const solicitudEnRevision = (correccionesCount: number) => ({
+      id: 's1',
+      usuarioId: 'u-postulante',
+      estado: 'EN_REVISION',
+      correccionesCount,
+      convocatoria: { maxCorrecciones: 3, beca: { nombre: 'Beca X' } },
+    });
+
+    beforeEach(() => {
+      prisma.solicitud.update.mockResolvedValue({
+        id: 's1',
+        estado: 'CORRECCION',
+      });
+      prisma.notificacion.create.mockResolvedValue({
+        id: 'n1',
+        usuarioId: 'u-postulante',
+        tipo: 'CORRECCION_SOLICITADA',
+        titulo: 'Se solicitó una corrección',
+        cuerpo: null,
+        createdAt: new Date(),
+      });
+    });
+
+    it('no permite pedir más correcciones de las permitidas', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(solicitudEnRevision(3));
+
+      await expect(
+        service.transicion('s1', { accion: 'solicitar_correccion' }, admin),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('permite pedir corrección mientras queden subsanaciones', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(solicitudEnRevision(1));
+
+      await expect(
+        service.transicion('s1', { accion: 'solicitar_correccion' }, admin),
+      ).resolves.toMatchObject({ estado: 'CORRECCION' });
+    });
+
+    it('rechaza al postulante en una acción del comité', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(solicitudEnRevision(0));
+
+      await expect(
+        service.transicion('s1', { accion: 'solicitar_correccion' }, postulante),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
 });

@@ -219,6 +219,13 @@ export class SolicitudesService {
       await this.assertEvaluadoresMinimos(id);
     }
 
+    if (dto.accion === 'solicitar_correccion') {
+      this.assertCorreccionesDisponibles(
+        solicitud.correccionesCount,
+        solicitud.convocatoria?.maxCorrecciones,
+      );
+    }
+
     const siguienteEstado = SolicitudStateMachine.next(
       solicitud.estado as SolicitudEstado,
       dto.accion,
@@ -343,18 +350,15 @@ export class SolicitudesService {
       );
     }
 
-    const maximo = solicitud.convocatoria?.maxCorrecciones ?? 3;
-    if (solicitud.correccionesCount >= maximo) {
-      throw new BadRequestException(
-        `La solicitud agotó el máximo de ${maximo} subsanaciones permitidas`,
-      );
-    }
+    this.assertCorreccionesDisponibles(
+      solicitud.correccionesCount,
+      solicitud.convocatoria?.maxCorrecciones,
+    );
 
     const siguienteEstado = SolicitudStateMachine.next(
       solicitud.estado as SolicitudEstado,
       'solicitar_correccion',
     );
-
     const actualizada = await this.prisma.$transaction(async (tx) => {
       const upd = await tx.solicitud.update({
         where: { id },
@@ -376,7 +380,10 @@ export class SolicitudesService {
           accion: 'solicitar-correccion',
           entidad: 'solicitud',
           entidadId: id,
-          detalle: { correccionesCount: solicitud.correccionesCount, maximo },
+          detalle: {
+            correccionesCount: solicitud.correccionesCount,
+            maximo: solicitud.convocatoria?.maxCorrecciones ?? 3,
+          },
         },
         tx,
       );
@@ -393,6 +400,18 @@ export class SolicitudesService {
     });
 
     return actualizada;
+  }
+
+  private assertCorreccionesDisponibles(
+    correccionesCount: number,
+    maxCorrecciones?: number | null,
+  ) {
+    const maximo = maxCorrecciones ?? 3;
+    if (correccionesCount >= maximo) {
+      throw new BadRequestException(
+        `La solicitud agotó el máximo de ${maximo} subsanaciones permitidas`,
+      );
+    }
   }
 
   private async assertEvaluadoresMinimos(solicitudId: string) {
