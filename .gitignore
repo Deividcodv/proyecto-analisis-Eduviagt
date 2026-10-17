@@ -49,6 +49,14 @@ coverage/
 apps/web/test-results/
 apps/web/playwright-report/
 apps/web/.playwright/
+# Capturas regeneradas en cada corrida (contienen conteos de datos vivos)
+apps/web/e2e/__screenshots__/
+# Artefactos temporales del arnes E2E del API (PDFs)
+apps/api/test/.tmp-storage/
+
+# Python (herramientas de marca en ppt_tasks/)
+__pycache__/
+*.pyc
 
 # Entorno de pruebas local (contiene credenciales)
 .env.test
