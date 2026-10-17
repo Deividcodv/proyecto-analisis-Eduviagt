@@ -202,7 +202,7 @@ export function PanelSesiones() {
 
           <div className="mt-4 flex gap-2">
             <Button onClick={crear} disabled={enviando || evaluadas.length === 0}>
-              {enviando ? 'Creando...' : 'Crear sesión'}
+              {enviando ? 'Creando…' : 'Crear sesión'}
             </Button>
             <Button variant="ghost" onClick={() => setMostrarForm(false)}>
               Cancelar

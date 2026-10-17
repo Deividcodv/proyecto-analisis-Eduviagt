@@ -27,9 +27,9 @@ const principios: {
   },
   {
     icono: 'reloj',
-    titulo: 'Trazabilidad',
+    titulo: 'Seguimiento',
     texto:
-      'Cada mutación del sistema queda registrada en un historial de auditoría con autor, fecha, entidad e IP.',
+      'Cada cambio del sistema queda registrado en un historial de auditoría: quién cambió qué y desde qué conexión.',
   },
   {
     icono: 'estrella',

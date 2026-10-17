@@ -351,6 +351,8 @@ async function main() {
     { modulo: 'auditoria', accion: 'ver' },
     // Seguridad
     { modulo: 'permiso', accion: 'editar' },
+    // Catálogos (S-013: permiso propio en lugar de reutilizar `permiso:editar`)
+    { modulo: 'catalogo', accion: 'gestionar' },
   ];
 
   const permisos = await Promise.all(

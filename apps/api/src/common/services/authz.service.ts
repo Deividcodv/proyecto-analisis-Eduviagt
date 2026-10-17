@@ -8,6 +8,12 @@ export class AuthzService {
     return usuario.rol?.nombre === ROL.ADMIN;
   }
 
+  esStaff(usuario: AuthenticatedUser): boolean {
+    // S-012: único punto de decisión para acciones de personal sobre solicitudes.
+    // Actualmente: solo ADMIN. Si el modelo cambia, modificar aquí.
+    return this.esAdmin(usuario);
+  }
+
   assertAdmin(usuario: AuthenticatedUser, mensaje?: string): void {
     if (!this.esAdmin(usuario)) {
       throw new ForbiddenException(

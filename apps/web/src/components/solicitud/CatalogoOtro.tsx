@@ -22,7 +22,7 @@ export function CatalogoOtro({
   otroValue,
   onChange,
   onOtroChange,
-  placeholder = 'Seleccionar...',
+  placeholder = 'Seleccionar…',
 }: CatalogoOtroProps) {
   const esOtro = value === '__otro__';
   return (

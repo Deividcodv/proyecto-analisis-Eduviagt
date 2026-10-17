@@ -217,7 +217,7 @@ function EvaluadorContent() {
                     </span>
                     {preview !== null && (
                       <p className="mt-1 font-mono text-sm font-bold text-brutal-tinta">
-                        Puntaje ponderado:{' '}
+                        Puntaje final:{' '}
                         <span className="rounded-brutal border-2 border-brutal-tinta bg-brutal-gold px-2 py-0.5 text-brutal-tinta">
                           {preview}/100
                         </span>
@@ -272,8 +272,8 @@ function EvaluadorContent() {
                 {!ev.imparcialidadConfirmada ? (
                   <div className="mb-4 rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-3">
                     <p className="mb-2 font-mono text-sm font-bold text-brutal-rojo">
-                      Antes de puntuar debes declarar que no tienes conflicto de
-                      interés con esta solicitud.
+                      Antes de puntuar debes declarar que no tienes relación con
+                      la persona postulante.
                     </p>
                     <Button
                       onClick={() => confirmarImparcialidad(ev.solicitudId)}

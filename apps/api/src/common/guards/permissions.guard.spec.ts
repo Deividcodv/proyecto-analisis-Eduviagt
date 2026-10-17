@@ -1,4 +1,4 @@
-import { ForbiddenException, ExecutionContext } from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PermissionsGuard } from './permissions.guard';
 import {
@@ -72,9 +72,9 @@ describe('PermissionsGuard', () => {
       reflector,
       mockPermissionService('ALLOW'),
     );
-    await expect(guard.canActivate(mockExecutionContext())).resolves.toBe(
-      false,
-    );
+    await expect(
+      guard.canActivate(mockExecutionContext()),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   // S-005: @Permisos([]) debe comportarse igual que @Roles([]) — fail-closed.

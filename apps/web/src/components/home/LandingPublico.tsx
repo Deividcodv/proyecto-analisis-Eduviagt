@@ -12,7 +12,7 @@ const ESTADISTICAS = [
 ];
 
 const REQUISITOS = [
-  'Ser guatemalteco(a) de nacimiento o naturalizado',
+  'Ser guatemalteco o guatemalteca de nacimiento o naturalizado',
   'Cumplir el rango de edad establecido por el programa',
   'Promedio mínimo de 80 puntos en los últimos estudios',
   'No contar con otra beca financiada por el Estado',
@@ -42,7 +42,7 @@ export function LandingPublico() {
           <p className="mt-6 max-w-2xl font-mono text-base text-brutal-papel/80 md:text-lg">
             Encuentra programas de becas del Ministerio de Educación de Guatemala
             y realiza tu proceso de postulación de forma sencilla, segura y
-            transparente. Todo tu expediente, un solo lugar.
+            transparente. Toda tu postulación, un solo lugar.
           </p>
           <div className="mt-10 flex flex-col gap-4 sm:flex-row">
             <Button href="/convocatorias">Explorar becas</Button>
@@ -53,7 +53,7 @@ export function LandingPublico() {
           <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-brutal-papel/70">
             <span>● Proceso 100 % digital</span>
             <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-brutal-gold" />
-            <span>● Seguimiento auditable</span>
+            <span>● Seguimiento claro</span>
             <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-brutal-gold" />
             <span>● Gratuito</span>
           </div>
@@ -179,7 +179,7 @@ export function LandingPublico() {
               { numero: '02', titulo: 'POSTÚLATE', texto: 'Selecciona una convocatoria' },
               { numero: '03', titulo: 'DOCUMENTA', texto: 'Carga los requisitos' },
               { numero: '04', titulo: 'EVALUACIÓN', texto: 'Tu solicitud es evaluada' },
-              { numero: '05', titulo: 'COMITÉ', texto: 'Se revisa tu expediente' },
+              { numero: '05', titulo: 'COMITÉ', texto: 'Se revisa tu postulación' },
               { numero: '06', titulo: 'RESULTADO', texto: 'Consulta tu resolución' },
             ].map((paso) => (
               <div

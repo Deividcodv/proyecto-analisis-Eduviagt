@@ -3,6 +3,17 @@ import { httpData } from '@/lib/api';
 const ACCESS_KEY = 'sigeb_access_token';
 const REFRESH_KEY = 'sigeb_refresh_token';
 
+// S-004: la API devuelve el rol siempre como objeto { id, nombre }
+// (login, registro y perfil). En el cliente se aplana a texto una sola vez
+// en el AuthContext, para que el resto de la app siga trabajando con strings.
+export interface UsuarioRespuesta {
+  id: string;
+  cui: string;
+  nombres: string;
+  email: string;
+  rol: { id: string; nombre: string };
+}
+
 export interface Usuario {
   id: string;
   cui: string;
@@ -14,7 +25,7 @@ export interface Usuario {
 export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
-  user: Usuario;
+  user: UsuarioRespuesta;
 }
 
 export function getAccessToken(): string | null {

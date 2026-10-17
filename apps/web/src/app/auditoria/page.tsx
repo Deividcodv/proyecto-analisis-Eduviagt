@@ -130,8 +130,8 @@ function AuditoriaContent() {
                     <th className="px-3 py-2 text-left font-brut text-xs font-black uppercase">Rol</th>
                     <th className="px-3 py-2 text-left font-brut text-xs font-black uppercase">Acción</th>
                     <th className="px-3 py-2 text-left font-brut text-xs font-black uppercase">Entidad</th>
-                    <th className="px-3 py-2 text-left font-brut text-xs font-black uppercase">ID</th>
-                    <th className="px-3 py-2 text-left font-brut text-xs font-black uppercase">IP</th>
+                    <th className="px-3 py-2 text-left font-brut text-xs font-black uppercase">Identificador</th>
+                    <th className="px-3 py-2 text-left font-brut text-xs font-black uppercase">Dirección IP</th>
                   </tr>
                 </thead>
                 <tbody>

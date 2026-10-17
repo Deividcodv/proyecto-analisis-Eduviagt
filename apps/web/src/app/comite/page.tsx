@@ -164,7 +164,7 @@ function ComiteContent() {
                     </p>
                   </div>
                   <Button variant="ghost" onClick={() => setDetalle(null)}>
-                    Volver
+                    Cerrar
                   </Button>
                 </div>
 

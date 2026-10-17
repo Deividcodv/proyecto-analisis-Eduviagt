@@ -146,7 +146,7 @@ describe('AuthService (perfil)', () => {
       prisma.usuario.findUnique.mockResolvedValue(usuarioBase);
       prisma.genero.findUnique.mockResolvedValue({ id: 'g-1' });
       prisma.departamento.findUnique.mockResolvedValue({ id: 'd-1' });
-      prisma.municipio.findUnique.mockResolvedValue({ id: 'm-1' });
+      prisma.municipio.findUnique.mockResolvedValue({ id: 'm-1', departamentoId: 'd-1' });
       prisma.usuario.update.mockResolvedValue({
         ...usuarioBase,
         nombres: 'Ana María López',

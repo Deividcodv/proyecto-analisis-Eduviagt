@@ -27,7 +27,7 @@ describe('Autenticación (pruebas funcionales)', () => {
     expect(res.body.data).toMatchObject({
       cui: nuevo.cui,
       email: nuevo.email,
-      rol: 'POSTULANTE',
+      rol: { nombre: 'POSTULANTE' },
     });
     expect(res.body.data.passwordHash).toBeUndefined();
     expect(res.body.data.id).toMatch(/^[0-9a-f-]{36}$/i);
@@ -70,7 +70,7 @@ describe('Autenticación (pruebas funcionales)', () => {
     expect(res.body.data.refreshToken).toEqual(expect.any(String));
     expect(res.body.data.user).toMatchObject({
       email: nuevo.email,
-      rol: 'POSTULANTE',
+      rol: { nombre: 'POSTULANTE' },
     });
   });
 

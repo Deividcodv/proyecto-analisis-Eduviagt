@@ -125,7 +125,7 @@ function ReportesContent() {
     <>
       <InternalPageHeader
         title="Reportes"
-        subtitle={`Panel de métricas para ${nombreRol(rol)}`}
+        subtitle={`Panel de datos para ${nombreRol(rol)}`}
       />
 
       <Container className="py-10">
@@ -238,7 +238,7 @@ function ReportesContent() {
               )}
 
               <div className="mt-6">
-                <MarcoBrutal titulo="Tendencia mensual (solicitudes vs evaluaciones)">
+                <MarcoBrutal titulo="Tendencia mensual (solicitudes frente a evaluaciones)">
                   <div className="mb-4 flex flex-wrap items-center gap-2">
                     <span className="brut-label text-[10px] font-bold uppercase text-brutal-tinta/60">
                       Rango:
@@ -265,7 +265,7 @@ function ReportesContent() {
               </div>
 
               <div className="mt-6">
-                <MarcoBrutal titulo="Embudo de conversión">
+                <MarcoBrutal titulo="Del registro a la aprobación">
                   <EmbudoConversion />
                 </MarcoBrutal>
               </div>
@@ -287,13 +287,13 @@ function ReportesContent() {
                 <p className="brut-label mb-1 text-xs font-bold text-brutal-gold">// Exportar datos</p>
                 <div className="flex flex-wrap gap-3">
                   <Button onClick={() => descargarCsv('solicitudes-por-estado')} variant="ghost">
-                    ↓ CSV Solicitudes
+                    ↓ Descargar solicitudes (CSV)
                   </Button>
                   <Button onClick={() => descargarCsv('convocatorias')} variant="ghost">
-                    ↓ CSV Convocatorias
+                    ↓ Descargar convocatorias (CSV)
                   </Button>
                   <Button onClick={() => descargarCsv('evaluaciones')} variant="ghost">
-                    ↓ CSV Evaluaciones
+                    ↓ Descargar evaluaciones (CSV)
                   </Button>
                 </div>
                 <ExportarReporte />

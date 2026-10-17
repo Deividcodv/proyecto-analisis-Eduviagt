@@ -191,7 +191,7 @@ export function PasoPerfilAcademico({
               onOtroChange={(texto) =>
                 setForm((f) => ({ ...f, institucion: texto }))
               }
-              placeholder="Seleccionar institución..."
+              placeholder="Seleccionar institución…"
             />
           </div>
         </div>

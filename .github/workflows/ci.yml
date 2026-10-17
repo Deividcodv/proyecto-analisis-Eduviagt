@@ -1,18 +1,33 @@
 name: CI
 
+# Se ejecuta en cada push (cualquier rama) y en cada pull request.
 on:
   push:
-    branches: [develop, master, 'feature/**']
   pull_request:
-    branches: [develop, master]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Versión de Node del repo: `engines.node >= 20` y las imágenes Docker usan
+# `node:20`. Usamos Node 20 LTS con caché de npm (monorepo npm workspaces).
+env:
+  NODE_VERSION: '20'
+  # Base de pruebas efímera levantada por el servicio `postgres` de cada job.
+  DATABASE_URL: postgresql://sigeb:sigeb123@localhost:5432/sigeb_test
+  E2E_DATABASE_URL: postgresql://sigeb:sigeb123@localhost:5432/sigeb_test
+  JWT_SECRET: test-secret-key
+  JWT_REFRESH_SECRET: test-refresh-secret-key
+
 jobs:
-  lint-and-test:
+  # ---------------------------------------------------------------------------
+  # API: esquema + seed, lint, pruebas unitarias, chequeo de tipos (API y web)
+  # y humo de integración con base efímera.
+  # ---------------------------------------------------------------------------
+  api-tests:
+    name: API — lint, unit, tipos y humo
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     services:
       postgres:
@@ -23,6 +38,7 @@ jobs:
           POSTGRES_PASSWORD: sigeb123
         ports:
           - 5432:5432
+        # Espera a que la base esté lista antes de correr los pasos.
         options: >-
           --health-cmd "pg_isready -U sigeb -d sigeb_test"
           --health-interval 10s
@@ -32,51 +48,53 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
 
-      - name: Cache Puppeteer browser (constancia PDF / US-F7)
+      # npm ci descarga el Chromium de Puppeteer (constancia PDF / US-F7).
+      - name: Cachear navegador de Puppeteer
         uses: actions/cache@v4
         with:
           path: ~/.cache/puppeteer
           key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
-      - name: Install dependencies
+      - name: Instalar dependencias
         run: npm ci
+
+      - name: Generar cliente Prisma
+        run: cd apps/api && npx prisma generate
+
+      - name: Aplicar el esquema (migraciones)
+        run: cd apps/api && npx prisma migrate deploy
+
+      - name: Sembrar la base de pruebas
+        run: cd apps/api && npx prisma db seed
 
       - name: Lint
         run: npm run lint
 
-      - name: Generate Prisma Client
-        run: cd apps/api && npx prisma generate
+      - name: Pruebas unitarias del API
+        run: npm run test:api
 
-      - name: Run Prisma Migrations
-        run: cd apps/api && npx prisma migrate deploy
-        env:
-          DATABASE_URL: postgresql://sigeb:sigeb123@localhost:5432/sigeb_test
+      - name: Tipos del API (tsc --noEmit)
+        run: cd apps/api && npx tsc --noEmit
 
-      - name: Run Tests
-        run: npm run test
-        env:
-          DATABASE_URL: postgresql://sigeb:sigeb123@localhost:5432/sigeb_test
-          JWT_SECRET: test-secret-key
+      - name: Tipos de la web (tsc --noEmit)
+        run: cd apps/web && npx tsc --noEmit
 
-      - name: Build
-        run: npm run build
+      - name: Construir el API (para el humo)
+        run: npm run build:api
 
-      - name: Install Chromium system deps (US-F7 constancia PDF)
+      - name: Instalar dependencias de Chromium (constancia PDF / US-F7)
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libgbm1 libasound2t64 libxshmfence1
 
-      - name: Smoke CI (Sprints 3-5 + S6/S7 + F7 constancia PDF)
+      - name: Humo de integración (Sprints 3-5 + S6/S7 + F7 constancia PDF)
         env:
-          DATABASE_URL: postgresql://sigeb:sigeb123@localhost:5432/sigeb_test
-          JWT_SECRET: test-secret-key
-          JWT_REFRESH_SECRET: test-refresh-secret-key
           STORAGE_PATH: /tmp/sigeb-storage
         run: |
           cd apps/api
@@ -98,16 +116,92 @@ jobs:
           fi
           tail -n 5 /tmp/smoke-trace.log
 
-  docker-build:
+  # ---------------------------------------------------------------------------
+  # E2E de Playwright con base efímera (hallazgo F-002 / sugerencia S-015).
+  # El `globalSetup` de Playwright reinicia y siembra `sigeb_test` antes de la
+  # suite, por lo que cada corrida parte de un estado determinista.
+  # ---------------------------------------------------------------------------
+  e2e-web:
+    name: Web — Playwright E2E
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: sigeb_test
+          POSTGRES_USER: sigeb
+          POSTGRES_PASSWORD: sigeb123
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sigeb -d sigeb_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      # npm ci descarga el Chromium de Puppeteer (constancia PDF / US-F7).
+      - name: Cachear navegador de Puppeteer
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/puppeteer
+          key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      # Caché de los navegadores de Playwright.
+      - name: Cachear navegadores de Playwright
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Generar cliente Prisma
+        run: cd apps/api && npx prisma generate
+
+      - name: Instalar Chromium de Playwright
+        run: cd apps/web && npx playwright install --with-deps chromium
+
+      # `npm run test:e2e` = `playwright test`. El globalSetup deja `sigeb_test`
+      # limpia y sembrada y Playwright levanta la API y la web.
+      - name: Ejecutar E2E
+        run: cd apps/web && npm run test:e2e
+
+      - name: Publicar reporte de Playwright
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Construcción de imágenes Docker (se conserva del flujo original).
+  # Solo en las ramas de despliegue para no gastar minutos en cada PR.
+  # ---------------------------------------------------------------------------
+  docker-build:
+    name: Docker — build de imágenes
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build API image
+      - name: Construir imagen del API
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -115,7 +209,7 @@ jobs:
           push: false
           tags: sigeb/api:check
 
-      - name: Build Web image
+      - name: Construir imagen de la web
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -123,8 +217,11 @@ jobs:
           push: false
           tags: sigeb/web:check
 
+  # ---------------------------------------------------------------------------
+  # Despliegues (se conservan del flujo original).
+  # ---------------------------------------------------------------------------
   deploy-staging:
-    needs: [lint-and-test, docker-build]
+    needs: [api-tests, docker-build]
     if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     environment: staging
@@ -162,7 +259,7 @@ jobs:
             pm2 save || true
 
   deploy-production:
-    needs: [lint-and-test, docker-build]
+    needs: [api-tests, docker-build]
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     environment: production

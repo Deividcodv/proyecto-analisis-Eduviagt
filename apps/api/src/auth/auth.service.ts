@@ -85,6 +85,13 @@ export class AuthService {
       throw error;
     }
 
+    await this.audit.log({
+      usuarioId: user.id,
+      accion: 'register',
+      entidad: 'usuario',
+      entidadId: user.id,
+    });
+
     const { passwordHash: _, ...userWithoutPassword } = user;
 
     return {
@@ -92,7 +99,7 @@ export class AuthService {
       cui: userWithoutPassword.cui,
       nombres: userWithoutPassword.nombres,
       email: userWithoutPassword.email,
-      rol: userWithoutPassword.rol.nombre,
+      rol: { id: userWithoutPassword.rol.id, nombre: userWithoutPassword.rol.nombre },
       createdAt: userWithoutPassword.createdAt,
     };
   }
@@ -151,16 +158,17 @@ export class AuthService {
         cui: user.cui,
         nombres: user.nombres,
         email: user.email,
-        rol: user.rol.nombre,
+        rol: { id: user.rol.id, nombre: user.rol.nombre },
       },
     };
   }
 
   async refreshToken(refreshToken: string, ip?: string) {
+    const secret = this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
     try {
       const payload = this.jwtService.verify(refreshToken, {
-        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
-      });
+        secret,
+      }) as { sub: string };
 
       const user = await this.prisma.usuario.findUnique({
         where: { id: payload.sub },
@@ -243,6 +251,10 @@ export class AuthService {
       });
       if (!municipio) {
         throw new NotFoundException('Municipio no encontrado');
+      }
+      const departamentoId = dto.departamentoId ?? user.departamentoId;
+      if (departamentoId && municipio.departamentoId !== departamentoId) {
+        throw new NotFoundException('El municipio no pertenece al departamento seleccionado');
       }
     }
 

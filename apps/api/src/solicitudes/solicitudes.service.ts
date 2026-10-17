@@ -200,7 +200,7 @@ export class SolicitudesService {
       if (solicitud.usuarioId !== usuario.id) {
         throw new ForbiddenException('No tienes acceso a esta solicitud');
       }
-    } else if (!this.authz.esAdmin(usuario)) {
+    } else if (!this.authz.esStaff(usuario)) {
       throw new ForbiddenException(
         'No tienes permisos para esta transición',
       );
@@ -334,13 +334,11 @@ export class SolicitudesService {
       throw new NotFoundException(`Solicitud con id ${id} no encontrada`);
     }
 
-    const esStaff =
-      this.authz.esAdmin(usuario) ||
-      usuario.rol?.nombre === ROL.COORDINADOR_COMITE;
+    const esStaff = this.authz.esStaff(usuario);
 
     if (!esStaff) {
       throw new ForbiddenException(
-        'Solo el comité puede solicitar correcciones',
+        'No tienes permisos para solicitar correcciones',
       );
     }
 

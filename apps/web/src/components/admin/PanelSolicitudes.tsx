@@ -235,7 +235,7 @@ export function PanelSolicitudes() {
           )}
           <div className="mt-4 flex gap-2">
             <Button onClick={asignar} disabled={enviando || evaluadores.length === 0}>
-              {enviando ? 'Asignando...' : 'Asignar'}
+              {enviando ? 'Asignando…' : 'Asignar'}
             </Button>
             <Button variant="ghost" onClick={() => setAsignando(null)}>
               Cancelar

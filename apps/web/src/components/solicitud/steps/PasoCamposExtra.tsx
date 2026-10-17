@@ -302,7 +302,7 @@ function CampoExtra({
         </label>
         <div className="flex flex-wrap items-center gap-3">
           <label className="cursor-pointer rounded-brutal border-[3px] border-brutal-tinta bg-brutal-cyan px-4 py-2 font-brut text-sm font-bold uppercase tracking-wide text-brutal-tinta shadow-brutal-sm transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none">
-            {subiendo ? 'Subiendo...' : typeof valor === 'string' && valor ? 'Reemplazar' : 'Subir archivo'}
+            {subiendo ? 'Subiendo…' : typeof valor === 'string' && valor ? 'Reemplazar' : 'Subir archivo'}
             <input
               type="file"
               accept=".pdf,.jpg,.jpeg,.png"

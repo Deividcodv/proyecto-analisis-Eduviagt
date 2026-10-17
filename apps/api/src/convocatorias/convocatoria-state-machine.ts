@@ -40,7 +40,7 @@ export class ConvocatoriaStateMachine {
 
     if (!destino) {
       throw new BadRequestException(
-        `Transición inválida: "${accion}" no es válida desde estado "${estadoActual}"`,
+        `Transición no válida: "${accion}" no se puede realizar desde el estado "${estadoActual}"`,
       );
     }
 

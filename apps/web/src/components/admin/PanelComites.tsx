@@ -164,7 +164,7 @@ export function PanelComites() {
           </div>
           <div className="mt-4">
             <Button onClick={crear} disabled={enviando}>
-              {enviando ? 'Creando...' : 'Crear'}
+              {enviando ? 'Creando…' : 'Crear'}
             </Button>
           </div>
         </Card>

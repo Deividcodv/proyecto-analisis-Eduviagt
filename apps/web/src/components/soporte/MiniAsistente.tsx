@@ -125,7 +125,7 @@ export function MiniAsistente() {
         {pensando && (
           <div className="self-start flex items-center gap-2 rounded-brutal border-2 border-brutal-tinta bg-brutal-blanco px-4 py-2 text-sm text-brutal-tinta/70">
             <span className="h-2 w-2 animate-pulse rounded-full bg-brutal-cyan" />
-            {esEquipo ? 'Analizando expediente…' : 'Analizando convocatorias…'}
+            {esEquipo ? 'Analizando postulación…' : 'Analizando convocatorias…'}
           </div>
         )}
         {error && (

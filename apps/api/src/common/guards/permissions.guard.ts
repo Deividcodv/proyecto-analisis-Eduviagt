@@ -1,6 +1,12 @@
-import { Injectable, CanActivate, ExecutionContext, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  Inject,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ForbiddenException } from '@nestjs/common';
 import {
   PERMISSION_SERVICE,
   IPermissionService,
@@ -39,7 +45,7 @@ export class PermissionsGuard implements CanActivate {
     const user = request.user as UsuarioConId | undefined;
 
     if (!user?.id) {
-      return false;
+      throw new UnauthorizedException('Debes iniciar sesión');
     }
 
     for (const permiso of requiredPermissions) {

@@ -7,6 +7,10 @@ import { defineConfig, devices } from '@playwright/test';
  * críticos en Chromium. La API se apunta SIEMPRE a la base de datos de pruebas
  * `sigeb_test` para no tocar datos de desarrollo.
  *
+ * Idempotencia (F-002 / S-018): `globalSetup` reinicia y siembra `sigeb_test`
+ * antes de cada corrida (ver `e2e/global-setup.ts`), así los datos no se
+ * acumulan y ninguna prueba depende de conteos de corridas anteriores.
+ *
  * Uso:
  *   cd apps/web
  *   npx playwright test                 # todo
@@ -29,6 +33,8 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   reporter: [['list']],
+  // Deja `sigeb_test` limpia y sembrada antes de arrancar la API/la web.
+  globalSetup: './e2e/global-setup.ts',
 
   use: {
     baseURL: BASE_URL,
@@ -48,18 +54,25 @@ export default defineConfig({
       command: 'npm run start',
       cwd: '../api',
       url: `http://localhost:${API_PORT}/api/catalogos/generos`,
-      reuseExistingServer: true,
+      // En CI siempre se arranca una API limpia; en local se reutiliza la que
+      // ya esté corriendo para iterar más rápido.
+      reuseExistingServer: !process.env.CI,
       timeout: 180_000,
       env: {
         DATABASE_URL: DATABASE_URL_TEST,
         PORT: API_PORT,
+        // Secretos de prueba explícitos: la E2E no depende de `apps/api/.env`
+        // (que está en .gitignore y no existe en CI).
+        JWT_SECRET: process.env.JWT_SECRET ?? 'test-secret-key',
+        JWT_REFRESH_SECRET:
+          process.env.JWT_REFRESH_SECRET ?? 'test-refresh-secret-key',
       },
     },
     {
       command: 'npm run dev',
       cwd: '.',
       url: BASE_URL,
-      reuseExistingServer: true,
+      reuseExistingServer: !process.env.CI,
       timeout: 180_000,
       env: {
         NEXT_PUBLIC_API_PROXY: `http://localhost:${API_PORT}/api`,

@@ -456,7 +456,7 @@ function DocsSection({
                     <>
                       <label className="cursor-pointer rounded-brutal border-[3px] border-brutal-tinta bg-brutal-cyan px-4 py-1.5 font-brut text-sm font-bold uppercase tracking-wide text-brutal-tinta shadow-brutal-sm transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none">
                         {subiendo === doc.documentoTipoId
-                          ? 'Subiendo...'
+                          ? 'Subiendo…'
                           : rechazado
                             ? 'Subir de nuevo'
                             : 'Reemplazar'}
@@ -482,7 +482,7 @@ function DocsSection({
                     </>
                   ) : (
                     <label className="cursor-pointer rounded-brutal border-[3px] border-brutal-tinta bg-brutal-cyan px-4 py-1.5 font-brut text-sm font-bold uppercase tracking-wide text-brutal-tinta shadow-brutal-sm transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none">
-                      {subiendo === doc.documentoTipoId ? 'Subiendo...' : 'Subir'}
+                      {subiendo === doc.documentoTipoId ? 'Subiendo…' : 'Subir'}
                       <input
                         type="file"
                         accept=".pdf,.jpg,.jpeg,.png"

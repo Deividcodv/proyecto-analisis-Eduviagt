@@ -239,8 +239,7 @@ export class ConstanciasService {
         day: '2-digit',
         month: 'long',
         year: 'numeric',
-      })
-      .replace(/ de /g, ' de ');
+      });
   }
 }
 

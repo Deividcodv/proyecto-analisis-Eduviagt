@@ -14,7 +14,7 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   function Select(
-    { label, options, placeholder = 'Seleccionar...', className = '', id, ...rest },
+    { label, options, placeholder = 'Seleccionar…', className = '', id, ...rest },
     ref,
   ) {
     // Sin `id` ni `name`, la etiqueta quedaría desasociada del select:

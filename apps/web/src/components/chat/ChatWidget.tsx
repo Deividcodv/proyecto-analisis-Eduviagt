@@ -156,8 +156,8 @@ export function ChatWidget() {
               <div className="flex max-w-[85%] items-center gap-2 rounded-2xl bg-white px-3 py-2 text-sm text-brutal-tinta/70 shadow-sm">
                 <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-sigeb-blue" />
                 {esEquipo
-                  ? 'Analizando expediente...'
-                  : 'Analizando convocatorias...'}
+                  ? 'Analizando postulación…'
+                  : 'Analizando convocatorias…'}
               </div>
             )}
             {error && (
@@ -178,7 +178,7 @@ export function ChatWidget() {
             <input
               value={texto}
               onChange={(e) => setTexto(e.target.value)}
-              placeholder="Escribe tu pregunta..."
+              placeholder="Escribe tu pregunta…"
               maxLength={500}
               className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-sigeb-blue focus:outline-none focus:ring-2 focus:ring-sigeb-blue/20"
             />

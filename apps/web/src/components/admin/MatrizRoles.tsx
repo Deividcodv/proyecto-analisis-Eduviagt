@@ -157,7 +157,7 @@ export function MatrizRoles() {
           <div key={rol.id} className="flex items-center gap-2">
             <span className="brut-label text-sm font-bold text-brutal-tinta">{rol.nombre}</span>
             <Button onClick={() => guardar(rol.id)} disabled={enviando} className="!px-4 !py-2 text-xs">
-              {enviando ? 'Guardando...' : 'Guardar'}
+              {enviando ? 'Guardando…' : 'Guardar'}
             </Button>
           </div>
         ))}
