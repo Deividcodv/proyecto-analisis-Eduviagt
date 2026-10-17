@@ -103,17 +103,17 @@ def main():
 
     print("\n=== contrast (WCAG AA small text needs >= 4.5) ===")
     pairs = [
+        ("L2 papel on tinta (hoja sobre el recuadro)", "#F5F7FA", "#18233A"),
+        ("L2 tinta on papel (palomita sellada)", "#18233A", "#F5F7FA"),
+        ("L2 oro on tinta (esquina doblada)", "#D4A72C", "#18233A"),
+        ("L2 oro on papel (mitigado por el pliegue tinta)", "#D4A72C", "#F5F7FA"),
         ("white on azul-dark (cover wordmark)", "#FFFFFF", "#0F3D63"),
         ("oro on azul-dark", "#D4A72C", "#0F3D63"),
-        ("oro on tinta", "#D4A72C", "#18233A"),
         ("AZUL_CLARO on tinta (cover subtitle)", "#9FC0DC", "#18233A"),
-        ("GRIS on papel (footer)", "#8C9BB0", "#F5F7FA"),
-        ("MUTED on papel (captions)", "#48586F", "#F5F7FA"),
+        ("MUTED on papel (footer + captions)", "#48586F", "#F5F7FA"),
         ("MUTED on blanco", "#48586F", "#FFFFFF"),
-        ("AZUL on blanco (lockup subtitle)", "#3D8EC7", "#FFFFFF"),
-        ("AZUL_TXT on blanco (fixed subtitle)", "#2E6E9E", "#FFFFFF"),
+        ("AZUL_TXT on blanco (lockup subtitle)", "#2E6E9E", "#FFFFFF"),
         ("AZUL_DARK on blanco", "#0F3D63", "#FFFFFF"),
-        ("ORO on papel (misuse sample)", "#D4A72C", "#F5F7FA"),
         ("tinta on oro", "#18233A", "#D4A72C"),
     ]
     for label, fg, bg in pairs:

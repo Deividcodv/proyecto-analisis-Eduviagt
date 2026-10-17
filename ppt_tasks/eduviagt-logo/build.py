@@ -1,7 +1,9 @@
 """EDUVIAGT brand sheet — builds the editable PPTX + the site SVGs from ONE geometry source.
 
-Direction A: "La Vía" — a bold ascending V (path + approval mark) with a gold arm
-and a gold baseline, on a deep institutional-blue badge.
+Direction L2: "Expediente" — a flat, brutalist mark.
+A sharp document sheet (papel) on a tinta field, with a 90° folded corner (gold)
+and an approval check (tinta) stamped on the sheet.
+No gradients, no rounded outer corners, no effects: 100 % flat, 90° angles.
 """
 from __future__ import annotations
 
@@ -43,39 +45,82 @@ FB = "Segoe UI"      # body fallback (Instrument Sans on the live site)
 
 W, H = 13.333, 7.5
 
-GRAD = (
-    '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
-    f'<stop offset="0" stop-color="{AZUL}"/><stop offset="1" stop-color="{AZUL_DARK}"/>'
-    "</linearGradient></defs>"
-)
-
 
 # ---------------------------------------------------------------- logo geometry
-def icon_body(mode: str = "color", badge: str | None = None, mark: str | None = None,
-              arm: str | None = None, bar: str | None = None) -> str:
-    show_arm = show_bar = True
-    sw = 64
-    if mode == "color":
-        badge = badge or "url(#g)"; mark = mark or BLANCO; arm = arm or ORO; bar = bar or ORO
-    elif mode == "mono_ink":
-        badge = badge or TINTA; mark = BLANCO; arm = BLANCO; bar = BLANCO
-    elif mode == "mono_blanco":
-        badge = badge or BLANCO; mark = TINTA; arm = TINTA; bar = TINTA
-    elif mode == "favicon":            # simplified: bold single V, no gold split, no bar
-        badge = badge or "url(#g)"; mark = mark or BLANCO
-        show_arm = show_bar = False; sw = 86
-    else:                              # "custom"
-        badge = badge or "#7B2FBE"; mark = mark or "#22C55E"; arm = arm or "#F97316"; bar = bar or "#F97316"
+def _geo(fav: bool) -> dict:
+    """Geometry of the sheet. 512 × 512 canvas, sharp corners everywhere."""
+    if fav:
+        # favicon: la hoja crece, sin pliegue ni palomita (a 16 px no se resuelven)
+        return dict(x0=72, y0=48, x1=440, y1=464, cut=112, crease_w=None, check=None)
+    return dict(
+        x0=124, y0=76, x1=396, y1=436, cut=84, crease_w=16,
+        # La palomita deja >= 24 px libres bajo el pliegue: su remate superior
+        # (y ~= 193) no toca la línea del pliegue (y = 168).
+        check=((180, 288), (228, 336), (332, 224), 44),
+    )
 
-    parts = [
-        f'<rect width="512" height="512" rx="116" fill="{badge}"/>',
-        f'<path d="M156 168 L256 356 L356 132" fill="none" stroke="{mark}" '
-        f'stroke-width="{sw}" stroke-linecap="round" stroke-linejoin="round"/>',
-    ]
-    if show_arm:
-        parts.append(f'<path d="M268 329 L356 132" fill="none" stroke="{arm}" stroke-width="64" stroke-linecap="round"/>')
-    if show_bar:
-        parts.append(f'<rect x="150" y="398" width="212" height="26" rx="13" fill="{bar}"/>')
+
+def icon_body(mode: str = "color", badge: str | None = None, page: str | None = None,
+              fold: str | None = None, crease: str | None = None,
+              check: str | None = None, fav: bool = False) -> str:
+    if mode == "favicon":
+        fav = True
+        mode = "color"
+
+    if mode == "color":
+        badge = badge or TINTA
+        page = page or PAPEL
+        fold = fold or ORO
+        crease = crease or TINTA
+        check = check or TINTA
+    elif mode == "mono_ink":            # una tinta + papel (para fondos claros)
+        badge = badge or TINTA
+        page = page or BLANCO
+        fold = fold or BLANCO
+        crease = crease or TINTA
+        check = check or TINTA
+    elif mode == "mono_blanco":         # blanco + tinta (para fondos oscuros)
+        badge = badge or BLANCO
+        page = page or TINTA
+        fold = fold or TINTA
+        crease = crease or BLANCO
+        check = check or BLANCO
+    else:                               # "custom": muestras de mal uso
+        badge = badge or "#7B2FBE"
+        page = page or "#22C55E"
+        fold = fold or "#F97316"
+        crease = crease or "#F97316"
+        check = check or "#F97316"
+
+    g = _geo(fav)
+    x0, y0, x1, y1, cut = g["x0"], g["y0"], g["x1"], g["y1"], g["cut"]
+
+    parts = [f'<rect x="0" y="0" width="512" height="512" fill="{badge}"/>']
+
+    # hoja con la esquina superior derecha cortada en diagonal (90°)
+    parts.append(
+        f'<path d="M{x0} {y0} L{x1 - cut} {y0} L{x1} {y0 + cut} L{x1} {y1} '
+        f'L{x0} {y1} Z" fill="{page}"/>'
+    )
+    # esquina doblada (triángulo oro)
+    parts.append(
+        f'<path d="M{x1 - cut} {y0} L{x1} {y0 + cut} L{x1 - cut} {y0 + cut} Z" '
+        f'fill="{fold}"/>'
+    )
+    # pliegue: separa la esquina doblada de la hoja
+    if g["crease_w"]:
+        parts.append(
+            f'<path d="M{x1 - cut} {y0} L{x1 - cut} {y0 + cut} L{x1} {y0 + cut}" '
+            f'fill="none" stroke="{crease}" stroke-width="{g["crease_w"]}" '
+            f'stroke-linecap="square" stroke-linejoin="miter"/>'
+        )
+    if g["check"]:
+        pts, sw = g["check"][:3], g["check"][3]
+        d = "M" + " L".join(f"{x} {y}" for x, y in pts)
+        parts.append(
+            f'<path d="{d}" fill="none" stroke="{check}" stroke-width="{sw}" '
+            f'stroke-linecap="square" stroke-linejoin="miter"/>'
+        )
     return "".join(parts)
 
 
@@ -83,7 +128,7 @@ def icon_svg(mode: str = "color", wrap: str | None = None, **kw) -> str:
     inner = icon_body(mode, **kw)
     if wrap:
         inner = f'<g transform="{wrap}">{inner}</g>'
-    return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">{GRAD}{inner}</svg>'
+    return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">{inner}</svg>'
 
 
 # ---------------------------------------------------------------- slide helpers
@@ -107,10 +152,11 @@ def titulo(s, txt, sub=None):
 
 
 def pie(s):
+    # MUTED (#48586F) da 6.75:1 sobre papel; GRIS solo serviría sobre fondo oscuro.
     text(s, 0.7, 7.03, 11.9, 0.3, "EDUVIAGT · Rediseño de marca 2026", font_size=9,
-         color=GRIS, font_name=FB, C=C)
+         color=MUTED, font_name=FB, C=C)
     text(s, 11.9, 7.03, 0.73, 0.3, f"{len(s.part.package.presentation.slides):02d}", font_size=9,
-         color=GRIS, align="right", font_name=FB, C=C)
+         color=MUTED, align="right", font_name=FB, C=C)
 
 
 # ---------------------------------------------------------------- 1. cover
@@ -123,7 +169,7 @@ def slide_cover(prs):
     text(s, 5.32, 3.62, 7.4, 0.55, "Sistema Integral de Gestión de Becas", font_size=20,
          color=AZUL_CLARO, font_name=FB, C=C)
     rect(s, 5.35, 4.42, 1.7, 0.06, fill=ORO, C=C)
-    text(s, 5.35, 4.72, 7.4, 0.5, "Rediseño de marca · «La Vía»", font_size=15,
+    text(s, 5.35, 4.72, 7.4, 0.5, "Rediseño de marca · «Expediente»", font_size=15,
          color=AZUL_CLARO, font_name=FB, C=C)
     text(s, 5.35, 6.5, 7.4, 0.5, "Ministerio de Educación · Guatemala", font_size=12.5,
          color=GRIS, font_name=FB, C=C)
@@ -134,23 +180,23 @@ def slide_cover(prs):
 def slide_concept(prs):
     s = add_slide(prs)
     bg(s, PAPEL)
-    titulo(s, "Concepto: «La Vía»", "El camino de la educación que lleva a la beca")
+    titulo(s, "Concepto: «Expediente»", "La hoja que se entrega, se revisa y se aprueba")
     svg_chart(s, icon_svg("color"), x=0.85, y=2.25, w=3.6, h=3.6, C=C)
 
     x = 5.0
-    text(s, x, 2.05, 7.6, 0.5, "La marca es una «V» que asciende.", font_size=20,
+    text(s, x, 2.05, 7.6, 0.5, "La marca es el expediente de una beca.", font_size=20,
          color=AZUL_DARK, bold=True, font_name=FH, C=C)
     text(s, x, 2.75, 7.6, 1.9,
-         "Es la vía —el camino— que cada estudiante recorre desde su comunidad hasta su beca. "
-         "Las dos ramas del trazo forman, a la vez, una marca de aprobación (✓): EDUVIAGT "
-         "convierte una oportunidad en un «sí». El brazo en oro señala la meta y la barra "
-         "inferior marca el punto de partida.",
+         "Es la hoja que cada estudiante entrega y que el sistema revisa: el expediente. "
+         "La esquina doblada señala un caso abierto dentro del proceso; la palomita sellada "
+         "marca la beca aprobada. Todo se construye con bloques planos, esquinas a 90° y "
+         "trazos gruesos —sin degradados ni efectos—, igual que el resto del sistema.",
          font_size=14.5, color=TINTA, font_name=FB, C=C)
 
     chips = [
-        ("Camino que asciende", "La «V» es la vía hacia la beca."),
-        ("Marca de aprobación", "El trazo también lee como ✓."),
-        ("Oro = la meta", "El brazo dorado señala el logro."),
+        ("El expediente", "La hoja que el estudiante entrega."),
+        ("Esquina doblada", "Un caso abierto dentro del sistema."),
+        ("Palomita = aprobado", "El oro marca la beca otorgada."),
     ]
     cx, cy, cw, gap = 5.0, 4.85, 2.38, 0.2
     for i, (t, d) in enumerate(chips):
@@ -181,11 +227,13 @@ def slide_construction(prs):
 
     x = 5.35
     specs = [
-        ("Recuadro", "512 × 512 px · esquinas r = 116 px (0.23×)."),
-        ("Trazo de la «V»", "64 px de ancho (0.125×), extremos redondeados."),
-        ("Vértice", "Centrado en el eje; el brazo derecho asciende por encima del izquierdo."),
-        ("Barra base", "212 × 26 px, centrada, a 116 px del borde inferior."),
-        ("Color", "Degradado #3D8EC7 → #0F3D63; oro #D4A72C en el brazo y la barra."),
+        ("Recuadro", "512 × 512 px · esquinas a 90° (radio 0): sin redondeos."),
+        ("Hoja", "272 × 360 px, a 124 px del borde izquierdo y 76 px del superior."),
+        ("Esquina doblada", "Triángulo rectángulo de 84 × 84 px, arriba a la derecha."),
+        ("Pliegue", "Línea tinta de 16 px que separa la esquina de la hoja."),
+        ("Palomita", "Trazo de 44 px, extremos rectos, a ≥ 24 px del pliegue."),
+        ("Favicon (16 px)", "Hoja más grande (368 × 416 px), sin pliegue ni palomita."),
+        ("Color", "Tinta #18233A, papel #F5F7FA y oro #D4A72C. Cero degradados."),
         ("Resguardo", "Área libre mínima = 0.5× el lado del isotipo."),
     ]
     yy = 2.1
@@ -193,7 +241,7 @@ def slide_construction(prs):
         rect(s, x, yy + 0.06, 0.09, 0.34, fill=ORO, C=C)
         text(s, x + 0.28, yy, 6.6, 0.32, k, font_size=13, color=AZUL_DARK, bold=True, font_name=FH, C=C)
         text(s, x + 0.28, yy + 0.33, 7.0, 0.4, v, font_size=11.5, color=TINTA, font_name=FB, C=C)
-        yy += 0.78
+        yy += 0.62
     return s
 
 
@@ -216,7 +264,7 @@ def slide_variants(prs):
         text(s, x + 0.15, 4.75, tw - 0.3, 0.4, cap, font_size=12, color=tcol, bold=True,
              align="center", font_name=FH, C=C)
     text(s, 0.7, 5.85, 11.9, 0.5,
-         "Mantén siempre el contraste: el oro solo sobre azul/tinta, o texto oscuro sobre el oro.",
+         "Mantén siempre el contraste: el oro solo sobre tinta/azul, o texto oscuro sobre el oro.",
          font_size=12.5, color=MUTED, font_name=FB, C=C)
     return s
 
@@ -305,12 +353,13 @@ def slide_misuse(prs):
     wrong(s, xs[1], 1.9, cw, h1, icon_svg("custom"), "No recolorear fuera de la paleta")
     wrong(s, xs[2], 1.9, cw, h1, icon_svg("color", wrap="rotate(20 256 256)"),
           "No rotar el isotipo")
-    wrong(s, xs[0], 4.55, cw, h1, icon_svg("custom", badge=PAPEL, mark=ORO, arm=ORO, bar=ORO),
+    wrong(s, xs[0], 4.55, cw, h1, icon_svg("custom", badge=PAPEL, page=PAPEL, fold=ORO, crease=ORO, check=ORO),
           "No usar sobre bajo contraste")
     wrong(s, xs[1], 4.55, cw, h1,
           f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">'
-          f'<g transform="translate(26,26)">' + icon_body("mono_ink", badge="#A9B6C8", mark="#E3E9F1", arm="#E3E9F1", bar="#E3E9F1") + "</g>"
-          + icon_body("color") + "</svg>",
+          f'<g transform="translate(26,26)">'
+          + icon_body("mono_ink", badge="#A9B6C8", page="#E3E9F1", fold="#E3E9F1", crease="#A9B6C8", check="#A9B6C8")
+          + "</g>" + icon_body("color") + "</svg>",
           "No añadir sombras o volumen")
     wrong(s, xs[2], 4.55, cw, h1, icon_svg("mono_ink"),
           "No alterar proporciones del logotipo")
@@ -347,7 +396,7 @@ def build():
     marca = (
         '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" '
         'role="img" aria-label="EDUVIAGT — Ministerio de Educación de Guatemala">'
-        + GRAD + icon_body("color") + "</svg>"
+        + icon_body("color") + "</svg>"
     )
     (OUT / "marca.svg").write_text(marca, encoding="utf-8")
 
@@ -355,7 +404,6 @@ def build():
         '<svg xmlns="http://www.w3.org/2000/svg" width="820" height="220" viewBox="0 0 820 220" '
         'role="img" aria-label="EDUVIAGT — Sistema Integral de Gestión de Becas, '
         'Ministerio de Educación de Guatemala">'
-        + GRAD
         + '<g transform="translate(24,28) scale(0.3203)">' + icon_body("color") + "</g>"
         + '<text x="210" y="112" font-family="Archivo Black, Arial Black, sans-serif" font-size="70" '
           'font-weight="900" letter-spacing="1" fill="#0F3D63">EDUVIAGT</text>'
@@ -370,7 +418,7 @@ def build():
     favicon = (
         '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" '
         'role="img" aria-label="EDUVIAGT — Ministerio de Educación de Guatemala">'
-        + GRAD + icon_body("favicon") + "</svg>"
+        + icon_body("favicon") + "</svg>"
     )
     (OUT / "favicon.svg").write_text(favicon, encoding="utf-8")
 

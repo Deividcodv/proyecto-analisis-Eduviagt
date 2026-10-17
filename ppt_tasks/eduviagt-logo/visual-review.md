@@ -90,3 +90,58 @@ All MUST/SHOULD/NICE items PASS — see `acceptance-contract.md`.
 - `logo.svg` renders its wordmark as `<text>`; for a fully self-contained lockup
   the wordmark would need outlining (the site header uses HTML text, so impact
   is low).
+
+---
+
+## Rediseño L2 «Expediente» (segunda dirección, 2026-10)
+
+Se pidió una marca **más brutalista y más relacionada con el sistema**. Se
+descartó «La Vía» (V ascendente con degradado) y se adoptó **«Expediente»**:
+recuadro tinta de esquinas a 90°, hoja papel con la esquina superior derecha
+cortada, triángulo dorado (esquina doblada), pliegue tinta y palomita sellada.
+**Sin degradados**: el PPTX ya no contiene `<a:gradFill>`.
+
+### Ronda 5 — pase completo (VL) → 2 defectos reales
+
+1. **El remate superior de la palomita se solapaba con el pliegue.** El revisor lo
+   describió como «el pliegue pasa muy cerca del inicio de la palomita». Se
+   verificó con `geomcheck.py` (rasteriza cada elemento por separado y mide la
+   distancia mínima en unidades del propio SVG): el tope del remate caía en
+   y≈166 y el pliegue llega a y=168 → **solape confirmado**. Corregido moviendo la
+   palomita: la separación es ahora de **24 px** (≈2 px a 44 px reales).
+2. **El favicon a 16 px era una mancha.** Ni la versión completa ni la
+   simplificada se leían. Corregido: la hoja del favicon crece a 368×416 (72 %
+   del ancho) y se eliminan pliegue y palomita.
+
+El revisor también afirmó que el vértice inferior de la palomita «roza el borde
+inferior de la hoja» y que el triángulo dorado «casi toca el borde del recuadro»:
+`geomcheck.py` mide **84 px** y **76 px** de margen respectivamente → **falsos
+positivos** de precisión espacial (la auditoría programática manda).
+
+### Ronda 6 — re-verificación focalizada (VL) → ambos defectos corregidos
+
+- «En icon-44 e icon-256 el pliegue y la palomita se ven **claramente separados**».
+- «En icon-16-fav se distingue una **forma reconocible** (hoja con esquina
+  cortada); **no es una mancha**».
+- Sin recortes, desalineaciones ni artefactos en la hoja de prueba.
+
+### Contraste del isotipo (verificado en `verify.py`)
+
+| Par | Ratio | Veredicto |
+|---|---|---|
+| papel sobre tinta (hoja sobre el recuadro) | 14,60 | PASS |
+| tinta sobre papel (palomita sellada) | 14,60 | PASS |
+| oro sobre tinta (esquina doblada sobre el recuadro) | 6,99 | PASS |
+| oro sobre papel (esquina sobre la hoja) | 2,09 | **mitigado** por el pliegue tinta de 16 px |
+
+### Evidencia estructural (L2)
+
+- Isotipo → **4 `custGeom`**, **0 raster**, **0 `gradFill`** (100 % plano).
+- `marca.svg`: XML válido, 1 `<rect>` + 4 `<path>`, **0 `<text>`**.
+- Geometría con **fuente única**: `build.py` define la geometría; `raster.py` y
+  `geomcheck.py` la importan (sin copias que se desincronicen).
+- Tamaño real: `raster.py` genera 16/24/32/44/64/96/256 px + la hoja de prueba.
+- **Limitación del entorno:** PowerPoint por COM falla al abrir en esta sesión
+  (`0x80070570`), así que los PNG de las diapositivas no se pudieron regenerar;
+  los antiguos se retiraron de `docs/marca/preview/` para no documentar una marca
+  que ya no existe.

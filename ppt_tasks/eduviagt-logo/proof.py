@@ -5,7 +5,7 @@ from pptx_designer import Presentation, svg_chart
 from pptx_designer.tools.shapes import add_slide, rect
 from pptx_designer.tools.text import text
 
-from build import C, MUTED, PAPEL, TINTA, W, H, icon_svg, GRAD, icon_body
+from build import C, MUTED, PAPEL, TINTA, W, H, icon_svg, icon_body
 
 DPI = 96.0
 
