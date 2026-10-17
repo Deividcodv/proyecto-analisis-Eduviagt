@@ -6,6 +6,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { mensajeDeError } from './mensajes-error';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -14,15 +15,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let message = 'Error interno del servidor';
+    let message = mensajeDeError(status);
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const exceptionResponse = exception.getResponse();
-      message =
+      const crudo =
         typeof exceptionResponse === 'string'
           ? exceptionResponse
-          : (exceptionResponse as { message?: string }).message || exception.message;
+          : (exceptionResponse as { message?: unknown }).message;
+      message = mensajeDeError(status, crudo);
     }
 
     response.status(status).json({

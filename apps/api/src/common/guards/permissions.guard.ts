@@ -25,8 +25,14 @@ export class PermissionsGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
 
-    if (!requiredPermissions || requiredPermissions.length === 0) {
+    if (!requiredPermissions) {
       return true;
+    }
+
+    // Un array vacío NO relaja el acceso: fail-closed, igual que @Roles([]).
+    // (Antes `@Permisos([])` permitía a cualquiera; S-005.)
+    if (requiredPermissions.length === 0) {
+      return false;
     }
 
     const request = context.switchToHttp().getRequest();

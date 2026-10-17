@@ -76,4 +76,19 @@ describe('PermissionsGuard', () => {
       false,
     );
   });
+
+  // S-005: @Permisos([]) debe comportarse igual que @Roles([]) — fail-closed.
+  it('deniega cuando @Permisos([]) está vacío (fail-closed)', async () => {
+    const reflector = {
+      getAllAndOverride: jest.fn().mockReturnValue([]),
+    } as unknown as Reflector;
+
+    const guard = new PermissionsGuard(
+      reflector,
+      mockPermissionService('ALLOW'),
+    );
+    await expect(
+      guard.canActivate(mockExecutionContext({ id: 'user-1' })),
+    ).resolves.toBe(false);
+  });
 });

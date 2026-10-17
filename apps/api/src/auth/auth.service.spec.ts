@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  HttpStatus,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -18,6 +19,8 @@ describe('AuthService (perfil)', () => {
   let config: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let audit: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let intentosLogin: any;
   let service: AuthService;
 
   const usuarioBase = {
@@ -65,9 +68,16 @@ describe('AuthService (perfil)', () => {
       }),
     };
     audit = { log: jest.fn().mockResolvedValue({ id: 'audit-1' }) };
+    intentosLogin = {
+      estado: jest
+        .fn()
+        .mockReturnValue({ bloqueado: false, reintentarEnSegundos: 0 }),
+      registrarFallo: jest.fn(),
+      registrarExito: jest.fn(),
+    };
     (bcrypt.genSalt as unknown as jest.Mock).mockResolvedValue('salt');
     (bcrypt.hash as unknown as jest.Mock).mockResolvedValue('hash-bcrypt');
-    service = new AuthService(prisma, jwt, config, audit);
+    service = new AuthService(prisma, jwt, config, audit, intentosLogin);
   });
 
   describe('getProfile', () => {
@@ -282,6 +292,46 @@ describe('AuthService (perfil)', () => {
       await expect(
         service.login({ email: 'juan@test.com', password: 'Password123!' }),
       ).rejects.toThrow(UnauthorizedException);
+    });
+
+    // S-002: límite de intentos.
+    it('devuelve 429 y no consulta la BD cuando la clave está bloqueada', async () => {
+      intentosLogin.estado.mockReturnValue({
+        bloqueado: true,
+        reintentarEnSegundos: 42,
+      });
+
+      await expect(
+        service.login(
+          { email: 'juan@test.com', password: 'Password123!' },
+          '1.2.3.4',
+        ),
+      ).rejects.toMatchObject({ status: HttpStatus.TOO_MANY_REQUESTS });
+
+      expect(prisma.usuario.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('registra el fallo (clave IP + correo) cuando la contraseña es incorrecta', async () => {
+      (bcrypt.compare as unknown as jest.Mock).mockResolvedValue(false);
+
+      await expect(
+        service.login({ email: 'JUAN@test.com', password: 'mala' }, '1.2.3.4'),
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(intentosLogin.registrarFallo).toHaveBeenCalledWith(
+        '1.2.3.4:juan@test.com',
+      );
+    });
+
+    it('reinicia el contador tras un inicio de sesión correcto', async () => {
+      await service.login(
+        { email: 'juan@test.com', password: 'Password123!' },
+        '1.2.3.4',
+      );
+
+      expect(intentosLogin.registrarExito).toHaveBeenCalledWith(
+        '1.2.3.4:juan@test.com',
+      );
     });
   });
 });

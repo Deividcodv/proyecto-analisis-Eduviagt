@@ -3,6 +3,9 @@ import {
   ConflictException,
   UnauthorizedException,
   NotFoundException,
+  HttpException,
+  HttpStatus,
+  Optional,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -12,6 +15,9 @@ import { AuditService } from '../audit/audit.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { UpdatePerfilDto } from './dto/update-perfil.dto';
+import {
+  LoginAttemptService,
+} from './login-attempt.service';
 
 @Injectable()
 export class AuthService {
@@ -20,6 +26,8 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private audit: AuditService,
+    @Optional()
+    private readonly intentosLogin: LoginAttemptService = new LoginAttemptService(),
   ) {}
 
   async register(dto: RegisterDto) {
@@ -90,6 +98,17 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, ip?: string) {
+    // S-002: la clave combina la IP y el correo para limitar los intentos.
+    const clave = `${ip ?? 'sin-ip'}:${dto.email.trim().toLowerCase()}`;
+
+    const bloqueo = this.intentosLogin.estado(clave);
+    if (bloqueo.bloqueado) {
+      throw new HttpException(
+        `Demasiados intentos fallidos. Intenta de nuevo en ${bloqueo.reintentarEnSegundos} segundos.`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     const user = await this.prisma.usuario.findFirst({
       where: {
         email: { equals: dto.email.trim().toLowerCase(), mode: 'insensitive' },
@@ -98,6 +117,7 @@ export class AuthService {
     });
 
     if (!user) {
+      this.intentosLogin.registrarFallo(clave);
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
@@ -108,8 +128,11 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
 
     if (!isPasswordValid) {
+      this.intentosLogin.registrarFallo(clave);
       throw new UnauthorizedException('Credenciales inválidas');
     }
+
+    this.intentosLogin.registrarExito(clave);
 
     const tokens = await this.generateTokens(user.id, user.email);
 
