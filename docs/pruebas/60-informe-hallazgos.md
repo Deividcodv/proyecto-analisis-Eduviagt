@@ -96,10 +96,10 @@ revisarlas con el equipo.
 | A-001 | Grave | Texto dorado `#D4A72C` sobre fondo claro: 2,08–2,24:1 (mínimo 4,5:1) en portada y soporte | **Corregido**: nuevo token `brutal-gold-dark` `#7A5F17` (≥5,6:1 sobre blanco/papel) usado solo para texto sobre fondo claro |
 | A-002 | Grave | Párrafo secundario `text-brutal-tinta/60` (`#747B89`, 4,25:1) en portada | **Corregido**: subida la opacidad a `/80` (8,2:1) |
 | A-003 | Grave | Enlace dentro del bloque dorado (3,14:1) | **Corregido**: opacidad a `/80` (4,8:1) |
-| A-004 | Media | El escaneo axe solo cubre páginas públicas | **Sugerencia**: ampliarlo a las páginas con sesión (panel, admin, reportes, evaluador, comité) |
+| A-004 | Media | El escaneo axe solo cubre páginas públicas | **Corregido**: el escaneo ahora cubre 6 páginas con sesión (admin: convocatorias, solicitudes, comités, sesiones, seguridad y perfil). Encontró **4 clases de violaciones reales**, todas corregidas: contraste del contador rojo de la campana (3,64:1 → 5,05:1), nombre accesible de la campana sin el número visible, etiquetas **desasociadas** en `Input`/`Select` sin `name` (causa raíz en los componentes compartidos) y `select`/`input` sin nombre accesible. Resultado: **18/18 en verde** |
 
-Después de la corrección, **axe no reporta ninguna violación grave en las 12
-páginas** (ver §6).
+Después de la corrección, **axe no reporta ninguna violación grave en las 18
+páginas** (12 públicas + 6 con sesión) (ver §6).
 
 ## 5. Bugs abiertos (no corregidos) y por qué
 
@@ -118,15 +118,15 @@ páginas** (ver §6).
 
 | ID | Sev. | Sugerencia |
 |---|---|---|
-| S-002 | Media | `login` sin límite de intentos → añadir rate limiting / bloqueo |
+| S-002 | Media | `login` sin límite de intentos → añadir rate limiting / bloqueo · **Hecho**: `LoginAttemptService` en memoria (5 intentos / 15 min → 429) |
 | S-004 | Media | `register` devuelve `rol` como texto y `getProfile` como objeto: unificar forma |
-| S-005 | Media | `@Roles([])` deniega a todos pero `@Permisos([])` permite a todos: unificar |
-| S-007 | Media | El filtro de excepciones propaga mensajes de Nest **en inglés** |
-| S-010 | Alta | Sin `coverageThreshold` → la CI nunca falla por cobertura |
+| S-005 | Media | `@Roles([])` deniega a todos pero `@Permisos([])` permite a todos: unificar · **Hecho**: `PermissionsGuard` ya deniega con lista vacía (fail-closed) |
+| S-007 | Media | El filtro de excepciones propaga mensajes de Nest **en inglés** · **Hecho**: `mensajes-error.ts` traduce los mensajes al español |
+| S-010 | Alta | Sin `coverageThreshold` → la CI nunca falla por cobertura · **Hecho**: umbral fijado en la cobertura actual (49/40/48/49) |
 | S-011 | Media | Controllers de `solicitudes`, `users` y `convocatorias` sin unit tests |
 | S-015 | Media | Añadir E2E a la CI con base de datos efímera (resuelve F-002) |
 | S-016 | Media | Que el seed incluya al menos una convocatoria `ABIERTA` |
-| A-004 | Media | Ampliar el escaneo axe a las páginas con sesión |
+| A-004 | Media | Ampliar el escaneo axe a las páginas con sesión · **Hecho**: 6 páginas con sesión, 18/18 en verde |
 
 Sugerencias menores (S-001, S-003, S-006, S-008, S-009, S-013, S-014, S-017,
 S-018) están detalladas en `10-caja-blanca.md`, `20-funcional-api.md` y
@@ -156,3 +156,12 @@ a05dd4f  baseline (F-001..F-005)
 
 Los Tasks 5, 6 y 7 añaden los informes `40-contenido.md`, `50-a11y-visual.md` y
 este `60-informe-hallazgos.md`, más las correcciones de contenido y de contraste.
+
+## 9. Limpieza del repositorio (Task 8)
+
+- Se versiona `apps/api/package.json` con `supertest` y `@types/supertest`
+  (faltaban en el commit del arnés E2E; sin ellos, un clon limpio no instala las
+  dependencias que la suite E2E importa).
+- Se añaden a `.gitignore`: `apps/web/e2e/__screenshots__/` (capturas que se
+  regeneran en cada corrida y dependen de datos vivos) y
+  `apps/api/test/.tmp-storage/` (PDFs temporales del arnés E2E).

@@ -55,6 +55,58 @@ test.describe('Accesibilidad WCAG AA (axe)', () => {
   }
 });
 
+/**
+ * A-004: las páginas internas (con sesión iniciada) también se auditan con axe.
+ * Antes, la auditoría automática solo cubría las páginas públicas.
+ */
+const PAGINAS_INTERNAS = [
+  { ruta: '/admin/convocatorias', nombre: 'admin-convocatorias' },
+  { ruta: '/admin/solicitudes', nombre: 'admin-solicitudes' },
+  { ruta: '/admin/comites', nombre: 'admin-comites' },
+  { ruta: '/admin/sesiones', nombre: 'admin-sesiones' },
+  { ruta: '/admin/seguridad', nombre: 'admin-seguridad' },
+  { ruta: '/perfil', nombre: 'perfil' },
+];
+
+test.describe('Accesibilidad WCAG AA en páginas internas (axe)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/login');
+    await page.getByLabel('Correo electrónico').fill('admin@sigeb.gov.gt');
+    await page.getByLabel('Contraseña').fill('Admin123!');
+    await page.getByRole('button', { name: 'Ingresar' }).click();
+    await expect(page).toHaveURL(/\/admin\/convocatorias$/);
+  });
+
+  for (const pagina of PAGINAS_INTERNAS) {
+    test(`${pagina.nombre}: sin violaciones graves`, async ({ page }) => {
+      await page.goto(pagina.ruta);
+      await page.waitForLoadState('networkidle');
+
+      const resultado = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+        .analyze();
+
+      if (resultado.violations.length > 0) {
+        console.log(`\n[A11Y ${pagina.nombre}] ${resultado.violations.length} violación(es):`);
+        for (const v of resultado.violations) {
+          console.log(`  · [${v.impact}] ${v.id} — ${v.help} (${v.nodes.length} nodo/s)`);
+          for (const nodo of v.nodes.slice(0, 6)) {
+            console.log(`      target: ${nodo.target.join(' ')}`);
+            console.log(`      html:   ${nodo.html.replace(/\s+/g, ' ').slice(0, 160)}`);
+            console.log(`      why:    ${(nodo.failureSummary ?? '').replace(/\n/g, ' | ')}`);
+          }
+        }
+      }
+
+      const graves = resultado.violations
+        .filter((v) => v.impact === 'serious' || v.impact === 'critical')
+        .map((v) => `${v.id} (${v.nodes.length})`);
+
+      expect(graves, `Violaciones graves en ${pagina.nombre}`).toEqual([]);
+    });
+  }
+});
+
 test.describe('Accesibilidad de formularios y foco', () => {
   test('los campos del registro tienen etiqueta asociada', async ({ page }) => {
     await page.goto('/registro');

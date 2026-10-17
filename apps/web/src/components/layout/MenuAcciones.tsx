@@ -38,7 +38,7 @@ export function MenuAcciones() {
         onClick={() => setAbierto((v) => !v)}
         aria-expanded={abierto}
         aria-haspopup="menu"
-        className="flex items-center gap-2 rounded-brutal border-2 border-brutal-cyan bg-brutal-cyan px-3 py-1.5 font-brut text-xs font-black uppercase tracking-wide text-brutal-tinta transition-colors hover:-translate-y-0.5 hover:bg-brutal-papel"
+        className="flex items-center gap-2 rounded-brutal border-2 border-brutal-papel bg-transparent px-3 py-1.5 font-brut text-xs font-black uppercase tracking-wide text-brutal-papel transition-colors hover:border-brutal-gold hover:bg-brutal-gold hover:text-brutal-tinta"
       >
         <Icon name="panel" className="h-4 w-4" />
         Acciones

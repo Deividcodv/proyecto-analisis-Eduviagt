@@ -136,6 +136,7 @@ export function MatrizRoles() {
                             onChange={(e) =>
                               togglePermiso(rol.id, permiso.id, e.target.checked)
                             }
+                            aria-label={`${permiso.accion} para el rol ${rol.nombre}`}
                             className="h-5 w-5 accent-brutal-tinta"
                           />
                         </td>

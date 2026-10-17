@@ -1,4 +1,4 @@
-import { forwardRef } from 'react';
+import { forwardRef, useId } from 'react';
 import type { SelectHTMLAttributes } from 'react';
 
 interface SelectOption {
@@ -17,7 +17,10 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     { label, options, placeholder = 'Seleccionar...', className = '', id, ...rest },
     ref,
   ) {
-    const selectId = id ?? rest.name;
+    // Sin `id` ni `name`, la etiqueta quedaría desasociada del select:
+    // se genera un id estable para que `htmlFor` siempre apunte al control.
+    const autoId = useId();
+    const selectId = id ?? rest.name ?? autoId;
 
     return (
       <div className="w-full">

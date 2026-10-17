@@ -24,7 +24,7 @@ module.exports = {
           papel: '#F5F7FA', // blanco institucional frío — transparencia documental
           blanco: '#FFFFFF',
           cian: '#3D8EC7', // azul celeste bandera (acentos)
-          rojo: '#E5484D', // error
+          rojo: '#C0392B', // error — oscurecido: AA 5.05:1 con texto papel/blanco encima
           naranja: '#F06C1F', // warning
           lima: '#4CAF6D', // éxito / educación
           rosa: '#E8669C',

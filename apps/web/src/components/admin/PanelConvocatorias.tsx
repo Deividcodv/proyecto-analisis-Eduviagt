@@ -110,6 +110,7 @@ export function PanelConvocatorias() {
                         setAcciones((a) => ({ ...a, [convocatoria.id]: e.target.value }))
                       }
                       options={opciones}
+                      aria-label={`Acción para ${convocatoria.nombre}`}
                       className="w-52"
                     />
                     <Button

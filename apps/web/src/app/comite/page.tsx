@@ -19,7 +19,7 @@ type OpcionVoto = (typeof VOTO_OPCIONES)[number];
 
 const estiloVoto: Record<OpcionVoto, string> = {
   APROBAR: 'border-brutal-tinta bg-brutal-lima text-brutal-tinta',
-  RECHAZAR: 'border-brutal-tinta bg-brutal-rojo text-brutal-tinta',
+  RECHAZAR: 'border-brutal-tinta bg-brutal-rojo text-brutal-papel',
   ABSTENCION: 'border-brutal-tinta bg-gray-300 text-brutal-tinta',
 };
 

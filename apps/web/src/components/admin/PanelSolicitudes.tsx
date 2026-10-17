@@ -195,6 +195,7 @@ export function PanelSolicitudes() {
             { value: 'RECHAZADA', label: 'Rechazadas' },
             { value: '', label: 'Todas' },
           ]}
+          aria-label="Filtrar por estado"
           className="w-56"
         />
       </div>

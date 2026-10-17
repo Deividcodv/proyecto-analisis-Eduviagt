@@ -92,7 +92,9 @@ o aclarar el fondo del bloque.
 ## 4. Capturas (evidencia)
 
 Guardadas en `apps/web/e2e/__screenshots__/` (escritorio 1280px y móvil 375px):
-portada, convocatorias, registro, login, consulta y ayuda.
+portada, convocatorias, registro, login, consulta y ayuda. Ese directorio está
+**ignorado por git** (se regenera en cada corrida y su contenido depende de los
+datos vivos); las capturas quedan como evidencia local.
 
 > **Limitación honesta:** el modelo que ejecutó este task **no puede ver imágenes**,
 > así que la revisión "a ojo" de las capturas queda para una persona. Lo que sí es
@@ -101,8 +103,19 @@ portada, convocatorias, registro, login, consulta y ayuda.
 
 ## 5. Siguientes pasos
 
-- **Task 7:** corregir A-001..A-003 (idealmente con un tono de dorado "de texto"
-  reutilizable) y volver `a11y.spec.ts` a verde.
-- **Sugerencia A-004:** ampliar el escaneo de axe a las páginas con sesión
-  (panel, admin, reportes, evaluador, comité) cuando se disponga de datos de prueba
-  sembrados, para atajar el mismo patrón de contraste.
+- **A-001..A-003:** corregidos (token `brutal-gold-dark` y opacidades); `a11y.spec.ts`
+  volvió a verde.
+- **A-004 — hecho:** el escaneo de axe cubre ahora **6 páginas con sesión**
+  (admin: convocatorias, solicitudes, comités, sesiones, seguridad y perfil), con
+  inicio de sesión por UI. Encontró **4 clases de violaciones reales**, ya corregidas:
+  1. **Contraste del contador de la campana** (papel sobre `#E5484D`, 3,64:1): el
+     token `brutal-rojo` pasó a `#C0392B` (5,05:1) y se ajustaron las insignias
+     rojas y la translúcida `tinta/60` (4,47:1 → 11,2:1).
+  2. **Nombre accesible de la campana**: el `aria-label` no incluía el número
+     visible del contador (`label-content-name-mismatch`).
+  3. **Etiquetas desasociadas** en `Input`/`Select` cuando no se pasa `id` ni
+     `name` (causa raíz en los componentes compartidos): ahora se genera un id
+     estable con `useId()`, más `aria-invalid`/`aria-describedby` en los errores.
+  4. **`select`/`input` sin nombre accesible** en la matriz de roles, los paneles
+     de administración y los filtros.
+  Resultado: **18/18 en verde** (12 públicas + 6 con sesión).
