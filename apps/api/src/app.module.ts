@@ -14,6 +14,7 @@ import { SesionesModule } from './sesiones/sesiones.module';
 import { ReportesModule } from './reportes/reportes.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { AuditModule } from './audit/audit.module';
+import { BitacoraModule } from './bitacora/bitacora.module';
 import { AsistenteModule } from './asistente/asistente.module';
 
 @Module({
@@ -35,6 +36,7 @@ import { AsistenteModule } from './asistente/asistente.module';
     ReportesModule,
     NotificacionesModule,
     AuditModule,
+    BitacoraModule,
     AsistenteModule,
   ],
   controllers: [],

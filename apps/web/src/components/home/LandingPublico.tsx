@@ -12,7 +12,7 @@ const ESTADISTICAS = [
 ];
 
 const REQUISITOS = [
-  'Ser guatemalteco(a) de nacimiento o naturalizado',
+  'Ser guatemalteco o guatemalteca de nacimiento o naturalizado',
   'Cumplir el rango de edad establecido por el programa',
   'Promedio mínimo de 80 puntos en los últimos estudios',
   'No contar con otra beca financiada por el Estado',
@@ -34,15 +34,15 @@ export function LandingPublico() {
       <section className="brut-cinta border-b-[3px] border-brutal-tinta bg-brutal-tinta py-24 text-brutal-papel">
         <Container className="text-left">
           <p className="brut-label mb-4 inline-block rounded-brutal border-2 border-brutal-gold bg-brutal-gold px-3 py-1 text-xs font-bold text-brutal-tinta">
-            ⬢ Ministerio de Educación · Guatemala
+            ⬢ Prototipo académico · Guatemala
           </p>
           <h1 className="text-mega max-w-4xl font-black text-5xl md:text-7xl">
             Oportunidades que transforman vidas
           </h1>
           <p className="mt-6 max-w-2xl font-mono text-base text-brutal-papel/80 md:text-lg">
-            Encuentra programas de becas del Ministerio de Educación de Guatemala
+            Encuentra programas de becas del sistema EDUVIAGT
             y realiza tu proceso de postulación de forma sencilla, segura y
-            transparente. Todo tu expediente, un solo lugar.
+            transparente. Toda tu postulación, un solo lugar.
           </p>
           <div className="mt-10 flex flex-col gap-4 sm:flex-row">
             <Button href="/convocatorias">Explorar becas</Button>
@@ -53,7 +53,7 @@ export function LandingPublico() {
           <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-brutal-papel/70">
             <span>● Proceso 100 % digital</span>
             <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-brutal-gold" />
-            <span>● Seguimiento auditable</span>
+            <span>● Seguimiento claro</span>
             <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-brutal-gold" />
             <span>● Gratuito</span>
           </div>
@@ -98,13 +98,13 @@ export function LandingPublico() {
       {/* Misión / Visión */}
       <section className="border-b-[3px] border-brutal-tinta bg-brutal-blanco py-16">
         <Container>
-          <p className="brut-label text-xs font-bold text-brutal-gold">// Institucional</p>
+          <p className="brut-label text-xs font-bold text-brutal-gold-dark">// Institucional</p>
           <h2 className="text-mega mb-10 text-3xl font-black text-brutal-tinta md:text-5xl">
             Misión y visión
           </h2>
           <div className="grid gap-6 lg:grid-cols-[1fr_1fr_auto] lg:items-stretch">
             <div className="rounded-brutal border-[3px] border-brutal-tinta border-t-[10px] border-t-brutal-gold bg-brutal-papel p-6 shadow-brutal-sm">
-              <p className="brut-label mb-3 font-mono text-xs font-bold text-brutal-gold">
+              <p className="brut-label mb-3 font-mono text-xs font-bold text-brutal-gold-dark">
                 // Misión
               </p>
               <p className="text-sm leading-relaxed text-brutal-tinta/80">
@@ -141,7 +141,7 @@ export function LandingPublico() {
             <h2 className="text-mega text-3xl font-black md:text-5xl">Transparencia total</h2>
             <p className="mt-4 font-mono text-base text-brutal-papel/80">
               EDUVIAGT es la plataforma para la gestión integral de programas de
-              becas del Ministerio de Educación de Guatemala. Cada paso queda
+              becas del sistema EDUVIAGT. Cada paso queda
               documentado y auditable.
             </p>
             <div className="mt-10 grid gap-6 md:grid-cols-3">
@@ -179,7 +179,7 @@ export function LandingPublico() {
               { numero: '02', titulo: 'POSTÚLATE', texto: 'Selecciona una convocatoria' },
               { numero: '03', titulo: 'DOCUMENTA', texto: 'Carga los requisitos' },
               { numero: '04', titulo: 'EVALUACIÓN', texto: 'Tu solicitud es evaluada' },
-              { numero: '05', titulo: 'COMITÉ', texto: 'Se revisa tu expediente' },
+              { numero: '05', titulo: 'COMITÉ', texto: 'Se revisa tu postulación' },
               { numero: '06', titulo: 'RESULTADO', texto: 'Consulta tu resolución' },
             ].map((paso) => (
               <div
@@ -222,7 +222,7 @@ export function LandingPublico() {
               </ul>
             </div>
             <div>
-              <p className="brut-label text-xs font-bold text-brutal-gold">// Documentos</p>
+              <p className="brut-label text-xs font-bold text-brutal-gold-dark">// Documentos</p>
               <h2 className="text-mega mb-8 text-3xl font-black text-brutal-tinta md:text-5xl">
                 Documentación
               </h2>
@@ -236,7 +236,7 @@ export function LandingPublico() {
                   </span>
                 ))}
               </div>
-              <p className="mt-6 max-w-xl font-mono text-sm leading-relaxed text-brutal-tinta/60">
+              <p className="mt-6 max-w-xl font-mono text-sm leading-relaxed text-brutal-tinta/80">
                 La lista exacta de documentos se define para cada convocatoria.
                 Revisa los detalles del programa antes de postularte.
               </p>
@@ -262,7 +262,7 @@ export function LandingPublico() {
                 Acceso al sistema
               </Button>
             </div>
-            <p className="font-mono text-[11px] font-bold uppercase tracking-wide text-brutal-tinta/60">
+            <p className="font-mono text-[11px] font-bold uppercase tracking-wide text-brutal-tinta/80">
               <Link href="/consulta" className="underline decoration-brutal-tinta underline-offset-4 hover:bg-brutal-tinta/10">
                 ¿Ya te postulaste? Consulta tu solicitud por código →
               </Link>

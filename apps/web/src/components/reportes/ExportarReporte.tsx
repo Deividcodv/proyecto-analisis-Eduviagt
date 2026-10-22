@@ -48,7 +48,7 @@ export function ExportarReporte() {
         const data = await res.json().catch(() => null);
         const msj =
           (data as { message?: string } | null)?.message ??
-          `La API respondió con estado ${res.status}`;
+          `No pudimos completar la solicitud. Intenta de nuevo.`;
         throw new Error(Array.isArray(msj) ? msj.join(', ') : msj);
       }
 

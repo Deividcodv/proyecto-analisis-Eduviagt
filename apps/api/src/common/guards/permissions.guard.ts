@@ -1,6 +1,12 @@
-import { Injectable, CanActivate, ExecutionContext, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  Inject,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ForbiddenException } from '@nestjs/common';
 import {
   PERMISSION_SERVICE,
   IPermissionService,
@@ -25,15 +31,21 @@ export class PermissionsGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
 
-    if (!requiredPermissions || requiredPermissions.length === 0) {
+    if (!requiredPermissions) {
       return true;
+    }
+
+    // Un array vacío NO relaja el acceso: fail-closed, igual que @Roles([]).
+    // (Antes `@Permisos([])` permitía a cualquiera; S-005.)
+    if (requiredPermissions.length === 0) {
+      return false;
     }
 
     const request = context.switchToHttp().getRequest();
     const user = request.user as UsuarioConId | undefined;
 
     if (!user?.id) {
-      return false;
+      throw new UnauthorizedException('Debes iniciar sesión');
     }
 
     for (const permiso of requiredPermissions) {

@@ -8,7 +8,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
-import { CreateSolicitudDto, TransicionSolicitudDto, SolicitarCorreccionDto } from './dto';
+import { CreateSolicitudDto, TransicionSolicitudDto, SolicitarCorreccionDto, OverrideMontoDto } from './dto';
 import { PerfilAcademicoDto, PerfilFinancieroDto, GuardarRespuestasDto } from './dto';
 import { SolicitudStateMachine, SolicitudEstado } from './solicitud-state-machine';
 import { AuthzService } from '../common/services/authz.service';
@@ -16,6 +16,8 @@ import { SolicitudPerfilService } from './solicitud-perfil.service';
 import { SolicitudDocumentoService } from './solicitud-documento.service';
 import { SolicitudChecklistService } from './solicitud-checklist.service';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
+import { MontosService } from './montos.service';
+import { BitacoraService } from '../bitacora/bitacora.service';
 import {
   SOLICITUD_ESTADO,
   CONVOCATORIA_ESTADO,
@@ -32,6 +34,8 @@ export class SolicitudesService {
     private readonly documentos: SolicitudDocumentoService,
     private readonly checklist: SolicitudChecklistService,
     private readonly notificaciones: NotificacionesService,
+    private readonly montos: MontosService,
+    private readonly bitacora: BitacoraService,
   ) {}
 
   async create(usuarioId: string, dto: CreateSolicitudDto) {
@@ -48,6 +52,20 @@ export class SolicitudesService {
     if (convocatoria.estado !== CONVOCATORIA_ESTADO.ABIERTA) {
       throw new BadRequestException(
         'La convocatoria no está abierta para postulaciones',
+      );
+    }
+
+    // El estado por sí solo no basta: una convocatoria ABIERTA puede tener la
+    // fecha de cierre ya vencida y seguía aceptando postulaciones.
+    const ahora = new Date();
+    if (convocatoria.fechaApertura && ahora < convocatoria.fechaApertura) {
+      throw new BadRequestException(
+        'La convocatoria todavía no está abierta para postulaciones',
+      );
+    }
+    if (convocatoria.fechaCierre && ahora > convocatoria.fechaCierre) {
+      throw new BadRequestException(
+        'La convocatoria ya cerró. No se aceptan nuevas postulaciones.',
       );
     }
 
@@ -172,7 +190,11 @@ export class SolicitudesService {
   ) {
     const solicitud = await this.prisma.solicitud.findUnique({
       where: { id },
-      include: { convocatoria: { include: { beca: true } } },
+      include: {
+        convocatoria: { include: { beca: true } },
+        perfilFinanciero: true,
+        aprobaciones: { orderBy: { createdAt: 'asc' } },
+      },
     });
 
     if (!solicitud) {
@@ -181,14 +203,33 @@ export class SolicitudesService {
 
     const esAccionPostulante =
       dto.accion === 'enviar' || dto.accion === 'corregir';
+    const esSegundaInstancia =
+      dto.accion === 'aprobar_segunda' || dto.accion === 'devolver_a_revision';
 
     if (esAccionPostulante) {
       if (solicitud.usuarioId !== usuario.id) {
         throw new ForbiddenException('No tienes acceso a esta solicitud');
       }
-    } else if (!this.authz.esAdmin(usuario)) {
+    } else if (esSegundaInstancia) {
+      // La segunda firma nunca puede ser la misma persona de la primera.
+      const primerAprobador = solicitud.aprobaciones.find(
+        (a) => a.nivel === 1,
+      );
+      this.authz.assertSegundaAprobacion(usuario, primerAprobador?.usuarioId);
+    } else if (!this.authz.esPersonal(usuario)) {
       throw new ForbiddenException(
         'No tienes permisos para esta transición',
+      );
+    }
+
+    // Rechazar o devolver a revisión exige dejar el motivo escrito: es la
+    // información que el postulante recibe para saber qué corregir.
+    if (
+      (dto.accion === 'rechazar' || dto.accion === 'devolver_a_revision') &&
+      !dto.comentario?.trim()
+    ) {
+      throw new BadRequestException(
+        'Escribe el motivo de la decisión: el postulante lo necesita para saber qué hacer',
       );
     }
 
@@ -205,10 +246,37 @@ export class SolicitudesService {
       await this.assertEvaluadoresMinimos(id);
     }
 
+    if (dto.accion === 'solicitar_correccion') {
+      this.assertCorreccionesDisponibles(
+        solicitud.correccionesCount,
+        solicitud.convocatoria?.maxCorrecciones,
+      );
+    }
+
+    // El monto se calcula al evaluar, que es cuando la solicitud ya tiene
+    // perfil financiero y se puede decidir cuánto se otorgará.
+    if (dto.accion === 'evaluar') {
+      await this.calcularMonto(id, solicitud, usuario);
+    }
+
+    // Segunda aprobación: si el monto supera el umbral, la primera firma
+    // deja la solicitud pendiente de una segunda, feita por otra persona.
+    let accion = dto.accion;
+    if (dto.accion === 'aprobar') {
+      const monto = solicitud.montoOtorgable;
+      if (this.montos.requiereSegundaAprobacion(monto)) {
+        accion = 'solicitar_segunda_aprobacion';
+      }
+    }
+
     const siguienteEstado = SolicitudStateMachine.next(
       solicitud.estado as SolicitudEstado,
-      dto.accion,
+      accion,
     );
+
+    // Nivel de aprobación: la segunda instancia es la que se ejecuta desde
+    // PENDIENTE_SEGUNDA_APROBACION.
+    const nivelAprobacion = esSegundaInstancia ? 2 : 1;
 
     const actualizada = await this.prisma.$transaction(async (tx) => {
       const upd = await tx.solicitud.update({
@@ -217,6 +285,10 @@ export class SolicitudesService {
           estado: siguienteEstado,
           ...(siguienteEstado === SOLICITUD_ESTADO.BORRADOR
             ? { correccionesCount: { increment: 1 } }
+            : {}),
+          ...(siguienteEstado === SOLICITUD_ESTADO.APROBADA &&
+          solicitud.montoOtorgable !== null
+            ? { montoAprobado: solicitud.montoOtorgable }
             : {}),
         },
       });
@@ -227,8 +299,27 @@ export class SolicitudesService {
           estado: siguienteEstado,
           comentario: dto.comentario ?? null,
           usuarioId: usuario.id,
+          // Se registra la acción EFECTIVA: si el monto superó el umbral,
+          // lo que ocurrió fue "solicitar segunda aprobación", no "aprobar".
+          accion,
+          resultado: 'EXITOSO',
         },
       });
+
+      // Trazabilidad de las dos instancias de aprobación (Sprint 8).
+      if (this.esAccionDeAprobacion(accion)) {
+        await tx.solicitudAprobacion.create({
+          data: {
+            solicitudId: id,
+            usuarioId: usuario.id,
+            rolNombre: usuario.rol?.nombre ?? 'SIN_ROL',
+            nivel: nivelAprobacion,
+            accion,
+            resultado: this.resultadoDeAprobacion(siguienteEstado),
+            comentario: dto.comentario ?? null,
+          },
+        });
+      }
 
       await this.audit.log(
         {
@@ -236,7 +327,37 @@ export class SolicitudesService {
           accion: 'transicion',
           entidad: 'solicitud',
           entidadId: id,
-          detalle: { accion: dto.accion, estado: siguienteEstado },
+          detalle: { accion, estado: siguienteEstado },
+        },
+        tx,
+      );
+
+      await this.bitacora.registrar(
+        {
+          actor: {
+            id: usuario.id,
+            nombre: usuario.nombres,
+            rol: usuario.rol?.nombre ?? 'SIN_ROL',
+            correo: usuario.email,
+          },
+          modulo: 'solicitud',
+          entidad: 'solicitud',
+          entidadId: id,
+          accionClave: `solicitud.${accion}`,
+          accionHumana: this.accionHumana(accion, solicitud.convocatoria),
+          descripcionHumana:
+            dto.comentario?.trim() ||
+            `La solicitud pasó de ${solicitud.estado} a ${siguienteEstado}.`,
+          camposClave: { estadoAnterior: solicitud.estado, estadoNuevo: siguienteEstado },
+          datosRelevantes: {
+            montoOtorgable: solicitud.montoOtorgable?.toString() ?? null,
+            montoAprobado:
+              siguienteEstado === SOLICITUD_ESTADO.APROBADA
+                ? (solicitud.montoOtorgable?.toString() ?? null)
+                : null,
+          },
+          resultado: 'EXITOSO',
+          origen: 'WEB',
         },
         tx,
       );
@@ -244,14 +365,201 @@ export class SolicitudesService {
       return upd;
     });
 
-    await this.notificarTransicion(dto, solicitud);
+    await this.notificarTransicion(
+      { ...dto, accion },
+      {
+        id,
+        usuarioId: solicitud.usuarioId,
+        convocatoria: solicitud.convocatoria,
+      },
+    );
 
     return actualizada;
   }
 
+  /** ¿La transición es una de las dos instancias de aprobación? */
+  private esAccionDeAprobacion(accion: string): boolean {
+    return [
+      'aprobar',
+      'solicitar_segunda_aprobacion',
+      'aprobar_segunda',
+      'rechazar',
+      'devolver_a_revision',
+    ].includes(accion);
+  }
+
+  private resultadoDeAprobacion(estado: string): string {
+    switch (estado) {
+      case 'APROBADA':
+        return 'APROBADA';
+      case 'RECHAZADA':
+        return 'RECHAZADA';
+      case 'EN_REVISION':
+        return 'DEVUELTA_A_REVISION';
+      case 'PENDIENTE_SEGUNDA_APROBACION':
+        return 'PENDIENTE_SEGUNDA_APROBACION';
+      default:
+        return 'EXITOSO';
+    }
+  }
+
+  private accionHumana(
+    accion: string,
+    convocatoria?: { beca: { nombre: string } } | null,
+  ): string {
+    const beca = convocatoria?.beca?.nombre ?? 'la beca';
+    switch (accion) {
+      case 'enviar':
+        return `Envió su solicitud a "${beca}"`;
+      case 'corregir':
+        return `Reenvió su solicitud corregida a "${beca}"`;
+      case 'iniciar_revision':
+        return `Inició la revisión de la solicitud de "${beca}"`;
+      case 'solicitar_correccion':
+        return `Solicitó correcciones en la solicitud de "${beca}"`;
+      case 'evaluar':
+        return `Marcó como evaluada la solicitud de "${beca}"`;
+      case 'aprobar':
+        return `Aprobó en primera instancia la solicitud de "${beca}"`;
+      case 'solicitar_segunda_aprobacion':
+        return `Envió la solicitud de "${beca}" a segunda aprobación`;
+      case 'aprobar_segunda':
+        return `Aprobó en segunda instancia la solicitud de "${beca}"`;
+      case 'rechazar':
+        return `Rechazó la solicitud de "${beca}"`;
+      case 'devolver_a_revision':
+        return `Devolvió a revisión la solicitud de "${beca}"`;
+      default:
+        return `Realizó "${accion}" sobre la solicitud de "${beca}"`;
+    }
+  }
+
+  /**
+   * Calcula y guarda el monto otorgable de la solicitud (Sprint 8 - US-801).
+   */
+  private async calcularMonto(
+    id: string,
+    solicitud: {
+      id: string;
+      convocatoriaId: string;
+      perfilFinanciero?: { ingresoFamiliar?: number | null } | null;
+    },
+    usuario: AuthenticatedUser,
+  ): Promise<void> {
+    const resultado = await this.montos.calcular(
+      solicitud.convocatoriaId,
+      solicitud.perfilFinanciero?.ingresoFamiliar,
+    );
+
+    await this.prisma.solicitud.update({
+      where: { id },
+      data: {
+        montoOtorgable: resultado.monto,
+        montoOrigenCalculo: resultado.origen,
+        montoCalculadoAt: new Date(),
+        montoCalculadoPor: usuario.id,
+      },
+    });
+  }
+
+  /**
+   * Ajuste manual del monto (Sprint 8 - US-801). Exige el permiso
+   * `solicitud:montos-override` y deja la justificación en la bitácora.
+   */
+  async overrideMonto(
+    id: string,
+    dto: OverrideMontoDto,
+    usuario: AuthenticatedUser,
+  ) {
+    if (!this.authz.esAdmin(usuario) && usuario.rol?.nombre !== ROL.JEFE_BECAS) {
+      throw new ForbiddenException(
+        'No tienes autorización para ajustar el monto de una beca',
+      );
+    }
+
+    const solicitud = await this.prisma.solicitud.findUnique({
+      where: { id },
+      include: { convocatoria: { include: { beca: true } } },
+    });
+
+    if (!solicitud) {
+      throw new NotFoundException(`Solicitud con id ${id} no encontrada`);
+    }
+
+    if (
+      solicitud.estado !== SOLICITUD_ESTADO.EVALUADA &&
+      solicitud.estado !== 'PENDIENTE_SEGUNDA_APROBACION'
+    ) {
+      throw new BadRequestException(
+        'El monto solo puede ajustarse cuando la solicitud está evaluada o pendiente de segunda aprobación',
+      );
+    }
+
+    const monto = await this.montos.registrarOverride({
+      solicitudId: id,
+      monto: new Prisma.Decimal(dto.monto).toDecimalPlaces(2),
+      justificacion: dto.justificacion.trim(),
+      usuarioId: usuario.id,
+    });
+
+    // Si el ajuste deja el monto por debajo del umbral, la solicitud ya no
+    // necesita segunda firma: vuelve a estar lista para aprobarse.
+    const vuelveAEvaluada =
+      solicitud.estado === 'PENDIENTE_SEGUNDA_APROBACION' &&
+      !this.montos.requiereSegundaAprobacion(monto);
+
+    if (vuelveAEvaluada) {
+      await this.prisma.solicitud.update({
+        where: { id },
+        data: { estado: SOLICITUD_ESTADO.EVALUADA },
+      });
+      await this.prisma.historialEstado.create({
+        data: {
+          solicitudId: id,
+          estado: SOLICITUD_ESTADO.EVALUADA,
+          comentario: `Monto ajustado: ${dto.justificacion.trim()}`,
+          usuarioId: usuario.id,
+          accion: 'override_monto',
+          resultado: 'EXITOSO',
+        },
+      });
+    }
+
+    await this.bitacora.registrar({
+      actor: {
+        id: usuario.id,
+        nombre: usuario.nombres,
+        rol: usuario.rol?.nombre ?? 'SIN_ROL',
+        correo: usuario.email,
+      },
+      modulo: 'solicitud',
+      entidad: 'solicitud',
+      entidadId: id,
+      accionClave: 'solicitud.override_monto',
+      accionHumana: 'Ajustó el monto de la beca',
+      descripcionHumana: dto.justificacion.trim(),
+      camposClave: { montoAnterior: solicitud.montoOtorgable?.toString() ?? null },
+      datosRelevantes: { montoNuevo: monto.toString() },
+      resultado: 'EXITOSO',
+      origen: 'WEB',
+    });
+
+    await this.notificaciones.notificarUsuario(solicitud.usuarioId, {
+      tipo: 'SOLICITUD_MONTO_AJUSTADO',
+      titulo: 'Se ajustó el monto de tu beca',
+      cuerpo: `El monto de tu postulación a "${solicitud.convocatoria?.beca?.nombre ?? 'la beca'}" fue ajustado a Q${monto.toString()}.`,
+    });
+
+    return { solicitudId: id, monto: monto.toString(), requiereSegundaAprobacion: this.montos.requiereSegundaAprobacion(monto) };
+  }
+
   private async notificarTransicion(
     dto: TransicionSolicitudDto,
-    solicitud: { usuarioId: string; convocatoria: { beca: { nombre: string } } },
+    solicitud: {
+      id: string;
+      usuarioId: string;
+      convocatoria: { beca: { nombre: string } };
+    },
   ) {
     const beca = solicitud.convocatoria?.beca?.nombre ?? 'la beca';
     const staff = [ROL.ADMIN, ROL.COORDINADOR_COMITE];
@@ -263,12 +571,31 @@ export class SolicitudesService {
           titulo: 'Nueva solicitud enviada',
           cuerpo: `Se envió una solicitud a "${beca}" y está pendiente de revisión.`,
         });
+        // El postulante también recibe su confirmación, con el código con el
+        // que puede rastrear la postulación.
+        await this.notificaciones.notificarUsuario(solicitud.usuarioId, {
+          tipo: 'SOLICITUD_ENVIADA_CONFIRMACION',
+          titulo: 'Postulación enviada correctamente',
+          cuerpo: `Tu postulación a "${beca}" fue enviada correctamente. Código de confirmación: ${solicitud.id}. Te avisaremos cuando haya novedades.`,
+        });
+        break;
+      case 'iniciar_revision':
+        await this.notificaciones.notificarUsuario(solicitud.usuarioId, {
+          tipo: 'SOLICITUD_EN_REVISION',
+          titulo: 'Tu solicitud está en revisión',
+          cuerpo: `Ya estamos revisando tu postulación a "${beca}". Te avisaremos cuando haya una decisión.`,
+        });
         break;
       case 'corregir':
         await this.notificaciones.notificarRoles(staff, {
           tipo: 'SOLICITUD_REENVIADA',
           titulo: 'Solicitud corregida y reenviada',
           cuerpo: `El postulante reenvió su solicitud de "${beca}".`,
+        });
+        await this.notificaciones.notificarUsuario(solicitud.usuarioId, {
+          tipo: 'SOLICITUD_REENVIADA_CONFIRMACION',
+          titulo: 'Correcciones enviadas',
+          cuerpo: `Enviamos las correcciones de tu postulación a "${beca}". Código de confirmación: ${solicitud.id}.`,
         });
         break;
       case 'solicitar_correccion':
@@ -280,11 +607,49 @@ export class SolicitudesService {
             `Revisa y corrige tu solicitud de "${beca}".`,
         });
         break;
+      case 'evaluar':
+        await this.notificaciones.notificarUsuario(solicitud.usuarioId, {
+          tipo: 'SOLICITUD_EVALUADA',
+          titulo: 'Tu solicitud fue evaluada',
+          cuerpo: `Tu postulación a "${beca}" ya fue calificada y está pendiente de decisión.`,
+        });
+        break;
       case 'aprobar':
         await this.notificaciones.notificarUsuario(solicitud.usuarioId, {
           tipo: 'SOLICITUD_APROBADA',
           titulo: '¡Tu solicitud fue aprobada!',
           cuerpo: `La solicitud de "${beca}" fue aprobada.`,
+        });
+        break;
+      case 'solicitar_segunda_aprobacion':
+        await this.notificaciones.notificarUsuario(solicitud.usuarioId, {
+          tipo: 'SOLICITUD_SEGUNDA_APROBACION',
+          titulo: 'Tu solicitud requiere una segunda aprobación',
+          cuerpo: `Por el monto de tu beca, tu postulación a "${beca}" está pendiente de una segunda revisión. Te avisaremos cuando se resuelva.`,
+        });
+        await this.notificaciones.notificarRoles(
+          [ROL.ADMIN, ROL.JEFE_BECAS],
+          {
+            tipo: 'SOLICITUD_SEGUNDA_APROBACION_REQUERIDA',
+            titulo: 'Hay una segunda aprobación pendiente',
+            cuerpo: `Una postulación a "${beca}" supera el monto de control y necesita una segunda firma.`,
+          },
+        );
+        break;
+      case 'aprobar_segunda':
+        await this.notificaciones.notificarUsuario(solicitud.usuarioId, {
+          tipo: 'SOLICITUD_APROBADA',
+          titulo: '¡Tu solicitud fue aprobada!',
+          cuerpo: `La solicitud de "${beca}" fue aprobada en segunda instancia.`,
+        });
+        break;
+      case 'devolver_a_revision':
+        await this.notificaciones.notificarUsuario(solicitud.usuarioId, {
+          tipo: 'SOLICITUD_DEVUELTA_A_REVISION',
+          titulo: 'Tu solicitud volvió a revisión',
+          cuerpo:
+            dto.comentario ??
+            `Tu postulación a "${beca}" volvió a revisión para que puedas corregirla.`,
         });
         break;
       case 'rechazar':
@@ -313,13 +678,11 @@ export class SolicitudesService {
       throw new NotFoundException(`Solicitud con id ${id} no encontrada`);
     }
 
-    const esStaff =
-      this.authz.esAdmin(usuario) ||
-      usuario.rol?.nombre === ROL.COORDINADOR_COMITE;
+    const esStaff = this.authz.esPersonal(usuario);
 
     if (!esStaff) {
       throw new ForbiddenException(
-        'Solo el comité puede solicitar correcciones',
+        'No tienes permisos para solicitar correcciones',
       );
     }
 
@@ -329,18 +692,15 @@ export class SolicitudesService {
       );
     }
 
-    const maximo = solicitud.convocatoria?.maxCorrecciones ?? 3;
-    if (solicitud.correccionesCount >= maximo) {
-      throw new BadRequestException(
-        `La solicitud agotó el máximo de ${maximo} subsanaciones permitidas`,
-      );
-    }
+    this.assertCorreccionesDisponibles(
+      solicitud.correccionesCount,
+      solicitud.convocatoria?.maxCorrecciones,
+    );
 
     const siguienteEstado = SolicitudStateMachine.next(
       solicitud.estado as SolicitudEstado,
       'solicitar_correccion',
     );
-
     const actualizada = await this.prisma.$transaction(async (tx) => {
       const upd = await tx.solicitud.update({
         where: { id },
@@ -362,7 +722,10 @@ export class SolicitudesService {
           accion: 'solicitar-correccion',
           entidad: 'solicitud',
           entidadId: id,
-          detalle: { correccionesCount: solicitud.correccionesCount, maximo },
+          detalle: {
+            correccionesCount: solicitud.correccionesCount,
+            maximo: solicitud.convocatoria?.maxCorrecciones ?? 3,
+          },
         },
         tx,
       );
@@ -379,6 +742,18 @@ export class SolicitudesService {
     });
 
     return actualizada;
+  }
+
+  private assertCorreccionesDisponibles(
+    correccionesCount: number,
+    maxCorrecciones?: number | null,
+  ) {
+    const maximo = maxCorrecciones ?? 3;
+    if (correccionesCount >= maximo) {
+      throw new BadRequestException(
+        `La solicitud agotó el máximo de ${maximo} subsanaciones permitidas`,
+      );
+    }
   }
 
   private async assertEvaluadoresMinimos(solicitudId: string) {
@@ -564,6 +939,18 @@ export class SolicitudesService {
     usuario: AuthenticatedUser,
   ) {
     return this.documentos.eliminar(id, tipoId, usuario);
+  }
+
+  /**
+   * Descarga el archivo de un documento. Los archivos ya no se sirven como
+   * estáticos: cada descarga comprueba quién la pide.
+   */
+  async descargarDocumento(
+    id: string,
+    documentoId: string,
+    usuario: AuthenticatedUser,
+  ) {
+    return this.documentos.descargar(id, documentoId, usuario);
   }
 
   async marcarEstadoDocumento(

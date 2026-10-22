@@ -176,9 +176,9 @@ export class ConstanciasService {
 <body>
   <div class="encabezado">
     <div class="mineduc">
-      <span>REPÚBLICA DE GUATEMALA</span>
-      <strong>Ministerio de Educación</strong>
-      <span>Dirección General de Becas</span>
+      <span>PROTOTIPO ACADÉMICO</span>
+      <strong>EDUVIAGT</strong>
+      <span>Sistema de gestión de becas</span>
     </div>
     <div class="sigeb">EDUVIAGT<br />Sistema Integral de Gestión de Becas</div>
   </div>
@@ -187,8 +187,8 @@ export class ConstanciasService {
   <div class="codigo-wrap"><span class="codigo">${escapeHtml(codigo)}</span></div>
 
   <p class="texto">
-    El Ministerio de Educación de la República de Guatemala, a través de la
-    Dirección General de Becas, <strong>HACE CONSTAR</strong> que el
+    El sistema EDUVIAGT, en su versión de prototipo académico,
+    <strong>HACE CONSTAR</strong> que el
     postulante <strong class="beneficiario">${escapeHtml(solicitud.usuario.nombres)}</strong>,
     con CUI <strong>${escapeHtml(solicitud.usuario.cui)}</strong>, ha sido
     <strong>beneficiario(a) de una beca otorgada en el marco de la convocatoria
@@ -212,17 +212,16 @@ export class ConstanciasService {
   </table>
 
   <p class="texto">
-    La presente constancia se emite en cumplimiento del Reglamento de Becas del
-    Ministerio de Educación y de la resolución adoptada por el comité evaluador,
-    según lo registrado en el Sistema Integral de Gestión de Becas (EDUVIAGT). La
-    información contenida puede ser verificada por cualquier interesado a través
-    de la página oficial del sistema.
+    La presente constancia se emite a partir de la resolución adoptada por el
+    comité evaluador, según lo registrado en el Sistema Integral de Gestión de
+    Becas (EDUVIAGT). Se trata de un documento de demostración: no tiene
+    efectos legales ni constituye un beneficio económico real.
   </p>
 
   <div class="firma">
     <div class="linea"></div>
     <strong>Autoridad competente</strong><br />
-    Dirección General de Becas — Ministerio de Educación
+    EDUVIAGT — prototipo académico
   </div>
 
   <div class="pie">
@@ -239,8 +238,7 @@ export class ConstanciasService {
         day: '2-digit',
         month: 'long',
         year: 'numeric',
-      })
-      .replace(/ de /g, ' de ');
+      });
   }
 }
 

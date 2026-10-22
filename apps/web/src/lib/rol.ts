@@ -1,4 +1,11 @@
-const ROLES_CON_PANEL = ['EVALUADOR', 'COORDINADOR_COMITE', 'MIEMBRO_COMITE', 'ADMIN', 'POSTULANTE'];
+const ROLES_CON_PANEL = [
+  'EVALUADOR',
+  'COORDINADOR_COMITE',
+  'MIEMBRO_COMITE',
+  'ADMIN',
+  'JEFE_BECAS',
+  'POSTULANTE',
+];
 
 const ROLES_LABELS: Record<string, string> = {
   POSTULANTE: 'Postulante',
@@ -6,6 +13,7 @@ const ROLES_LABELS: Record<string, string> = {
   COORDINADOR_COMITE: 'Coord. Comité',
   MIEMBRO_COMITE: 'Miembro Comité',
   ADMIN: 'Admin',
+  JEFE_BECAS: 'Jefe de becas',
 };
 
 export function rutaPorRol(rol: string): string {
@@ -14,6 +22,8 @@ export function rutaPorRol(rol: string): string {
   if (r === 'COORDINADOR_COMITE') return '/coordinador';
   if (r === 'MIEMBRO_COMITE') return '/comite';
   if (r === 'POSTULANTE') return '/dashboard';
+  // El jefe de becas no administra el panel: su panel son los reportes.
+  if (r === 'JEFE_BECAS') return '/reportes';
   return '/admin';
 }
 

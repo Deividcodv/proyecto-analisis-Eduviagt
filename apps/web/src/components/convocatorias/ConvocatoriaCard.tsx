@@ -3,11 +3,13 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import {
   formatearFecha,
+  convocatoriaAbierta,
   ETIQUETA_COBERTURA,
   type Convocatoria,
 } from '@/lib/api';
 
-function diasRestantes(fechaCierre: string): number | null {
+function diasRestantes(fechaCierre?: string | null): number | null {
+  if (!fechaCierre) return null;
   const cierre = new Date(fechaCierre).getTime();
   if (Number.isNaN(cierre)) return null;
   return Math.ceil((cierre - Date.now()) / 86_400_000);
@@ -18,7 +20,7 @@ export function ConvocatoriaCard({
 }: {
   convocatoria: Convocatoria;
 }) {
-  const abierta = convocatoria.estado === 'ABIERTA';
+  const abierta = convocatoriaAbierta(convocatoria);
   const dias = diasRestantes(convocatoria.fechaCierre);
 
   return (
@@ -61,7 +63,7 @@ export function ConvocatoriaCard({
           <dd>{formatearFecha(convocatoria.fechaCierre)}</dd>
         </div>
       </dl>
-      {abierta && dias !== null && (
+      {abierta && dias !== null && dias >= 0 && (
         <div
           className={`mb-4 flex items-center justify-between rounded-brutal border-2 px-3 py-2 font-mono text-xs font-bold uppercase ${
             dias <= 5

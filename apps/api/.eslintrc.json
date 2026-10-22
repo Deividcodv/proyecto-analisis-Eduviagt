@@ -1,6 +1,8 @@
 {
   "extends": ["../../.eslintrc.json"],
   "parserOptions": {
-    "project": "./tsconfig.json"
+    // El proyecto de `src` excluye `test`, asi que los archivos de prueba
+    // necesitan su propio tsconfig para que ESLint pueda analizarlos.
+    "project": ["./tsconfig.json", "./test/tsconfig.json"]
   }
 }

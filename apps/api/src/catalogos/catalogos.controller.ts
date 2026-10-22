@@ -90,7 +90,7 @@ export class CatalogosController {
 
   // ============ GENEROS (ADMIN) ============
   @Post('generos')
-  @Permisos('permiso:editar')
+  @Permisos('catalogo:gestionar')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Crear género' })
   createGenero(@Body() dto: CreateCatalogoDto) {
@@ -98,7 +98,7 @@ export class CatalogosController {
   }
 
   @Patch('generos/:id')
-  @Permisos('permiso:editar')
+  @Permisos('catalogo:gestionar')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Actualizar género' })
   updateGenero(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCatalogoDto) {
@@ -106,7 +106,7 @@ export class CatalogosController {
   }
 
   @Delete('generos/:id')
-  @Permisos('permiso:editar')
+  @Permisos('catalogo:gestionar')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Desactivar género' })
   deleteGenero(@Param('id', ParseUUIDPipe) id: string) {
@@ -115,7 +115,7 @@ export class CatalogosController {
 
   // ============ NIVELES (ADMIN) ============
   @Post('niveles-academicos')
-  @Permisos('permiso:editar')
+  @Permisos('catalogo:gestionar')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Crear nivel académico' })
   createNivel(@Body() dto: CreateCatalogoDto) {
@@ -123,7 +123,7 @@ export class CatalogosController {
   }
 
   @Patch('niveles-academicos/:id')
-  @Permisos('permiso:editar')
+  @Permisos('catalogo:gestionar')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Actualizar nivel académico' })
   updateNivel(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCatalogoDto) {
@@ -131,7 +131,7 @@ export class CatalogosController {
   }
 
   @Delete('niveles-academicos/:id')
-  @Permisos('permiso:editar')
+  @Permisos('catalogo:gestionar')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Desactivar nivel académico' })
   deleteNivel(@Param('id', ParseUUIDPipe) id: string) {
@@ -140,7 +140,7 @@ export class CatalogosController {
 
   // ============ DEPARTAMENTOS (ADMIN) ============
   @Post('departamentos')
-  @Permisos('permiso:editar')
+  @Permisos('catalogo:gestionar')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Crear departamento' })
   createDepartamento(@Body() dto: CreateCatalogoDto) {
@@ -148,7 +148,7 @@ export class CatalogosController {
   }
 
   @Patch('departamentos/:id')
-  @Permisos('permiso:editar')
+  @Permisos('catalogo:gestionar')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Actualizar departamento' })
   updateDepartamento(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCatalogoDto) {
@@ -156,7 +156,7 @@ export class CatalogosController {
   }
 
   @Delete('departamentos/:id')
-  @Permisos('permiso:editar')
+  @Permisos('catalogo:gestionar')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Desactivar departamento' })
   deleteDepartamento(@Param('id', ParseUUIDPipe) id: string) {
@@ -165,7 +165,7 @@ export class CatalogosController {
 
   // ============ MUNICIPIOS (ADMIN) ============
   @Post('municipios')
-  @Permisos('permiso:editar')
+  @Permisos('catalogo:gestionar')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Crear municipio' })
   createMunicipio(@Body() dto: CreateMunicipioDto) {
@@ -173,7 +173,7 @@ export class CatalogosController {
   }
 
   @Patch('municipios/:id')
-  @Permisos('permiso:editar')
+  @Permisos('catalogo:gestionar')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Actualizar municipio' })
   updateMunicipio(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateMunicipioDto) {
@@ -181,7 +181,7 @@ export class CatalogosController {
   }
 
   @Delete('municipios/:id')
-  @Permisos('permiso:editar')
+  @Permisos('catalogo:gestionar')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Desactivar municipio' })
   deleteMunicipio(@Param('id', ParseUUIDPipe) id: string) {
@@ -198,7 +198,7 @@ export class CatalogosController {
   }
 
   @Patch('documentos-tipo/:id')
-  @Permisos('permiso:editar')
+  @Permisos('catalogo:gestionar')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Actualizar tipo de documento' })
   updateDocumento(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCatalogoDto) {

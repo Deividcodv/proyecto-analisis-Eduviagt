@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 export const metadata: Metadata = {
   title: 'Nosotros | EDUVIAGT',
   description:
-    'EDUVIAGT es la plataforma oficial de becas del Ministerio de Educación de Guatemala (Mineduc). Conoce su misión, visión y cómo postularte a las convocatorias de becas.',
+    'EDUVIAGT es un prototipo académico de gestión de becas. Conoce su misión, su visión y cómo funciona el proceso de postulación.',
 };
 
 const pilares = [
@@ -65,8 +65,8 @@ export default function NosotrosPage() {
           <p className="brut-label text-xs font-bold text-brutal-gold">// Nosotros</p>
           <h1 className="text-mega text-3xl font-black md:text-5xl">Nosotros</h1>
           <p className="mt-2 max-w-2xl font-mono text-sm text-brutal-papel/80">
-            Conoce la plataforma oficial de becas del Ministerio de Educación de
-            Guatemala y el sistema que hace posible la gestión de becas en el país.
+            Conoce el prototipo de gestión de becas y el sistema que hace posible
+            el ciclo completo de una postulación.
           </p>
         </Container>
       </section>
@@ -84,14 +84,14 @@ export default function NosotrosPage() {
                 </p>
               </div>
               <p className="font-brut text-xl font-black uppercase leading-tight tracking-wide md:text-2xl">
-                La plataforma de becas del Ministerio de Educación de Guatemala
+                El sistema de gestión de becas
               </p>
               <p className="mt-4 max-w-3xl text-brutal-papel/85">
-                EDUVIAGT es el sistema oficial del <strong>Ministerio de Educación de
-                Guatemala (Mineduc)</strong> para gestionar todo el ciclo de las becas
-                educativas: la publicación de convocatorias, la postulación de las y los
-                estudiantes, la carga de documentos, la evaluación por parte de los comités
-                y la publicación de resultados. Todo desde un mismo lugar, con procesos
+                EDUVIAGT es un <strong>prototipo académico sin autorización
+                institucional</strong> que reproduce todo el ciclo de una beca: la
+                publicación de convocatorias, la postulación de los estudiantes, la
+                carga de documentos, la evaluación por parte de los comités y la
+                publicación de resultados. Todo desde un mismo lugar, con procesos
                 transparentes y verificables.
               </p>
               <p className="mt-3 max-w-3xl text-brutal-papel/85">
@@ -206,7 +206,7 @@ export default function NosotrosPage() {
                 Contacto
               </h2>
               <p className="text-brutal-tinta/80">
-                EDUVIAGT · Ministerio de Educación de Guatemala
+                EDUVIAGT · Prototipo académico
               </p>
               <p className="mt-2 text-brutal-tinta/80">
                 Para consultas sobre becas, contáctanos a través de nuestro{' '}

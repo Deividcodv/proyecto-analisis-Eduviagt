@@ -22,21 +22,38 @@ describe('SolicitudesService', () => {
   let storage: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let audit: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let montos: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let bitacora: any;
   let authz: AuthzService;
   let service: SolicitudesService;
 
   beforeEach(() => {
     prisma = {
-      solicitud: { findUnique: jest.fn(), update: jest.fn() },
+      solicitud: {
+        findUnique: jest.fn(),
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
       convocatoria: { findUnique: jest.fn() },
       documentoTipo: { findUnique: jest.fn() },
       solicitudDocumento: { findFirst: jest.fn(), create: jest.fn(), delete: jest.fn(), update: jest.fn() },
       solicitudPerfilAcademico: { upsert: jest.fn() },
       historialEstado: { create: jest.fn() },
+      solicitudAprobacion: { create: jest.fn() },
       genero: { findUnique: jest.fn() },
       usuario: { findMany: jest.fn().mockResolvedValue([]) },
       notificacion: {
-        create: jest.fn(),
+        create: jest.fn().mockResolvedValue({
+          id: 'n1',
+          usuarioId: 'u-postulante',
+          tipo: 'SOLICITUD_ENVIADA_CONFIRMACION',
+          titulo: 'Postulación enviada correctamente',
+          cuerpo: null,
+          createdAt: new Date(),
+        }),
         createMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
     };
@@ -53,6 +70,17 @@ describe('SolicitudesService', () => {
       exists: jest.fn(),
     };
     audit = { log: jest.fn() };
+    montos = {
+      calcular: jest.fn().mockResolvedValue({
+        monto: null,
+        origen: null,
+        reglaAplicada: null,
+        detalle: 'Sin monto base ni reglas aplicables.',
+      }),
+      requiereSegundaAprobacion: jest.fn().mockReturnValue(false),
+      registrarOverride: jest.fn(),
+    };
+    bitacora = { registrar: jest.fn(), listar: jest.fn() };
     service = new SolicitudesService(
       prisma,
       audit,
@@ -61,6 +89,8 @@ describe('SolicitudesService', () => {
       new SolicitudDocumentoService(prisma, storage, audit, authz),
       new SolicitudChecklistService(prisma, authz),
       new NotificacionesService(prisma),
+      montos,
+      bitacora,
     );
   });
 
@@ -236,6 +266,73 @@ describe('SolicitudesService', () => {
       expect(storage.save).not.toHaveBeenCalled();
     });
 
+    describe('descarga de documentos (control de acceso)', () => {
+      const documento = {
+        id: 'd1',
+        solicitudId: 's1',
+        archivoUrl: '/storage/solicitudes/s1/abc.pdf',
+        documentoTipo: { nombre: 'Certificado académico' },
+      };
+
+      beforeEach(() => {
+        storage.read.mockResolvedValue(Buffer.from('%PDF-1.4'));
+        prisma.solicitudDocumento = {
+          findFirst: jest.fn().mockResolvedValue(documento),
+        };
+      });
+
+      it('el dueño de la solicitud descarga su documento', async () => {
+        prisma.solicitud.findUnique.mockResolvedValue({
+          id: 's1',
+          usuarioId: postulante.id,
+        });
+
+        const resultado = await service.descargarDocumento('s1', 'd1', postulante);
+
+        expect(resultado.buffer.toString()).toBe('%PDF-1.4');
+        expect(resultado.contentType).toBe('application/pdf');
+        expect(resultado.nombreArchivo).toBe('certificado-academico.pdf');
+      });
+
+      it('otro postulante no puede descargar un documento ajeno', async () => {
+        prisma.solicitud.findUnique.mockResolvedValue({
+          id: 's1',
+          usuarioId: 'otro-usuario',
+        });
+
+        await expect(
+          service.descargarDocumento('s1', 'd1', postulante),
+        ).rejects.toThrow('No tienes acceso a los documentos');
+        expect(storage.read).not.toHaveBeenCalled();
+      });
+
+      it('quien revisa postulaciones sí puede descargar el documento', async () => {
+        prisma.solicitud.findUnique.mockResolvedValue({
+          id: 's1',
+          usuarioId: 'otro-usuario',
+        });
+
+        const resultado = await service.descargarDocumento('s1', 'd1', {
+          ...postulante,
+          rol: { id: 'r-eval', nombre: 'EVALUADOR', descripcion: null },
+        });
+
+        expect(resultado.buffer.length).toBeGreaterThan(0);
+      });
+
+      it('no sirve un documento que pertenece a otra solicitud', async () => {
+        prisma.solicitud.findUnique.mockResolvedValue({
+          id: 's1',
+          usuarioId: postulante.id,
+        });
+        prisma.solicitudDocumento.findFirst.mockResolvedValue(null);
+
+        await expect(
+          service.descargarDocumento('s1', 'd1', postulante),
+        ).rejects.toThrow('no encontrado en la solicitud');
+      });
+    });
+
     it('elimina fila y archivo', async () => {
       prisma.solicitud.findUnique.mockResolvedValue({
         id: 's1',
@@ -373,6 +470,233 @@ describe('SolicitudesService', () => {
           data: expect.objectContaining({ estado: 'ENVIADA' }),
         }),
       );
+    });
+
+    it('confirma al postulante con el codigo de la solicitud', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        ...solicitudBase,
+        perfilAcademico: { generoId: 'g1', nivelAcademicoId: 'n1' },
+        perfilFinanciero: { ingresoFamiliar: 2500 },
+        documentos: [
+          { documentoTipoId: 't-cert', version: 2, estado: 'CARGADO', archivoUrl: '/storage/x.pdf' },
+        ],
+      });
+      prisma.solicitud.update.mockResolvedValue({ id: 's1', estado: 'ENVIADA' });
+      prisma.historialEstado.create.mockResolvedValue({});
+
+      await service.transicion(
+        's1',
+        { accion: 'enviar', comentario: 'listo' },
+        postulante,
+      );
+
+      // El postulante recibe su propia notificación, con el código con el
+      // que puede rastrear la postulación.
+      expect(prisma.notificacion.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            usuarioId: 'u-postulante',
+            tipo: 'SOLICITUD_ENVIADA_CONFIRMACION',
+            cuerpo: expect.stringContaining('s1'),
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('segunda aprobación por monto (Sprint 8 - US-802/803)', () => {
+    const admin = {
+      id: 'u-admin',
+      cui: '1234567890123',
+      nombres: 'Admin',
+      email: 'admin@sigeb.gov.gt',
+      rol: { id: 'r-admin', nombre: 'ADMIN', descripcion: null },
+    } as AuthenticatedUser;
+
+    const jefeBecas = {
+      id: 'u-jefe',
+      cui: '5555555555555',
+      nombres: 'Jefa de Becas',
+      email: 'jefebecas@demo.gt',
+      rol: { id: 'r-jefe', nombre: 'JEFE_BECAS', descripcion: null },
+    } as AuthenticatedUser;
+
+    const evaluada = (monto: string | null, aprobaciones: unknown[] = []) => ({
+      id: 's1',
+      usuarioId: 'u-postulante',
+      estado: 'EVALUADA',
+      correccionesCount: 0,
+      montoOtorgable: monto,
+      aprobaciones,
+      convocatoria: {
+        id: 'c1',
+        nombre: 'Beca de prueba',
+        beca: { id: 'b1', nombre: 'Beca de prueba' },
+        maxCorrecciones: 3,
+      },
+      perfilFinanciero: { ingresoFamiliar: 2500 },
+    });
+
+    it('un monto sobre el umbral deja la solicitud pendiente de 2ª aprobación', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(evaluada('12000'));
+      prisma.solicitud.update.mockResolvedValue({
+        id: 's1',
+        estado: 'PENDIENTE_SEGUNDA_APROBACION',
+      });
+      montos.requiereSegundaAprobacion.mockReturnValue(true);
+
+      await service.transicion('s1', { accion: 'aprobar' }, admin);
+
+      expect(prisma.solicitud.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 's1' },
+          data: expect.objectContaining({
+            estado: 'PENDIENTE_SEGUNDA_APROBACION',
+          }),
+        }),
+      );
+      expect(prisma.solicitudAprobacion.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            nivel: 1,
+            accion: 'solicitar_segunda_aprobacion',
+            resultado: 'PENDIENTE_SEGUNDA_APROBACION',
+          }),
+        }),
+      );
+    });
+
+    it('avisa de la segunda aprobación, no de una aprobación consumada', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        id: 's1',
+        usuarioId: 'u-postulante',
+        estado: 'EVALUADA',
+        correccionesCount: 0,
+        montoOtorgable: '12000',
+        aprobaciones: [],
+        convocatoria: {
+          id: 'c1',
+          nombre: 'Beca de prueba',
+          beca: { id: 'b1', nombre: 'Beca de prueba' },
+          maxCorrecciones: 3,
+        },
+        perfilFinanciero: { ingresoFamiliar: 2500 },
+      });
+      prisma.solicitud.update.mockResolvedValue({
+        id: 's1',
+        estado: 'PENDIENTE_SEGUNDA_APROBACION',
+      });
+      montos.requiereSegundaAprobacion.mockReturnValue(true);
+
+      await service.transicion(
+        's1',
+        { accion: 'aprobar' },
+        {
+          id: 'u-admin',
+          cui: '1234567890123',
+          nombres: 'Admin',
+          email: 'admin@sigeb.gov.gt',
+          rol: { id: 'r-admin', nombre: 'ADMIN', descripcion: null },
+        } as AuthenticatedUser,
+      );
+
+      // La persona no debe recibir un "tu solicitud fue aprobada": sigue
+      // pendiente de una segunda firma.
+      const tipos = prisma.notificacion.create.mock.calls.map(
+        (c: [{ data: { tipo: string } }]) => c[0].data.tipo,
+      );
+      expect(tipos).toContain('SOLICITUD_SEGUNDA_APROBACION');
+      expect(tipos).not.toContain('SOLICITUD_APROBADA');
+    });
+
+    it('un monto bajo el umbral se aprueba de una vez', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(evaluada('6000'));
+      prisma.solicitud.update.mockResolvedValue({ id: 's1', estado: 'APROBADA' });
+      montos.requiereSegundaAprobacion.mockReturnValue(false);
+
+      await service.transicion('s1', { accion: 'aprobar' }, admin);
+
+      expect(prisma.solicitud.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ estado: 'APROBADA' }),
+        }),
+      );
+    });
+
+    it('la 2ª aprobación no puede firmarla quien firmó la 1ª', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        id: 's1',
+        usuarioId: 'u-postulante',
+        estado: 'PENDIENTE_SEGUNDA_APROBACION',
+        correccionesCount: 0,
+        montoOtorgable: '12000',
+        aprobaciones: [{ id: 'a1', nivel: 1, usuarioId: admin.id }],
+        convocatoria: {
+          id: 'c1',
+          nombre: 'Beca de prueba',
+          beca: { id: 'b1', nombre: 'Beca de prueba' },
+          maxCorrecciones: 3,
+        },
+        perfilFinanciero: { ingresoFamiliar: 2500 },
+      });
+
+      await expect(
+        service.transicion('s1', { accion: 'aprobar_segunda' }, admin),
+      ).rejects.toThrow(/distinta/);
+    });
+
+    it('otra persona sí puede firmar la 2ª aprobación', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        id: 's1',
+        usuarioId: 'u-postulante',
+        estado: 'PENDIENTE_SEGUNDA_APROBACION',
+        correccionesCount: 0,
+        montoOtorgable: '12000',
+        aprobaciones: [{ id: 'a1', nivel: 1, usuarioId: admin.id }],
+        convocatoria: {
+          id: 'c1',
+          nombre: 'Beca de prueba',
+          beca: { id: 'b1', nombre: 'Beca de prueba' },
+          maxCorrecciones: 3,
+        },
+        perfilFinanciero: { ingresoFamiliar: 2500 },
+      });
+      prisma.solicitud.update.mockResolvedValue({ id: 's1', estado: 'APROBADA' });
+
+      await service.transicion('s1', { accion: 'aprobar_segunda' }, jefeBecas);
+
+      expect(prisma.solicitud.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ estado: 'APROBADA' }),
+        }),
+      );
+      expect(prisma.solicitudAprobacion.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ nivel: 2, accion: 'aprobar_segunda' }),
+        }),
+      );
+    });
+
+    it('devolver a revisión exige escribir el motivo', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        id: 's1',
+        usuarioId: 'u-postulante',
+        estado: 'PENDIENTE_SEGUNDA_APROBACION',
+        correccionesCount: 0,
+        montoOtorgable: '12000',
+        aprobaciones: [{ id: 'a1', nivel: 1, usuarioId: admin.id }],
+        convocatoria: {
+          id: 'c1',
+          nombre: 'Beca de prueba',
+          beca: { id: 'b1', nombre: 'Beca de prueba' },
+          maxCorrecciones: 3,
+        },
+        perfilFinanciero: { ingresoFamiliar: 2500 },
+      });
+
+      await expect(
+        service.transicion('s1', { accion: 'devolver_a_revision' }, jefeBecas),
+      ).rejects.toThrow(/motivo/);
     });
   });
 
@@ -653,6 +977,133 @@ describe('SolicitudesService', () => {
           postulante,
         ),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('create — ventana de postulación por fechas', () => {
+    const convocatoriaBase = {
+      id: 'c1',
+      estado: 'ABIERTA',
+      formulario: null,
+      fechaApertura: null as Date | null,
+      fechaCierre: null as Date | null,
+    };
+
+    const dias = (n: number) => new Date(Date.now() + n * 86_400_000);
+
+    beforeEach(() => {
+      prisma.solicitud.create.mockResolvedValue({ id: 's1' });
+      prisma.historialEstado.create.mockResolvedValue({ id: 'h1' });
+    });
+
+    it('rechaza la postulación cuando la fecha de cierre ya pasó', async () => {
+      prisma.convocatoria.findUnique.mockResolvedValue({
+        ...convocatoriaBase,
+        fechaCierre: dias(-1),
+      });
+
+      await expect(
+        service.create('u-postulante', { convocatoriaId: 'c1' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('explica con palabras simples que la convocatoria ya cerró', async () => {
+      prisma.convocatoria.findUnique.mockResolvedValue({
+        ...convocatoriaBase,
+        fechaCierre: dias(-1),
+      });
+
+      await expect(
+        service.create('u-postulante', { convocatoriaId: 'c1' }),
+      ).rejects.toThrow('ya cerr');
+    });
+
+    it('rechaza la postulación antes de la fecha de apertura', async () => {
+      prisma.convocatoria.findUnique.mockResolvedValue({
+        ...convocatoriaBase,
+        fechaApertura: dias(1),
+      });
+
+      await expect(
+        service.create('u-postulante', { convocatoriaId: 'c1' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('permite postular dentro de la ventana de fechas', async () => {
+      prisma.convocatoria.findUnique.mockResolvedValue({
+        ...convocatoriaBase,
+        fechaApertura: dias(-2),
+        fechaCierre: dias(2),
+      });
+
+      await expect(
+        service.create('u-postulante', { convocatoriaId: 'c1' }),
+      ).resolves.toEqual({ id: 's1' });
+    });
+
+    it('permite postular si la convocatoria no define fechas', async () => {
+      prisma.convocatoria.findUnique.mockResolvedValue({ ...convocatoriaBase });
+
+      await expect(
+        service.create('u-postulante', { convocatoriaId: 'c1' }),
+      ).resolves.toEqual({ id: 's1' });
+    });
+  });
+
+  describe('transicion — reglas del comité', () => {
+    const admin: AuthenticatedUser = {
+      id: 'u-admin',
+      cui: '1234567890123',
+      nombres: 'Admin Demo',
+      email: 'admin@demo.gt',
+      rol: { id: 'r-admin', nombre: 'ADMIN', descripcion: null },
+    };
+
+    const solicitudEnRevision = (correccionesCount: number) => ({
+      id: 's1',
+      usuarioId: 'u-postulante',
+      estado: 'EN_REVISION',
+      correccionesCount,
+      convocatoria: { maxCorrecciones: 3, beca: { nombre: 'Beca X' } },
+    });
+
+    beforeEach(() => {
+      prisma.solicitud.update.mockResolvedValue({
+        id: 's1',
+        estado: 'CORRECCION',
+      });
+      prisma.notificacion.create.mockResolvedValue({
+        id: 'n1',
+        usuarioId: 'u-postulante',
+        tipo: 'CORRECCION_SOLICITADA',
+        titulo: 'Se solicitó una corrección',
+        cuerpo: null,
+        createdAt: new Date(),
+      });
+    });
+
+    it('no permite pedir más correcciones de las permitidas', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(solicitudEnRevision(3));
+
+      await expect(
+        service.transicion('s1', { accion: 'solicitar_correccion' }, admin),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('permite pedir corrección mientras queden subsanaciones', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(solicitudEnRevision(1));
+
+      await expect(
+        service.transicion('s1', { accion: 'solicitar_correccion' }, admin),
+      ).resolves.toMatchObject({ estado: 'CORRECCION' });
+    });
+
+    it('rechaza al postulante en una acción del comité', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(solicitudEnRevision(0));
+
+      await expect(
+        service.transicion('s1', { accion: 'solicitar_correccion' }, postulante),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });

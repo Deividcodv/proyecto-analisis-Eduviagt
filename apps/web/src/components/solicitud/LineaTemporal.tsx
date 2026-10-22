@@ -10,6 +10,7 @@ const ICONO_ESTADO: Record<string, IconName> = {
   EN_REVISION: 'buscar',
   CORRECCION: 'alerta',
   EVALUADA: 'check',
+  PENDIENTE_SEGUNDA_APROBACION: 'alerta',
   APROBADA: 'check',
   RECHAZADA: 'cerrar',
 };
@@ -20,9 +21,17 @@ const COLOR_NODO: Record<string, string> = {
   EN_REVISION: 'bg-brutal-indigo text-white',
   CORRECCION: 'bg-brutal-naranja text-brutal-tinta',
   EVALUADA: 'bg-brutal-teal text-brutal-tinta',
+  PENDIENTE_SEGUNDA_APROBACION: 'bg-brutal-gold text-brutal-tinta',
   APROBADA: 'bg-brutal-lima text-brutal-tinta',
   RECHAZADA: 'bg-brutal-rojo text-brutal-tinta',
 };
+
+/** `esHoy` compara con la fecha real: el último hito no es siempre de hoy. */
+function esHoy(fecha: string): boolean {
+  const d = new Date(fecha);
+  if (Number.isNaN(d.getTime())) return false;
+  return d.toDateString() === new Date().toDateString();
+}
 
 export function LineaTemporal({ historial }: { historial: HistorialEstado[] }) {
   if (historial.length === 0) {
@@ -38,7 +47,10 @@ export function LineaTemporal({ historial }: { historial: HistorialEstado[] }) {
         const icono = ICONO_ESTADO[h.estado] ?? 'info';
         const tono = COLOR_NODO[h.estado] ?? 'bg-gray-300 text-brutal-tinta';
         return (
-          <li key={index} className="relative flex gap-4 pb-6 last:pb-0">
+          <li
+            key={`${h.estado}-${h.fecha}-${index}`}
+            className="relative flex gap-4 pb-6 last:pb-0"
+          >
             <div className="flex flex-col items-center">
               <div
                 className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-brutal border-[3px] border-brutal-tinta shadow-brutal-sm ${tono}`}
@@ -62,7 +74,7 @@ export function LineaTemporal({ historial }: { historial: HistorialEstado[] }) {
               </div>
               <div className="mt-0.5 font-mono text-xs text-brutal-tinta/80">
                 {formatearFecha(h.fecha)}
-                {esActual && ' · hoy'}
+                {esHoy(h.fecha) && ' · hoy'}
               </div>
               {h.comentario && (
                 <p className="mt-1 font-mono text-sm text-brutal-tinta/80">

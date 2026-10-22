@@ -42,7 +42,7 @@ export function BotonPostular({
           Postularme ahora
         </Button>
         <p className="text-center font-mono text-xs text-brutal-tinta/80">
-          Iniciarás un expediente de postulación.{' '}
+          Iniciarás tu postulación.{' '}
           <Link href="/dashboard" className="font-brut font-bold text-brutal-cyan hover:bg-brutal-cyan/20">
             Ir a mis solicitudes
           </Link>

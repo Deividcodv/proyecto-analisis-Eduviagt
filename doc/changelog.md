@@ -240,7 +240,8 @@ Las categorías son:
 
 ### Notas
 - Sin migraciones de Prisma: la constancia se genera de forma stateless.
-- Para activar los deploys, el equipo debe definir los secretos de GitHub (`DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_KEY`, `DEPLOY_DATABASE_URL`, `DEPLOY_JWT_SECRET`).
+- Para activar los deploys, el equipo debe definir los secretos de GitHub en el entorno `staging`: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_KEY`, `DEPLOY_PATH` (y opcionalmente `DEPLOY_PORT`). La configuración de la base y de los secretos de la API vive en `apps/api/.env` dentro del servidor y no se duplica en GitHub.
+- El despliegue a `master` está deshabilitado hasta que `master` esté alineado con `develop`: se activa con `PRODUCTION_READY=true` en el entorno `production`.
 
 ---
 

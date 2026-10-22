@@ -4,7 +4,7 @@ import { Container } from '@/components/ui/Container';
 export const metadata: Metadata = {
   title: 'Preguntas frecuentes | EDUVIAGT',
   description:
-    'Respuestas a las preguntas más frecuentes sobre el proceso de becas del Ministerio de Educación de Guatemala en EDUVIAGT.',
+    'Respuestas a las preguntas más frecuentes sobre el proceso de becas en EDUVIAGT.',
 };
 
 const faqs = [
@@ -16,7 +16,7 @@ const faqs = [
   {
     pregunta: '¿Qué tipos de beca se gestionan?',
     respuesta:
-      'EDUVIAGT gestiona programas de becas de excelencia académica, inspiración cívica y apoyo a la formación técnica y profesional del Ministerio de Educación.',
+      'EDUVIAGT gestiona programas de becas de excelencia académica, inspiración cívica y apoyo a la formación técnica y profesional.',
   },
   {
     pregunta: '¿Cuáles son los requisitos para postularme?',
@@ -65,7 +65,7 @@ export default function FaqPage() {
     <main>
       <section className="brut-cinta border-b-[3px] border-brutal-tinta bg-sigeb-blue-dark py-12 text-brutal-papel">
         <Container>
-          <p className="brut-label text-xs font-bold text-brutal-gold">// FAQ</p>
+          <p className="brut-label text-xs font-bold text-brutal-gold">// Preguntas frecuentes</p>
           <h1 className="text-mega text-3xl font-black md:text-5xl">
             Preguntas frecuentes
           </h1>

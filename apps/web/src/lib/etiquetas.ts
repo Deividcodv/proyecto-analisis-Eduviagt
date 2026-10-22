@@ -4,6 +4,7 @@ export const ETIQUETA_ESTADO: Record<string, string> = {
   EN_REVISION: 'En revisión',
   CORRECCION: 'Necesita correcciones',
   EVALUADA: 'Evaluada',
+  PENDIENTE_SEGUNDA_APROBACION: 'Pendiente de 2ª aprobación',
   APROBADA: 'Aprobada',
   RECHAZADA: 'No seleccionada',
   ABIERTA: 'Abierta',

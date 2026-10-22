@@ -57,6 +57,7 @@ function AplicarConvocatoriaContent() {
   >(null);
   const [snapshot, setSnapshot] = useState<CampoFormulario[] | null>(null);
   const [checklist, setChecklist] = useState<SolicitudChecklist | null>(null);
+  const [datosGuardados, setDatosGuardados] = useState(false);
   const [paso, setPaso] = useState('Convocatoria');
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -118,7 +119,11 @@ function AplicarConvocatoriaContent() {
 
   const camposExtra = snapshot ?? convocatoria?.formulario ?? [];
 
-  const pasos = ['Tus datos', 'Convocatoria', 'Perfil académico', 'Perfil financiero', 'Documentos'];
+  // El orden importa: el paso inicial es 'Convocatoria' y "Tus datos" va
+  // justo después. Antes el array empezaba con 'Tus datos' mientras el paso
+  // inicial era 'Convocatoria', por lo que "Comenzar postulación" se saltaba
+  // la captura del género (que el checklist exige).
+  const pasos = ['Convocatoria', 'Tus datos', 'Perfil académico', 'Perfil financiero', 'Documentos'];
   if (camposExtra.length > 0) pasos.push('Información adicional');
   pasos.push('Enviar');
 
@@ -131,7 +136,7 @@ function AplicarConvocatoriaContent() {
 
   const completados: boolean[] = [
     true,
-    true,
+    datosGuardados,
     !!checklist?.perfilAcademico,
     !!checklist?.perfilFinanciero,
     documentosOk,
@@ -261,6 +266,7 @@ function AplicarConvocatoriaContent() {
               <PasoDatosPersonales
                 solicitudId={solicitudId}
                 onGuardado={avanzar}
+                onEstado={setDatosGuardados}
                 onError={setError}
               />
             )}
@@ -320,7 +326,7 @@ function AplicarConvocatoriaContent() {
                   const indice = pasos.indexOf(paso);
                   if (indice > 0) setPaso(pasos[indice - 1]);
                 }}
-                disabled={paso === 'Tus datos'}
+                disabled={pasos.indexOf(paso) <= 0}
               >
                 Anterior
               </Button>

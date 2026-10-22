@@ -6,7 +6,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { httpData } from '@/lib/api';
 import { fetchConToken } from '@/lib/api-auth';
 import { useAuth } from '@/context/AuthContext';
-import { rutaPorRol } from '@/lib/rol';
+import { rutaPorRol, nombreRol } from '@/lib/rol';
 import { Container } from '@/components/ui/Container';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -14,6 +14,91 @@ import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import { InternalPageHeader } from '@/components/ui/InternalPageHeader';
+import { GestionDeCuenta } from '@/components/perfil/GestionDeCuenta';
+
+function PreferenciasNotificaciones() {
+  const [config, setConfig] = useState({
+    sonidoNotificaciones: true,
+    volumenSonido: 40,
+  });
+  const [guardando, setGuardando] = useState(false);
+
+  useEffect(() => {
+    fetchConToken<{ sonidoNotificaciones: boolean; volumenSonido: number }>('/usuarios/me/configuracion')
+      .then((r) => {
+        setConfig({ sonidoNotificaciones: r.sonidoNotificaciones ?? true, volumenSonido: r.volumenSonido ?? 40 });
+      })
+      .catch(() => {});
+  }, []);
+
+  const guardarPreferencias = async (cambios: Partial<typeof config>) => {
+    const anterior = config;
+    setConfig((c) => ({ ...c, ...cambios }));
+    setGuardando(true);
+    try {
+      await fetchConToken('/usuarios/me/configuracion', {
+        method: 'PATCH',
+        body: cambios,
+      });
+    } catch {
+      setConfig(anterior);
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const toggleSonido = (checked: boolean) =>
+    guardarPreferencias({ sonidoNotificaciones: checked });
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-brutal border-2 border-brutal-tinta p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="font-brut text-base font-bold text-brutal-tinta">
+              Reproducir sonido al recibir notificaciones
+            </p>
+            <p className="mt-1 font-mono text-xs text-brutal-tinta/70">
+              Se reproduce solo si hay nuevas notificaciones y no hay preferencia
+              de movimiento reducido.
+            </p>
+          </div>
+          <input
+            type="checkbox"
+            checked={config.sonidoNotificaciones}
+            disabled={guardando}
+            onChange={(e) => toggleSonido(e.target.checked)}
+            className="h-5 w-5 rounded border-2 border-brutal-tinta"
+            aria-label="Reproducir sonido al recibir notificaciones"
+          />
+        </div>
+        {config.sonidoNotificaciones && (
+          <div className="mt-4">
+            <label
+              htmlFor="volumen-sonido"
+              className="mb-1 block font-brut text-xs font-bold uppercase tracking-wide text-brutal-tinta"
+            >
+              Volumen del sonido ({config.volumenSonido}%)
+            </label>
+            <input
+              id="volumen-sonido"
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={config.volumenSonido}
+              disabled={guardando}
+              onChange={(e) =>
+                guardarPreferencias({ volumenSonido: Number(e.target.value) })
+              }
+              className="w-full accent-brutal-tinta"
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 interface Perfil {
   id: string;
@@ -165,11 +250,17 @@ function PerfilContent() {
     );
   }
 
+  const esPostulante = (perfil?.rol.nombre ?? '').toUpperCase() === 'POSTULANTE';
+
   return (
     <>
       <InternalPageHeader
-        title="Mis datos"
-        subtitle="Completa y actualiza tu información personal. Estos datos acompañan tus solicitudes de beca."
+        title="Mi perfil"
+        subtitle={
+          esPostulante
+            ? 'Actualiza tus datos personales y tus preferencias de aviso. Esta información acompaña tus solicitudes de beca.'
+            : 'Actualiza tus datos personales y tus preferencias de aviso.'
+        }
       />
 
       <Container className="py-8">
@@ -184,10 +275,10 @@ function PerfilContent() {
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="font-brut text-xl font-black uppercase tracking-wide text-brutal-tinta">
-                Información personal
+                Datos de la cuenta
               </h2>
               <p className="font-mono text-xs text-brutal-tinta/80">
-                CUI {perfil?.cui} · {perfil?.rol.nombre}
+                CUI {perfil?.cui} · {nombreRol(perfil?.rol.nombre ?? '')}
               </p>
             </div>
             <span className="brut-label rounded-brutal border-2 border-brutal-tinta bg-brutal-cyan px-3 py-1 text-xs font-bold text-brutal-tinta">
@@ -262,6 +353,20 @@ function PerfilContent() {
             </Button>
           </div>
         </Card>
+
+        <Card className="mt-6 max-w-3xl">
+          <div className="mb-6">
+            <h2 className="font-brut text-xl font-black uppercase tracking-wide text-brutal-tinta">
+              Preferencias de notificaciones
+            </h2>
+            <p className="font-mono text-xs text-brutal-tinta/80">
+              Configura cómo recibir avisos en tu campana.
+            </p>
+          </div>
+          <PreferenciasNotificaciones />
+        </Card>
+
+        <GestionDeCuenta />
       </Container>
     </>
   );

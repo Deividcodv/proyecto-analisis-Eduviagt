@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUsuario(null);
         return;
       }
-      const perfil = await httpData<{ id: string; cui: string; nombres: string; email: string; rol: { nombre: string } }>(
+      const perfil = await httpData<{ id: string; cui: string; nombres: string; email: string; rol: { id: string; nombre: string } }>(
         '/auth/perfil',
         { token },
       );
@@ -68,8 +68,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const data = await loginApi(email, password);
-    setUsuario(data.user);
-    return data.user;
+    // S-004: la API devuelve `rol` como objeto; el cliente lo aplana a texto.
+    const usuario: Usuario = { ...data.user, rol: data.user.rol.nombre };
+    setUsuario(usuario);
+    return usuario;
   }, []);
 
   const logout = useCallback(() => {

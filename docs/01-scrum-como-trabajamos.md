@@ -50,9 +50,12 @@ Regla de oro: **cada módulo tiene un solo dueño**. Nadie toca el módulo de ot
 
 > Todas las salidas (archivos) las prepara/revisa David. El código lo entregan los devs vía PRs.
 >
-> Para la simulación, los 3 primeros sprints se archivan como `doc/scrum/recreacion-sprint-1-cimientos/`,
-> `doc/scrum/recreacion-sprint-2-portal-publico/` y `doc/scrum/recreacion-sprint-3-login-dashboard/`
+> Para la simulación, los sprints 1-3 y el 5 se archivan como `doc/scrum/recreacion-sprint-1-cimientos/`,
+> `doc/scrum/recreacion-sprint-2-portal-publico/`, `doc/scrum/recreacion-sprint-3-login-dashboard/` y
+> `doc/scrum/recreacion-sprint-5-reportes-ia/`
 > (con los mismos archivos: `goal.md`, `backlog.md`, `daily-log.md`, `review.md`, `retrospective.md`).
+> A partir de S2 cada carpeta añade además un `README-COLABORADORES-SN.md` con los comandos exactos de
+> copia (`git checkout <fuente> -- <rutas>`) y verificación (`git diff` vacío) de cada dev.
 
 ---
 
