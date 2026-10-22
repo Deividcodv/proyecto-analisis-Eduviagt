@@ -4,6 +4,8 @@
 #   bash scripts/deploy-pm2.sh
 #
 # Variables de entorno opcionales:
+#   DEPLOY_PATH      directorio del repositorio en el servidor
+#                    (por defecto: la carpeta que contiene este script)
 #   DEPLOY_BRANCH    rama que se despliega (por defecto: develop)
 #   PM2_CONFIG_PATH  archivo de configuración de PM2
 #                    (por defecto: /home/davi/sigeb.pm2.config.cjs)
@@ -25,7 +27,7 @@
 
 set -euo pipefail
 
-RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+RAIZ="${DEPLOY_PATH:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "$RAIZ"
 
 RAMA="${DEPLOY_BRANCH:-develop}"
