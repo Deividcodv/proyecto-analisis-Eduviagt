@@ -39,7 +39,10 @@ DEPLOY_REPO_URL_FALLBACK="${DEPLOY_REPO_URL_FALLBACK:-https://github.com/Deividc
 MARCA="apps/api/src/auth/eliminar-cuenta.service.ts"
 
 tiene_la_version_actual() {
-  git ls-tree -r --name-only "origin/$1" 2>/dev/null | grep -qx "$MARCA"
+  # Sin `-q`: `grep -q` cerraría el pipe antes de que `git ls-tree` termine y,
+  # con `pipefail`, el pipeline devolvería error aunque hubiera encontrado la
+  # coincidencia.
+  git ls-tree -r --name-only "origin/$1" 2>/dev/null | grep -x "$MARCA" > /dev/null
 }
 
 echo "==> Repositorio: $RAIZ (rama $RAMA)"
@@ -54,7 +57,7 @@ git checkout "$RAMA"
 if ! tiene_la_version_actual "$RAMA"; then
   echo "AVISO: el remoto $DEPLOY_REPO_URL todavía no tiene $MARCA en la rama $RAMA." >&2
   echo "       Se despliega desde $DEPLOY_REPO_URL_FALLBACK hasta que la réplica esté lista." >&2
-  echo "       Ver docs/06-jose-replica-sigeb-prod.md en el repositorio del equipo." >&2
+  echo "       Ver la guía del equipo: docs/equipo/README-JOSE-REPLICA-SIGEB-PROD.md" >&2
   git remote set-url origin "$DEPLOY_REPO_URL_FALLBACK"
   git fetch origin --prune
   git checkout "$RAMA"
@@ -107,8 +110,20 @@ echo "==> Comprobación"
 # se supone: si cambia, la comprobación sigue apuntando al sitio correcto.
 PUERTO_WEB="$(node -e "const c=require('$PM2_CONFIG');const w=c.apps.find(a=>a.name==='sigeb-web');process.stdout.write(String(w.env.PORT))" 2>/dev/null || echo 3002)"
 CSS="$(find "$DESTINO/.next/static" -name '*.css' -print -quit)"
-CSS_RELATIVO="/_next/static/${CSS#*_next/static/}"
-CODIGO="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${PUERTO_WEB}${CSS_RELATIVO}")"
+# La carpeta del build se llama `.next`, pero la URL pública es `/_next`.
+# Por eso la ruta se calcula con `realpath` y no con un recorte de texto.
+CSS_RELATIVO="/_next/static/$(realpath --relative-to="$DESTINO/.next/static" "$CSS")"
+
+# Se espera a que la web esté escuchando. Tras el reinicio de PM2 puede
+# tardar un instante: comprobarlo de inmediato daría un error aunque el
+# despliegue fuera correcto. Se espera por condición, no por un tiempo fijo.
+CODIGO="000"
+for _ in $(seq 1 30); do
+  CODIGO="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${PUERTO_WEB}${CSS_RELATIVO}" || true)"
+  [ "$CODIGO" = "200" ] && break
+  sleep 2
+done
+
 if [ "$CODIGO" != "200" ]; then
   echo "ERROR: el CSS $CSS_RELATIVO responde $CODIGO en el puerto $PUERTO_WEB (esperado 200)." >&2
   exit 1
