@@ -5,6 +5,7 @@ import { fetchConToken } from '@/lib/api-auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Spinner } from '@/components/ui/Spinner';
+import { Textarea } from '@/components/ui/Textarea';
 import type { SolicitudDetalle } from '@/lib/api';
 
 export function PasoPerfilFinanciero({
@@ -131,11 +132,8 @@ export function PasoPerfilFinanciero({
         He recibido becas anteriormente
       </label>
       <div className="mt-4">
-        <label className="mb-1 block font-brut text-xs font-bold uppercase tracking-wide text-brutal-tinta">
-          Describe tu situación socioeconómica
-        </label>
-        <textarea
-          className="w-full rounded-brutal border-[3px] border-brutal-tinta bg-brutal-blanco px-3 py-2 font-mono text-sm text-brutal-tinta focus:bg-brutal-cyan/10 focus:outline-none"
+        <Textarea
+          label="Describe tu situación socioeconómica"
           rows={4}
           value={form.descripcionSituacion}
           onChange={(e) =>

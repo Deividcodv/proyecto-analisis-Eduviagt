@@ -47,6 +47,9 @@ export function PanelSesiones() {
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudieron cargar las sesiones');
+      // Sin esto la lista queda en `null` y la vista muestra el spinner para
+      // siempre, tragándose el mensaje de error.
+      setSesiones([]);
     }
   }, []);
 
@@ -172,7 +175,7 @@ export function PanelSesiones() {
               Agenda — solicitudes evaluadas ({evaluadas.length} disponibles)
             </p>
             {evaluadas.length === 0 ? (
-              <p className="text-sm text-amber-700">
+              <p className="text-sm font-bold text-brutal-gold-dark">
                 No hay solicitudes evaluadas para agregar a la agenda.
               </p>
             ) : (

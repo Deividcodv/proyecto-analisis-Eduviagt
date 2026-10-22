@@ -8,6 +8,7 @@ import {
   useNotificacionesStream,
   type EventoNotificacion,
 } from '@/lib/notificaciones-stream';
+import { useNotificacionesSonido } from '@/hooks/use-notificaciones-sonido';
 import type { ListaNotificaciones, Notificacion } from '@/lib/api';
 
 function formatearMomento(fecha: string): string {
@@ -29,6 +30,10 @@ export function CampanaNotificaciones() {
   const [abierto, setAbierto] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
+  const [config, setConfig] = useState<{
+    sonidoNotificaciones: boolean;
+    volumenSonido: number;
+  }>({ sonidoNotificaciones: true, volumenSonido: 40 });
   const ref = useRef<HTMLDivElement>(null);
 
   const cargar = useCallback(async () => {
@@ -49,7 +54,17 @@ export function CampanaNotificaciones() {
   }, []);
 
   useEffect(() => {
-    if (usuario) void cargar();
+    if (usuario) {
+      void cargar();
+      fetchConToken<{ sonidoNotificaciones: boolean; volumenSonido: number }>('/usuarios/me/configuracion')
+        .then((r) => {
+          setConfig({
+            sonidoNotificaciones: r.sonidoNotificaciones ?? true,
+            volumenSonido: r.volumenSonido ?? 40,
+          });
+        })
+        .catch(() => {});
+    }
   }, [usuario, cargar]);
 
   useNotificacionesStream((evento: EventoNotificacion) => {
@@ -69,6 +84,12 @@ export function CampanaNotificaciones() {
     setTotal((t) => t + 1);
     setNoLeidas((n) => n + 1);
   }, !!usuario);
+
+  useNotificacionesSonido({
+    noLeidas,
+    habilitado: config.sonidoNotificaciones,
+    volumen: config.volumenSonido,
+  });
 
   useEffect(() => {
     if (!abierto) return;

@@ -15,7 +15,11 @@ export function Stepper({ pasos, actual, completados, className = '' }: StepperP
         const activo = numero === actual;
         const completado = completados ? (completados[index] ?? false) : numero < actual;
         return (
-          <li key={paso} className="flex items-center gap-2">
+          <li
+            key={paso}
+            aria-current={activo ? 'step' : undefined}
+            className="flex items-center gap-2"
+          >
             <div className="flex items-center gap-2">
               <span
                 className={`flex h-8 w-8 items-center justify-center border-2 border-brutal-tinta font-brut text-sm font-black ${

@@ -8,6 +8,8 @@ import {
   UpdateConvocatoriaDto,
   TransicionDto,
   DocumentosRequeridosDto,
+  ReglaMontoDto,
+  ReglasMontoDto,
 } from './dto';
 import {
   ConvocatoriaStateMachine,
@@ -30,7 +32,9 @@ export class ConvocatoriasService {
       await this.assertNivelAcademicoExists(dto.nivelAcademicoId);
     }
     this.assertFechasCoherentes(dto.fechaApertura, dto.fechaCierre);
-    return this.prisma.convocatoria.create({
+    this.assertReglasMonto(dto.montoBase, dto.reglasMonto);
+
+    const creada = await this.prisma.convocatoria.create({
       data: {
         nombre: dto.nombre,
         descripcion: dto.descripcion,
@@ -51,9 +55,90 @@ export class ConvocatoriasService {
         ...(dto.maxCorrecciones !== undefined
           ? { maxCorrecciones: dto.maxCorrecciones }
           : {}),
+        // Montos (Sprint 8 - US-801)
+        ...(dto.moneda !== undefined ? { moneda: dto.moneda } : {}),
+        ...(dto.montoBase !== undefined && dto.montoBase !== null
+          ? { montoBase: new Prisma.Decimal(dto.montoBase).toDecimalPlaces(2) }
+          : {}),
+        ...(dto.permiteParcial !== undefined
+          ? { permiteParcial: dto.permiteParcial }
+          : {}),
+        ...(dto.usarReglasMonto !== undefined
+          ? { usarReglasMonto: dto.usarReglasMonto }
+          : {}),
+        ...(dto.reglasMonto?.length
+          ? { reglasMonto: { create: this.mapearReglas(dto.reglasMonto) } }
+          : {}),
       },
-      include: { beca: true, nivelAcademico: true },
+      include: { beca: true, nivelAcademico: true, reglasMonto: true },
     });
+
+    return creada;
+  }
+
+  /** Traduce las reglas del DTO al modelo de Prisma (Sprint 8 - US-801). */
+  private mapearReglas(reglas: ReglaMontoDto[]) {
+    return reglas.map((r, indice) => ({
+      nombre: r.nombre,
+      ingresoMin:
+        r.ingresoMin != null
+          ? new Prisma.Decimal(r.ingresoMin).toDecimalPlaces(2)
+          : null,
+      ingresoMax:
+        r.ingresoMax != null
+          ? new Prisma.Decimal(r.ingresoMax).toDecimalPlaces(2)
+          : null,
+      tipo: r.tipo,
+      montoFijo:
+        r.montoFijo != null
+          ? new Prisma.Decimal(r.montoFijo).toDecimalPlaces(2)
+          : null,
+      porcentaje: r.porcentaje ?? null,
+      prioridad: r.prioridad ?? indice,
+      activo: true,
+    }));
+  }
+
+  /**
+   * Valida que las reglas de monto sean coherentes (Sprint 8 - US-801):
+   * una regla FIJO necesita monto, una PORCENTAJE necesita porcentaje y una
+   * COMPLETO necesita monto base en la convocatoria.
+   */
+  private assertReglasMonto(
+    montoBase: number | null | undefined,
+    reglas: ReglaMontoDto[] | undefined,
+  ): void {
+    if (!reglas?.length) return;
+
+    for (const [indice, regla] of reglas.entries()) {
+      if (regla.tipo === 'FIJO' && (regla.montoFijo == null || regla.montoFijo < 0)) {
+        throw new BadRequestException(
+          `La regla #${indice + 1} es de tipo FIJO: indica el monto que se otorgará.`,
+        );
+      }
+      if (
+        regla.tipo === 'PORCENTAJE' &&
+        (regla.porcentaje == null || regla.porcentaje < 0)
+      ) {
+        throw new BadRequestException(
+          `La regla #${indice + 1} es de tipo PORCENTAJE: indica el porcentaje del monto base (0.4 = 40%).`,
+        );
+      }
+      if (regla.tipo === 'COMPLETO' && (montoBase == null || montoBase < 0)) {
+        throw new BadRequestException(
+          `La regla #${indice + 1} es de tipo COMPLETO: define primero el monto base de la convocatoria.`,
+        );
+      }
+      if (
+        regla.ingresoMin != null &&
+        regla.ingresoMax != null &&
+        regla.ingresoMin > regla.ingresoMax
+      ) {
+        throw new BadRequestException(
+          `La regla #${indice + 1} tiene el ingreso mínimo mayor que el máximo.`,
+        );
+      }
+    }
   }
 
   async findAllPublic(filtros?: {
@@ -173,9 +258,65 @@ export class ConvocatoriasService {
         ...(dto.maxCorrecciones !== undefined
           ? { maxCorrecciones: dto.maxCorrecciones }
           : {}),
+        // Montos (Sprint 8 - US-801)
+        ...(dto.moneda !== undefined ? { moneda: dto.moneda } : {}),
+        ...(dto.montoBase !== undefined
+          ? {
+              montoBase:
+                dto.montoBase === null
+                  ? null
+                  : new Prisma.Decimal(dto.montoBase).toDecimalPlaces(2),
+            }
+          : {}),
+        ...(dto.permiteParcial !== undefined
+          ? { permiteParcial: dto.permiteParcial }
+          : {}),
+        ...(dto.usarReglasMonto !== undefined
+          ? { usarReglasMonto: dto.usarReglasMonto }
+          : {}),
       },
-      include: { beca: true, nivelAcademico: true },
+      include: { beca: true, nivelAcademico: true, reglasMonto: true },
     });
+  }
+
+  /**
+   * Reemplaza las reglas de monto por tramo de la convocatoria
+   * (Sprint 8 - US-801). Es una operación aparte porque las reglas se
+   * editan como colección, no campo a campo.
+   */
+  async reemplazarReglasMonto(
+    id: string,
+    dto: ReglasMontoDto,
+    usuario: AuthenticatedUser,
+  ) {
+    const convocatoria = await this.findById(id);
+
+    this.assertReglasMonto(
+      dto.montoBase !== undefined
+        ? dto.montoBase
+        : (convocatoria.montoBase?.toNumber() ?? null),
+      dto.reglas,
+    );
+
+    await this.prisma.convocatoriaReglaMonto.deleteMany({
+      where: { convocatoriaId: id },
+    });
+
+    if (dto.reglas.length > 0) {
+      await this.prisma.convocatoriaReglaMonto.createMany({
+        data: this.mapearReglas(dto.reglas).map((r) => ({ ...r, convocatoriaId: id })),
+      });
+    }
+
+    await this.audit.log({
+      usuarioId: usuario.id,
+      accion: 'configurar-montos',
+      entidad: 'convocatoria',
+      entidadId: id,
+      detalle: { reglas: dto.reglas.length },
+    });
+
+    return this.findById(id, true);
   }
 
   async transicion(

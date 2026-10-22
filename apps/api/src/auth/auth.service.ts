@@ -12,6 +12,7 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { BitacoraService } from '../bitacora/bitacora.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { UpdatePerfilDto } from './dto/update-perfil.dto';
@@ -26,6 +27,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private audit: AuditService,
+    private bitacora: BitacoraService,
     @Optional()
     private readonly intentosLogin: LoginAttemptService = new LoginAttemptService(),
   ) {}
@@ -92,6 +94,23 @@ export class AuthService {
       entidadId: user.id,
     });
 
+    await this.bitacora.registrar({
+      actor: {
+        id: user.id,
+        nombre: user.nombres,
+        rol: user.rol.nombre,
+        correo: user.email,
+      },
+      modulo: 'usuario',
+      entidad: 'usuario',
+      entidadId: user.id,
+      accionClave: 'usuario.registro',
+      accionHumana: 'Creó su cuenta en el sistema',
+      descripcionHumana: `Se registró con el correo ${user.email}.`,
+      resultado: 'EXITOSO',
+      origen: 'WEB',
+    });
+
     const { passwordHash: _, ...userWithoutPassword } = user;
 
     return {
@@ -149,6 +168,26 @@ export class AuthService {
       entidad: 'usuario',
       entidadId: user.id,
       ip,
+    });
+
+    // El acceso al sistema es un evento de seguridad: queda en la bitácora
+    // general para que el administrador vea quién entró y cuándo.
+    await this.bitacora.registrar({
+      actor: {
+        id: user.id,
+        nombre: user.nombres,
+        rol: user.rol.nombre,
+        correo: user.email,
+      },
+      modulo: 'usuario',
+      entidad: 'usuario',
+      entidadId: user.id,
+      accionClave: 'usuario.login',
+      accionHumana: 'Inició sesión en el sistema',
+      descripcionHumana: `Inició sesión con el correo ${user.email}.`,
+      resultado: 'EXITOSO',
+      ip,
+      origen: 'WEB',
     });
 
     return {

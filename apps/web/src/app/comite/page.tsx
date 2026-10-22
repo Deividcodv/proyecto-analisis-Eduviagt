@@ -190,7 +190,7 @@ function ComiteContent() {
                     />
                   </div>
                   {!quorumOk && (
-                    <p className="mt-2 font-mono text-xs text-brutal-naranja">
+                    <p className="mt-2 font-mono text-xs font-bold text-brutal-gold-dark">
                       Faltan {quorumMin - votantesUnicos}{' '}
                       {quorumMin - votantesUnicos === 1 ? 'voto' : 'votos'} para alcanzar
                       el quórum.

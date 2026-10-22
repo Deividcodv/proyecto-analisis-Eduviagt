@@ -16,6 +16,7 @@ import {
   UpdateConvocatoriaDto,
   TransicionDto,
   DocumentosRequeridosDto,
+  ReglasMontoDto,
 } from './dto';
 import { Public } from '../common/decorators/public.decorator';
 import { Permisos } from '../common/decorators/permisos.decorator';
@@ -116,5 +117,20 @@ export class ConvocatoriasController {
     @CurrentUser() usuario: AuthenticatedUser,
   ) {
     return this.convocatoriasService.reemplazarDocumentosRequeridos(id, dto, usuario);
+  }
+
+  @Patch(':id/montos')
+  @Permisos('convocatoria:editar')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Configurar el monto base y las reglas por tramo de ingreso (Sprint 8)',
+  })
+  montos(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReglasMontoDto,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.convocatoriasService.reemplazarReglasMonto(id, dto, usuario);
   }
 }

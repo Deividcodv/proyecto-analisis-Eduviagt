@@ -22,6 +22,10 @@ describe('SolicitudesService', () => {
   let storage: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let audit: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let montos: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let bitacora: any;
   let authz: AuthzService;
   let service: SolicitudesService;
 
@@ -38,10 +42,18 @@ describe('SolicitudesService', () => {
       solicitudDocumento: { findFirst: jest.fn(), create: jest.fn(), delete: jest.fn(), update: jest.fn() },
       solicitudPerfilAcademico: { upsert: jest.fn() },
       historialEstado: { create: jest.fn() },
+      solicitudAprobacion: { create: jest.fn() },
       genero: { findUnique: jest.fn() },
       usuario: { findMany: jest.fn().mockResolvedValue([]) },
       notificacion: {
-        create: jest.fn(),
+        create: jest.fn().mockResolvedValue({
+          id: 'n1',
+          usuarioId: 'u-postulante',
+          tipo: 'SOLICITUD_ENVIADA_CONFIRMACION',
+          titulo: 'Postulación enviada correctamente',
+          cuerpo: null,
+          createdAt: new Date(),
+        }),
         createMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
     };
@@ -58,6 +70,17 @@ describe('SolicitudesService', () => {
       exists: jest.fn(),
     };
     audit = { log: jest.fn() };
+    montos = {
+      calcular: jest.fn().mockResolvedValue({
+        monto: null,
+        origen: null,
+        reglaAplicada: null,
+        detalle: 'Sin monto base ni reglas aplicables.',
+      }),
+      requiereSegundaAprobacion: jest.fn().mockReturnValue(false),
+      registrarOverride: jest.fn(),
+    };
+    bitacora = { registrar: jest.fn(), listar: jest.fn() };
     service = new SolicitudesService(
       prisma,
       audit,
@@ -66,6 +89,8 @@ describe('SolicitudesService', () => {
       new SolicitudDocumentoService(prisma, storage, audit, authz),
       new SolicitudChecklistService(prisma, authz),
       new NotificacionesService(prisma),
+      montos,
+      bitacora,
     );
   });
 
@@ -378,6 +403,190 @@ describe('SolicitudesService', () => {
           data: expect.objectContaining({ estado: 'ENVIADA' }),
         }),
       );
+    });
+
+    it('confirma al postulante con el codigo de la solicitud', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        ...solicitudBase,
+        perfilAcademico: { generoId: 'g1', nivelAcademicoId: 'n1' },
+        perfilFinanciero: { ingresoFamiliar: 2500 },
+        documentos: [
+          { documentoTipoId: 't-cert', version: 2, estado: 'CARGADO', archivoUrl: '/storage/x.pdf' },
+        ],
+      });
+      prisma.solicitud.update.mockResolvedValue({ id: 's1', estado: 'ENVIADA' });
+      prisma.historialEstado.create.mockResolvedValue({});
+
+      await service.transicion(
+        's1',
+        { accion: 'enviar', comentario: 'listo' },
+        postulante,
+      );
+
+      // El postulante recibe su propia notificación, con el código con el
+      // que puede rastrear la postulación.
+      expect(prisma.notificacion.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            usuarioId: 'u-postulante',
+            tipo: 'SOLICITUD_ENVIADA_CONFIRMACION',
+            cuerpo: expect.stringContaining('s1'),
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('segunda aprobación por monto (Sprint 8 - US-802/803)', () => {
+    const admin = {
+      id: 'u-admin',
+      cui: '1234567890123',
+      nombres: 'Admin',
+      email: 'admin@sigeb.gov.gt',
+      rol: { id: 'r-admin', nombre: 'ADMIN', descripcion: null },
+    } as AuthenticatedUser;
+
+    const jefeBecas = {
+      id: 'u-jefe',
+      cui: '5555555555555',
+      nombres: 'Jefa de Becas',
+      email: 'jefebecas@demo.gt',
+      rol: { id: 'r-jefe', nombre: 'JEFE_BECAS', descripcion: null },
+    } as AuthenticatedUser;
+
+    const evaluada = (monto: string | null, aprobaciones: unknown[] = []) => ({
+      id: 's1',
+      usuarioId: 'u-postulante',
+      estado: 'EVALUADA',
+      correccionesCount: 0,
+      montoOtorgable: monto,
+      aprobaciones,
+      convocatoria: {
+        id: 'c1',
+        nombre: 'Beca de prueba',
+        beca: { id: 'b1', nombre: 'Beca de prueba' },
+        maxCorrecciones: 3,
+      },
+      perfilFinanciero: { ingresoFamiliar: 2500 },
+    });
+
+    it('un monto sobre el umbral deja la solicitud pendiente de 2ª aprobación', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(evaluada('12000'));
+      prisma.solicitud.update.mockResolvedValue({
+        id: 's1',
+        estado: 'PENDIENTE_SEGUNDA_APROBACION',
+      });
+      montos.requiereSegundaAprobacion.mockReturnValue(true);
+
+      await service.transicion('s1', { accion: 'aprobar' }, admin);
+
+      expect(prisma.solicitud.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 's1' },
+          data: expect.objectContaining({
+            estado: 'PENDIENTE_SEGUNDA_APROBACION',
+          }),
+        }),
+      );
+      expect(prisma.solicitudAprobacion.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            nivel: 1,
+            accion: 'aprobar',
+            resultado: 'PENDIENTE_SEGUNDA_APROBACION',
+          }),
+        }),
+      );
+    });
+
+    it('un monto bajo el umbral se aprueba de una vez', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(evaluada('6000'));
+      prisma.solicitud.update.mockResolvedValue({ id: 's1', estado: 'APROBADA' });
+      montos.requiereSegundaAprobacion.mockReturnValue(false);
+
+      await service.transicion('s1', { accion: 'aprobar' }, admin);
+
+      expect(prisma.solicitud.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ estado: 'APROBADA' }),
+        }),
+      );
+    });
+
+    it('la 2ª aprobación no puede firmarla quien firmó la 1ª', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        id: 's1',
+        usuarioId: 'u-postulante',
+        estado: 'PENDIENTE_SEGUNDA_APROBACION',
+        correccionesCount: 0,
+        montoOtorgable: '12000',
+        aprobaciones: [{ id: 'a1', nivel: 1, usuarioId: admin.id }],
+        convocatoria: {
+          id: 'c1',
+          nombre: 'Beca de prueba',
+          beca: { id: 'b1', nombre: 'Beca de prueba' },
+          maxCorrecciones: 3,
+        },
+        perfilFinanciero: { ingresoFamiliar: 2500 },
+      });
+
+      await expect(
+        service.transicion('s1', { accion: 'aprobar_segunda' }, admin),
+      ).rejects.toThrow(/distinta/);
+    });
+
+    it('otra persona sí puede firmar la 2ª aprobación', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        id: 's1',
+        usuarioId: 'u-postulante',
+        estado: 'PENDIENTE_SEGUNDA_APROBACION',
+        correccionesCount: 0,
+        montoOtorgable: '12000',
+        aprobaciones: [{ id: 'a1', nivel: 1, usuarioId: admin.id }],
+        convocatoria: {
+          id: 'c1',
+          nombre: 'Beca de prueba',
+          beca: { id: 'b1', nombre: 'Beca de prueba' },
+          maxCorrecciones: 3,
+        },
+        perfilFinanciero: { ingresoFamiliar: 2500 },
+      });
+      prisma.solicitud.update.mockResolvedValue({ id: 's1', estado: 'APROBADA' });
+
+      await service.transicion('s1', { accion: 'aprobar_segunda' }, jefeBecas);
+
+      expect(prisma.solicitud.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ estado: 'APROBADA' }),
+        }),
+      );
+      expect(prisma.solicitudAprobacion.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ nivel: 2, accion: 'aprobar_segunda' }),
+        }),
+      );
+    });
+
+    it('devolver a revisión exige escribir el motivo', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        id: 's1',
+        usuarioId: 'u-postulante',
+        estado: 'PENDIENTE_SEGUNDA_APROBACION',
+        correccionesCount: 0,
+        montoOtorgable: '12000',
+        aprobaciones: [{ id: 'a1', nivel: 1, usuarioId: admin.id }],
+        convocatoria: {
+          id: 'c1',
+          nombre: 'Beca de prueba',
+          beca: { id: 'b1', nombre: 'Beca de prueba' },
+          maxCorrecciones: 3,
+        },
+        perfilFinanciero: { ingresoFamiliar: 2500 },
+      });
+
+      await expect(
+        service.transicion('s1', { accion: 'devolver_a_revision' }, jefeBecas),
+      ).rejects.toThrow(/motivo/);
     });
   });
 

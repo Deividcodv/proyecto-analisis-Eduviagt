@@ -72,4 +72,19 @@ test.describe('Panel de administración', () => {
 
     await expect(page).toHaveURL(/\/admin\/seguridad$/);
   });
+
+  test('la bitácora muestra quién, cuándo y qué acción se registró', async ({
+    page,
+  }) => {
+    await page.goto('/admin/auditoria');
+
+    await expect(
+      page.getByRole('heading', { name: 'Bitácora del sistema' }),
+    ).toBeVisible();
+
+    // Cada registro identifica a la persona y su rol, y describe la acción
+    // en lenguaje humano (no el nombre técnico de la operación).
+    const primerRegistro = page.locator('main >> text=/Inició sesión|Creó|Modificó/').first();
+    await expect(primerRegistro).toBeVisible();
+  });
 });

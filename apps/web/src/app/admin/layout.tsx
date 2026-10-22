@@ -12,6 +12,7 @@ const pestanas: { href: string; label: string; icono: IconName }[] = [
   { href: '/admin/solicitudes', label: 'Solicitudes', icono: 'documento' },
   { href: '/admin/comites', label: 'Comités', icono: 'grupos' },
   { href: '/admin/sesiones', label: 'Sesiones', icono: 'calendario' },
+  { href: '/admin/auditoria', label: 'Auditoría', icono: 'buscar' },
   { href: '/admin/seguridad', label: 'Seguridad', icono: 'escudo' },
 ];
 

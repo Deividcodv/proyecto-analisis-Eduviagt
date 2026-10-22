@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { fetchConToken } from '@/lib/api-auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -12,6 +12,16 @@ import {
   type InstitucionEducativa,
   type SolicitudDetalle,
 } from '@/lib/api';
+
+function mapNivelATipo(nombre: string): string | undefined {
+  const n = nombre.toLowerCase();
+  if (n.includes('univers')) return 'UNIVERSIDAD';
+  if (n.includes('diversif')) return 'DIVERSIFICADO';
+  if (n.includes('técnic') || n.includes('tecnic')) return 'TECNICO';
+  if (n.includes('secund')) return 'SECUNDARIA';
+  if (n.includes('primar')) return 'PRIMARIA';
+  return undefined;
+}
 
 export function PasoPerfilAcademico({
   solicitudId,
@@ -36,21 +46,38 @@ export function PasoPerfilAcademico({
   });
 
   useEffect(() => {
-    fetcher<{ data: NivelAcademico[] }>('/catalogos/niveles-academicos').then(
-      (r) => setNiveles(r.data ?? []),
-    );
-  }, []);
+    fetcher<{ data: NivelAcademico[] }>('/catalogos/niveles-academicos')
+      .then((r) => setNiveles(r.data ?? []))
+      .catch(() =>
+        onError('No se pudo cargar el catálogo de niveles académicos.'),
+      );
+  }, [onError]);
+
+  const nivelSeleccionado = useMemo(
+    () => niveles.find((n) => n.id === form.nivelId),
+    [niveles, form.nivelId],
+  );
 
   useEffect(() => {
     const termino = busquedaInstitucion.trim();
     const timer = setTimeout(() => {
-      const query = termino ? `?busqueda=${encodeURIComponent(termino)}` : '';
+      const params = new URLSearchParams();
+      if (termino) params.set('busqueda', termino);
+      if (nivelSeleccionado && form.nivelId !== '__otro__') {
+        const tipo = mapNivelATipo(nivelSeleccionado.nombre);
+        if (tipo) params.set('nivel', tipo);
+      }
+      const query = params.toString() ? `?${params.toString()}` : '';
       fetcher<{ data: InstitucionEducativa[] }>(
         `/catalogos/instituciones${query}`,
-      ).then((r) => setInstituciones(r.data ?? []));
+      )
+        .then((r) => setInstituciones(r.data ?? []))
+        .catch(() =>
+          onError('No se pudo cargar el catálogo de instituciones educativas.'),
+        );
     }, 300);
     return () => clearTimeout(timer);
-  }, [busquedaInstitucion]);
+  }, [busquedaInstitucion, nivelSeleccionado, form.nivelId, onError]);
 
   useEffect(() => {
     let activo = true;
@@ -156,6 +183,8 @@ export function PasoPerfilAcademico({
           value={form.nivelId}
           otroValue={form.nivelOtro}
           onChange={(id) =>
+            // No se borra la institución elegida: el postulante puede cambiar
+            // de nivel y corregir después sin perder lo que ya escribió.
             setForm((f) => ({ ...f, nivelId: id, nivelOtro: '' }))
           }
           onOtroChange={(t) => setForm((f) => ({ ...f, nivelOtro: t }))}

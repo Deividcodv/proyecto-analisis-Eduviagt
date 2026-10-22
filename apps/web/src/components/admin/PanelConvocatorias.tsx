@@ -31,6 +31,9 @@ export function PanelConvocatorias() {
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudieron cargar las convocatorias');
+      // Sin esto la lista queda en `null` y la vista muestra el spinner para
+      // siempre, tragándose el mensaje de error.
+      setConvocatorias([]);
     }
   }, []);
 

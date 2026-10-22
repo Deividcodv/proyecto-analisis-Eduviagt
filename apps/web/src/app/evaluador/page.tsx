@@ -39,7 +39,7 @@ interface Evaluacion {
   imparcialidadConfirmada: boolean;
 }
 
-function respuestasVisibles(ev: Evaluacion): { etiqueta: string; valor: string }[] {
+function respuestasVisibles(ev: Evaluacion): { id: string; etiqueta: string; valor: string }[] {
   const campos = ev.solicitud.formularioSnapshot;
   if (!campos || campos.length === 0) return [];
   const valores: Record<string, unknown> = {};
@@ -51,11 +51,12 @@ function respuestasVisibles(ev: Evaluacion): { etiqueta: string; valor: string }
       const valor = valores[campo.id];
       if (valor === undefined || valor === null || valor === '') return null;
       return {
+        id: campo.id,
         etiqueta: campo.etiqueta,
         valor: typeof valor === 'boolean' ? (valor ? 'Sí' : 'No') : String(valor),
       };
     })
-    .filter((v): v is { etiqueta: string; valor: string } => v !== null);
+    .filter((v): v is { id: string; etiqueta: string; valor: string } => v !== null);
 }
 
 export default function EvaluadorPage() {
@@ -68,28 +69,41 @@ export default function EvaluadorPage() {
 
 function EvaluadorContent() {
   const [evaluaciones, setEvaluaciones] = useState<Evaluacion[] | null>(null);
+  const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [marcas, setMarcas] = useState<Record<string, { puntaje: string; observaciones: string }>>({});
 
   const cargar = useCallback(async () => {
+    setCargando(true);
     try {
       const data = await fetchConToken<Evaluacion[]>('/evaluaciones/mias');
       setEvaluaciones(data);
-      const iniciales: Record<string, { puntaje: string; observaciones: string }> = {};
-      data.forEach((ev) =>
-        ev.criterios.forEach((c) => {
-          iniciales[c.id] = {
-            puntaje: c.puntaje != null ? String(c.puntaje) : '',
-            observaciones: c.observaciones ?? '',
-          };
-        }),
-      );
-      setMarcas(iniciales);
+      // Se rehidratan sólo los criterios vacíos: si el evaluador ya escribió
+      // observaciones de otros criterios, un guardado no debe borrarlas.
+      setMarcas((prev) => {
+        const siguiente: Record<
+          string,
+          { puntaje: string; observaciones: string }
+        > = {};
+        data.forEach((ev) =>
+          ev.criterios.forEach((c) => {
+            siguiente[c.id] = prev[c.id] ?? {
+              puntaje: c.puntaje != null ? String(c.puntaje) : '',
+              observaciones: c.observaciones ?? '',
+            };
+          }),
+        );
+        return siguiente;
+      });
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudieron cargar las evaluaciones');
+      // Sin esto la vista se queda en el spinner para siempre.
+      setEvaluaciones([]);
+    } finally {
+      setCargando(false);
     }
   }, []);
 
@@ -119,10 +133,21 @@ function EvaluadorContent() {
 
   const puntuar = async (solicitudId: string, criterio: Criterio) => {
     const marca = marcas[criterio.id];
-    const puntaje = Number(marca?.puntaje);
-    if (Number.isNaN(puntaje)) return;
+    const bruto = (marca?.puntaje ?? '').trim();
+    if (bruto === '') {
+      setError(`Escribe un puntaje entre 0 y 100 para "${criterio.nombre}".`);
+      setExito(null);
+      return;
+    }
+    const puntaje = Number(bruto);
+    if (Number.isNaN(puntaje)) {
+      setError('El puntaje debe ser un número.');
+      setExito(null);
+      return;
+    }
     if (puntaje < 0 || puntaje > 100) {
       setError('El puntaje debe estar entre 0 y 100');
+      setExito(null);
       return;
     }
     setGuardando(true);
@@ -160,16 +185,33 @@ function EvaluadorContent() {
           <p className="mb-4 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-lima/30 p-4 text-sm font-bold text-brutal-tinta">{exito}</p>
         )}
 
-        {!evaluaciones ? (
-          <div className="flex justify-center py-20"><Spinner /></div>
+        {cargando && !evaluaciones ? (
+          <div className="flex justify-center py-20">
+            <Spinner />
+          </div>
+        ) : evaluaciones === null ? (
+          <div className="flex justify-center py-20">
+            <Spinner />
+          </div>
         ) : evaluaciones.length === 0 ? (
           <Card className="text-center">
             <p className="text-lg font-bold text-brutal-tinta">
-              No tienes evaluaciones asignadas
+              {error
+                ? 'No se pudieron cargar tus evaluaciones'
+                : 'No tienes evaluaciones asignadas'}
             </p>
             <p className="mt-1 text-sm text-brutal-tinta/70">
-              Cuando te asignen solicitudes para evaluar aparecerán aquí.
+              {error
+                ? 'Revisa tu conexión e inténtalo de nuevo.'
+                : 'Cuando te asignen solicitudes para evaluar aparecerán aquí.'}
             </p>
+            {error && (
+              <div className="mt-4 flex justify-center">
+                <Button variant="ghost" onClick={cargar}>
+                  Reintentar
+                </Button>
+              </div>
+            )}
           </Card>
         ) : (
           <div className="space-y-6">
@@ -213,12 +255,12 @@ function EvaluadorContent() {
                   </div>
                   <div className="text-right">
                     <span className="font-mono text-sm font-bold text-brutal-tinta">
-                      {ev.completados}/{ev.totalCriterios} completados
+                      {ingresados}/{ev.totalCriterios} completados
                     </span>
                     {preview !== null && (
                       <p className="mt-1 font-mono text-sm font-bold text-brutal-tinta">
-                        Puntaje final:{' '}
-                        <span className="rounded-brutal border-2 border-brutal-tinta bg-brutal-gold px-2 py-0.5 text-brutal-tinta">
+                        Puntaje parcial ({ingresados}/{ev.totalCriterios} criterios):
+                        <span className="ml-1 rounded-brutal border-2 border-brutal-tinta bg-brutal-gold px-2 py-0.5 text-brutal-tinta">
                           {preview}/100
                         </span>
                       </p>
@@ -236,7 +278,7 @@ function EvaluadorContent() {
                       </p>
                       <dl className="grid gap-1 font-mono text-xs text-brutal-tinta/80 sm:grid-cols-2">
                         {extra.map((item) => (
-                          <div key={item.etiqueta} className="flex justify-between gap-2">
+                          <div key={item.id} className="flex justify-between gap-2">
                             <dt className="text-brutal-tinta/60">{item.etiqueta}</dt>
                             <dd className="font-bold text-brutal-tinta">{item.valor}</dd>
                           </div>
@@ -314,7 +356,8 @@ function EvaluadorContent() {
                         </div>
                         <div className="mt-3 grid gap-3 md:grid-cols-[1fr_0.5fr_auto]">
                           <Input
-                            placeholder="Observaciones"
+                            label={`Observaciones · ${criterio.nombre}`}
+                            id={`observaciones-${criterio.id}`}
                             value={marca?.observaciones ?? ''}
                             onChange={(e) =>
                               setMarcas((m) => ({
@@ -327,10 +370,11 @@ function EvaluadorContent() {
                             }
                           />
                           <Input
+                            label={`Puntaje (0-100) · ${criterio.nombre}`}
+                            id={`puntaje-${criterio.id}`}
                             type="number"
                             min={0}
                             max={100}
-                            placeholder="Puntaje (0-100)"
                             value={marca?.puntaje ?? ''}
                             onChange={(e) =>
                               setMarcas((m) => ({

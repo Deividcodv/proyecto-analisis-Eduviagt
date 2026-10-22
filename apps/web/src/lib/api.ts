@@ -61,6 +61,24 @@ export interface Convocatoria {
   nivelAcademico?: NivelAcademicoResumen | null;
   beca: Beca;
   _count?: { solicitudes?: number };
+  // Montos (Sprint 8 - US-801)
+  moneda?: string;
+  montoBase?: string | null;
+  permiteParcial?: boolean;
+  usarReglasMonto?: boolean;
+}
+
+/** Regla de cálculo del monto por tramo de ingreso familiar (Sprint 8). */
+export interface ConvocatoriaReglaMonto {
+  id: string;
+  nombre: string;
+  ingresoMin?: string | null;
+  ingresoMax?: string | null;
+  tipo: 'FIJO' | 'PORCENTAJE' | 'COMPLETO';
+  montoFijo?: string | null;
+  porcentaje?: number | null;
+  prioridad: number;
+  activo: boolean;
 }
 
 export interface DocumentoTipo {
@@ -83,6 +101,7 @@ export interface CriterioEvaluacion {
 export interface ConvocatoriaDetalle extends Convocatoria {
   documentosRequeridos: ConvocatoriaDocRequerido[];
   formulario?: CampoFormulario[] | null;
+  reglasMonto?: ConvocatoriaReglaMonto[];
   beca: Beca & { criteriosEvaluacion: CriterioEvaluacion[] };
 }
 
@@ -90,6 +109,10 @@ export interface HistorialEstado {
   estado: string;
   comentario: string | null;
   fecha: string;
+  /** Acción realizada (Sprint 8 - US-805). */
+  accion?: string | null;
+  /** Resultado de la acción: EXITOSO | RECHAZADO | ERROR. */
+  resultado?: string | null;
 }
 
 export interface Solicitud {
@@ -99,6 +122,10 @@ export interface Solicitud {
   correccionesCount: number;
   createdAt: string;
   updatedAt: string;
+  // Montos (Sprint 8 - US-801). Vienen como texto para no perder decimales.
+  montoOtorgable?: string | null;
+  montoAprobado?: string | null;
+  montoOrigenCalculo?: string | null;
   convocatoria: {
     id: string;
     nombre: string;

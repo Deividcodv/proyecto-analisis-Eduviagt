@@ -16,6 +16,8 @@ const colores: Record<string, string> = {
   EN_REVISION: 'bg-brutal-indigo text-white border-brutal-tinta',
   CORRECCION: 'bg-brutal-naranja text-brutal-tinta border-brutal-tinta',
   EVALUADA: 'bg-brutal-teal text-brutal-tinta border-brutal-tinta',
+  PENDIENTE_SEGUNDA_APROBACION:
+    'bg-brutal-gold text-brutal-tinta border-brutal-tinta',
   APROBADA: 'bg-brutal-lima text-brutal-tinta border-brutal-tinta',
   RECHAZADA: 'bg-brutal-rojo text-brutal-papel border-brutal-tinta',
   PROGRAMADA: 'bg-sigeb-blue-dark text-brutal-papel border-brutal-tinta',

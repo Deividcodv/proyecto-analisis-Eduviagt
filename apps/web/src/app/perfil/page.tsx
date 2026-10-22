@@ -15,6 +15,49 @@ import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import { InternalPageHeader } from '@/components/ui/InternalPageHeader';
 
+function PreferenciasNotificaciones() {
+  const [config, setConfig] = useState({ sonidoNotificaciones: true, volumenSonido: 40 });
+  const [guardando, setGuardando] = useState(false);
+
+  useEffect(() => {
+    fetchConToken<{ sonidoNotificaciones: boolean; volumenSonido: number }>('/usuarios/me/configuracion')
+      .then((r) => {
+        setConfig({ sonidoNotificaciones: r.sonidoNotificaciones ?? true, volumenSonido: r.volumenSonido ?? 40 });
+      })
+      .catch(() => {});
+  }, []);
+
+  const toggleSonido = async (checked: boolean) => {
+    setConfig((c) => ({ ...c, sonidoNotificaciones: checked }));
+    setGuardando(true);
+    try {
+      await fetchConToken('/usuarios/me/configuracion', { method: 'PATCH', body: { sonidoNotificaciones: checked } });
+    } catch {
+      setConfig((c) => ({ ...c, sonidoNotificaciones: !checked }));
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <label className="flex items-center justify-between gap-4 rounded-brutal border-2 border-brutal-tinta p-4">
+        <div>
+          <p className="font-brut text-base font-bold text-brutal-tinta">Reproducir sonido al recibir notificaciones</p>
+          <p className="mt-1 font-mono text-xs text-brutal-tinta/70">Se reproduce solo si hay nuevas notificaciones y no hay preferencia de movimiento reducido.</p>
+        </div>
+        <input
+          type="checkbox"
+          checked={config.sonidoNotificaciones}
+          disabled={guardando}
+          onChange={(e) => toggleSonido(e.target.checked)}
+          className="h-5 w-5 rounded border-2 border-brutal-tinta"
+        />
+      </label>
+    </div>
+  );
+}
+
 interface Perfil {
   id: string;
   cui: string;
@@ -261,6 +304,18 @@ function PerfilContent() {
               Volver a mi panel
             </Button>
           </div>
+        </Card>
+
+        <Card className="mt-6 max-w-3xl">
+          <div className="mb-6">
+            <h2 className="font-brut text-xl font-black uppercase tracking-wide text-brutal-tinta">
+              Preferencias de notificaciones
+            </h2>
+            <p className="font-mono text-xs text-brutal-tinta/80">
+              Configura cómo recibir avisos en tu campana.
+            </p>
+          </div>
+          <PreferenciasNotificaciones />
         </Card>
       </Container>
     </>

@@ -14,6 +14,16 @@ export class AuthzService {
     return this.esAdmin(usuario);
   }
 
+  /**
+   * Personal autorizado a gestionar solicitudes (Sprint 8 - US-806).
+   * El jefe de becas se suma al administrador: puede revisar, aprobar y
+   * devolver a revisión, pero la segunda firma nunca puede ser la misma
+   * persona que firmó la primera.
+   */
+  esPersonal(usuario: AuthenticatedUser): boolean {
+    return this.esAdmin(usuario) || usuario.rol?.nombre === ROL.JEFE_BECAS;
+  }
+
   assertAdmin(usuario: AuthenticatedUser, mensaje?: string): void {
     if (!this.esAdmin(usuario)) {
       throw new ForbiddenException(
@@ -39,6 +49,39 @@ export class AuthzService {
   ): void {
     if (entidad.usuarioId !== usuario.id) {
       throw new ForbiddenException(mensaje);
+    }
+  }
+
+  /**
+   * Segunda instancia de aprobación (Sprint 8 - US-802/803).
+   *
+   * Además del permiso, la segunda firma nunca puede ser la misma persona
+   * que aprobó en primera instancia: la separación de authority es real, no
+   * solo de rol.
+   */
+  puedeSegundaAprobacion(
+    usuario: AuthenticatedUser,
+    primerAprobadorId?: string | null,
+  ): boolean {
+    if (primerAprobadorId && primerAprobadorId === usuario.id) {
+      return false;
+    }
+    return this.esAdmin(usuario) || usuario.rol?.nombre === ROL.JEFE_BECAS;
+  }
+
+  assertSegundaAprobacion(
+    usuario: AuthenticatedUser,
+    primerAprobadorId?: string | null,
+  ): void {
+    if (primerAprobadorId && primerAprobadorId === usuario.id) {
+      throw new ForbiddenException(
+        'La segunda aprobación debe realizarla una persona distinta a quien aprobó en primera instancia',
+      );
+    }
+    if (!this.puedeSegundaAprobacion(usuario, primerAprobadorId)) {
+      throw new ForbiddenException(
+        'No tienes autorización para aprobar en segunda instancia',
+      );
     }
   }
 }

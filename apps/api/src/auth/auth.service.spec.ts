@@ -20,6 +20,8 @@ describe('AuthService (perfil)', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let audit: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let bitacora: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let intentosLogin: any;
   let service: AuthService;
 
@@ -68,6 +70,7 @@ describe('AuthService (perfil)', () => {
       }),
     };
     audit = { log: jest.fn().mockResolvedValue({ id: 'audit-1' }) };
+    bitacora = { registrar: jest.fn(), listar: jest.fn() };
     intentosLogin = {
       estado: jest
         .fn()
@@ -77,7 +80,7 @@ describe('AuthService (perfil)', () => {
     };
     (bcrypt.genSalt as unknown as jest.Mock).mockResolvedValue('salt');
     (bcrypt.hash as unknown as jest.Mock).mockResolvedValue('hash-bcrypt');
-    service = new AuthService(prisma, jwt, config, audit, intentosLogin);
+    service = new AuthService(prisma, jwt, config, audit, bitacora, intentosLogin);
   });
 
   describe('getProfile', () => {

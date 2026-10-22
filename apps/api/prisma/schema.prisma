@@ -25,6 +25,7 @@ enum SolicitudEstado {
   EN_REVISION
   CORRECCION
   EVALUADA
+  PENDIENTE_SEGUNDA_APROBACION
   APROBADA
   RECHAZADA
 }
@@ -59,10 +60,10 @@ enum BecaCobertura {
 // ==========================================
 
 model Usuario {
-  id              String         @id @default(uuid())
-  cui             String         @unique
+  id              String        @id @default(uuid())
+  cui             String        @unique
   nombres         String
-  email           String         @unique
+  email           String        @unique
   passwordHash    String
   telefono        String?
   fechaNacimiento DateTime?
@@ -71,21 +72,23 @@ model Usuario {
   departamentoId  String?
   municipioId     String?
   rolId           String
-  estado          UsuarioEstado  @default(ACTIVO)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  estado          UsuarioEstado @default(ACTIVO)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
-  rol              Rol              @relation(fields: [rolId], references: [id])
-  genero           Genero?          @relation(fields: [generoId], references: [id])
-  departamento     Departamento?    @relation(fields: [departamentoId], references: [id])
-  municipio        Municipio?       @relation(fields: [municipioId], references: [id])
-  solicitudes      Solicitud[]
-  usuarioPermisos  UsuarioPermiso[]
-  comiteMiembros   ComiteMiembro[]
-  evaluaciones     Evaluacion[]
-  votos            Voto[]
-  auditLogs        AuditLog[]
-  notificaciones   Notificacion[]
+  rol                Rol                   @relation(fields: [rolId], references: [id])
+  genero             Genero?               @relation(fields: [generoId], references: [id])
+  departamento       Departamento?         @relation(fields: [departamentoId], references: [id])
+  municipio          Municipio?            @relation(fields: [municipioId], references: [id])
+  solicitudes        Solicitud[]
+  usuarioPermisos    UsuarioPermiso[]
+  comiteMiembros     ComiteMiembro[]
+  evaluaciones       Evaluacion[]
+  votos              Voto[]
+  auditLogs          AuditLog[]
+  notificaciones     Notificacion[]
+  aprobacionesHechas SolicitudAprobacion[]
+  configuracion      ConfiguracionUsuario?
 
   @@map("usuario")
 }
@@ -97,8 +100,8 @@ model Rol {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  usuarios      Usuario[]
-  rolPermisos   RolPermiso[]
+  usuarios    Usuario[]
+  rolPermisos RolPermiso[]
 
   @@map("rol")
 }
@@ -109,8 +112,8 @@ model Permiso {
   accion    String
   createdAt DateTime @default(now())
 
-  rolPermisos      RolPermiso[]
-  usuarioPermisos  UsuarioPermiso[]
+  rolPermisos     RolPermiso[]
+  usuarioPermisos UsuarioPermiso[]
 
   @@unique([modulo, accion])
   @@map("permiso")
@@ -130,11 +133,11 @@ model RolPermiso {
 }
 
 model UsuarioPermiso {
-  id         String        @id @default(uuid())
-  usuarioId  String
-  permisoId  String
-  efecto     PermisoEfecto
-  createdAt  DateTime      @default(now())
+  id        String        @id @default(uuid())
+  usuarioId String
+  permisoId String
+  efecto    PermisoEfecto
+  createdAt DateTime      @default(now())
 
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   permiso Permiso @relation(fields: [permisoId], references: [id], onDelete: Cascade)
@@ -187,7 +190,7 @@ model Municipio {
   departamentoId String
   activo         Boolean @default(true)
 
-  departamento Departamento           @relation(fields: [departamentoId], references: [id])
+  departamento Departamento               @relation(fields: [departamentoId], references: [id])
   perfiles     SolicitudPerfilAcademico[]
   usuarios     Usuario[]
 
@@ -246,34 +249,62 @@ model CriterioEvaluacion {
 // ==========================================
 
 model Convocatoria {
-  id              String              @id @default(uuid())
-  nombre          String
-  descripcion     String?
-  becaId          String
-  nivelAcademicoId String?
-  cobertura       BecaCobertura?
-  formulario      Json?
-  estado          ConvocatoriaEstado  @default(BORRADOR)
-  fechaApertura   DateTime?
-  fechaCierre     DateTime?
-  evaluadoresMinimos Int              @default(2)
-  maxCorrecciones    Int              @default(3)
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  id                 String             @id @default(uuid())
+  nombre             String
+  descripcion        String?
+  becaId             String
+  nivelAcademicoId   String?
+  cobertura          BecaCobertura?
+  formulario         Json?
+  estado             ConvocatoriaEstado @default(BORRADOR)
+  fechaApertura      DateTime?
+  fechaCierre        DateTime?
+  evaluadoresMinimos Int                @default(2)
+  maxCorrecciones    Int                @default(3)
+  // Montos (Sprint 8): monto base de la beca y reglas por tramo de ingreso.
+  moneda             String             @default("GTQ")
+  montoBase          Decimal?           @db.Decimal(12, 2)
+  permiteParcial     Boolean            @default(true)
+  usarReglasMonto    Boolean            @default(false)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
-  beca                 Beca                 @relation(fields: [becaId], references: [id])
-  nivelAcademico       NivelAcademico?      @relation(fields: [nivelAcademicoId], references: [id])
+  beca                 Beca                       @relation(fields: [becaId], references: [id])
+  nivelAcademico       NivelAcademico?            @relation(fields: [nivelAcademicoId], references: [id])
   documentosRequeridos ConvocatoriaDocRequerido[]
   solicitudes          Solicitud[]
+  reglasMonto          ConvocatoriaReglaMonto[]
 
   @@map("convocatoria")
 }
 
+/// Regla de cálculo del monto otorgable según el ingreso familiar del
+/// postulante (Sprint 8 - US-801).
+model ConvocatoriaReglaMonto {
+  id             String   @id @default(uuid())
+  convocatoriaId String
+  nombre         String
+  ingresoMin     Decimal? @db.Decimal(12, 2)
+  ingresoMax     Decimal? @db.Decimal(12, 2)
+  /// FIJO | PORCENTAJE | COMPLETO
+  tipo           String
+  montoFijo      Decimal? @db.Decimal(12, 2)
+  porcentaje     Float?
+  prioridad      Int      @default(0)
+  activo         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  convocatoria Convocatoria @relation(fields: [convocatoriaId], references: [id], onDelete: Cascade)
+
+  @@index([convocatoriaId])
+  @@map("convocatoria_regla_monto")
+}
+
 model ConvocatoriaDocRequerido {
-  id              String   @id @default(uuid())
+  id              String  @id @default(uuid())
   convocatoriaId  String
   documentoTipoId String
-  obligatorio     Boolean  @default(true)
+  obligatorio     Boolean @default(true)
 
   convocatoria  Convocatoria  @relation(fields: [convocatoriaId], references: [id], onDelete: Cascade)
   documentoTipo DocumentoTipo @relation(fields: [documentoTipoId], references: [id])
@@ -287,28 +318,63 @@ model ConvocatoriaDocRequerido {
 // ==========================================
 
 model Solicitud {
-  id                String          @id @default(uuid())
-  convocatoriaId    String
-  usuarioId         String
-  estado            SolicitudEstado @default(BORRADOR)
-  correccionesCount Int             @default(0)
-  respuestas        Json?
+  id                 String          @id @default(uuid())
+  convocatoriaId     String
+  usuarioId          String
+  estado             SolicitudEstado @default(BORRADOR)
+  correccionesCount  Int             @default(0)
+  respuestas         Json?
   formularioSnapshot Json?
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  // Montos (Sprint 8 - US-801/802): monto que se otorgará, monto ya
+  // aprobado y trazabilidad del cálculo.
+  montoOtorgable     Decimal?        @db.Decimal(12, 2)
+  montoAprobado      Decimal?        @db.Decimal(12, 2)
+  montoOrigenCalculo String? // REGLA | MONTO_BASE | OVERRIDE
+  montoCalculadoAt   DateTime?
+  montoCalculadoPor  String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
-  convocatoria    Convocatoria      @relation(fields: [convocatoriaId], references: [id])
-  usuario         Usuario           @relation(fields: [usuarioId], references: [id])
-  perfilAcademico SolicitudPerfilAcademico?
+  convocatoria     Convocatoria               @relation(fields: [convocatoriaId], references: [id])
+  usuario          Usuario                    @relation(fields: [usuarioId], references: [id])
+  perfilAcademico  SolicitudPerfilAcademico?
   perfilFinanciero SolicitudPerfilFinanciero?
-  documentos      SolicitudDocumento[]
-  historial       HistorialEstado[]
-  evaluaciones    Evaluacion[]
-  votos           Voto[]
-  decision        Decision?
-  sesionesAgenda  SesionAgenda[]
+  documentos       SolicitudDocumento[]
+  historial        HistorialEstado[]
+  evaluaciones     Evaluacion[]
+  votos            Voto[]
+  decision         Decision?
+  sesionesAgenda   SesionAgenda[]
+  aprobaciones     SolicitudAprobacion[]
 
   @@map("solicitud")
+}
+
+/// Aprobación de una solicitud (Sprint 8 - US-802/803). Registra cada
+/// instancia de aprobación: nivel 1 (primera) y nivel 2 (segunda).
+model SolicitudAprobacion {
+  id          String   @id @default(uuid())
+  solicitudId String
+  usuarioId   String
+  rolNombre   String
+  /// 1 = primera instancia, 2 = segunda instancia
+  nivel       Int
+  /// aprobar | rechazar | aprobar_segunda | devolver_a_revision
+  accion      String
+  /// APROBADA | RECHAZADA | DEVUELTA_A_REVISION | PENDIENTE_SEGUNDA_APROBACION
+  resultado   String
+  comentario  String?
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  solicitud Solicitud @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  usuario   Usuario   @relation(fields: [usuarioId], references: [id])
+
+  @@index([solicitudId])
+  @@index([usuarioId])
+  @@index([createdAt])
+  @@map("solicitud_aprobacion")
 }
 
 model SolicitudPerfilAcademico {
@@ -326,21 +392,21 @@ model SolicitudPerfilAcademico {
   municipioId        String?
   municipioOtro      String?
 
-  solicitud      Solicitud      @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
-  genero         Genero?        @relation(fields: [generoId], references: [id])
+  solicitud      Solicitud       @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  genero         Genero?         @relation(fields: [generoId], references: [id])
   nivelAcademico NivelAcademico? @relation(fields: [nivelAcademicoId], references: [id])
-  departamento   Departamento?  @relation(fields: [departamentoId], references: [id])
-  municipio      Municipio?     @relation(fields: [municipioId], references: [id])
+  departamento   Departamento?   @relation(fields: [departamentoId], references: [id])
+  municipio      Municipio?      @relation(fields: [municipioId], references: [id])
 
   @@map("solicitud_perfil_academico")
 }
 
 model SolicitudPerfilFinanciero {
-  id                   String   @id @default(uuid())
-  solicitudId          String   @unique
+  id                   String  @id @default(uuid())
+  solicitudId          String  @unique
   ingresoFamiliar      Float?
   numeroDependientes   Int?
-  becasAnteriores      Boolean  @default(false)
+  becasAnteriores      Boolean @default(false)
   descripcionSituacion String?
 
   solicitud Solicitud @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
@@ -349,15 +415,15 @@ model SolicitudPerfilFinanciero {
 }
 
 model SolicitudDocumento {
-  id                 String                   @id @default(uuid())
-  solicitudId        String
-  documentoTipoId    String
-  archivoUrl         String
-  estado             SolicitudDocumentoEstado @default(PENDIENTE)
-  version            Int                      @default(1)
-  comentarioRechazo  String?
-  createdAt          DateTime                 @default(now())
-  updatedAt          DateTime                 @updatedAt
+  id                String                   @id @default(uuid())
+  solicitudId       String
+  documentoTipoId   String
+  archivoUrl        String
+  estado            SolicitudDocumentoEstado @default(PENDIENTE)
+  version           Int                      @default(1)
+  comentarioRechazo String?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
 
   solicitud     Solicitud     @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
   documentoTipo DocumentoTipo @relation(fields: [documentoTipoId], references: [id])
@@ -371,6 +437,11 @@ model HistorialEstado {
   estado      String
   comentario  String?
   usuarioId   String
+  /// Acción realizada (Sprint 8 - US-805): enviar, aprobar, devolver_a_revision...
+  accion      String?
+  /// Resultado de la acción: EXITOSO | RECHAZADO | ERROR
+  resultado   String?
+  ip          String?
   createdAt   DateTime @default(now())
 
   solicitud Solicitud @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
@@ -428,8 +499,8 @@ model Comite {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  miembros  ComiteMiembro[]
-  sesiones  Sesion[]
+  miembros ComiteMiembro[]
+  sesiones Sesion[]
 
   @@map("comite")
 }
@@ -459,7 +530,7 @@ model Sesion {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  comite     Comite     @relation(fields: [comiteId], references: [id])
+  comite     Comite         @relation(fields: [comiteId], references: [id])
   votos      Voto[]
   decisiones Decision[]
   agenda     SesionAgenda[]
@@ -468,7 +539,7 @@ model Sesion {
 }
 
 model SesionAgenda {
-  id          String @id @default(uuid())
+  id          String   @id @default(uuid())
   sesionId    String
   solicitudId String
   createdAt   DateTime @default(now())
@@ -554,6 +625,62 @@ model Notificacion {
 }
 
 // ==========================================
+// BITÁCORA DEL SISTEMA (Sprint 8 - US-805)
+// ==========================================
+
+/// Bitácora inmutable y de solo consulta: registra quién, cuándo, qué y con
+/// qué resultado se realizó cada acción relevante del sistema.
+model BitacoraSistema {
+  id                String   @id @default(uuid())
+  fechaHora         DateTime @default(now())
+  actorId           String?
+  actorNombre       String?
+  actorRol          String?
+  actorCorreo       String?
+  modulo            String
+  entidad           String
+  entidadId         String?
+  /// Clave técnica de la acción (p. ej. "solicitud.aprobar").
+  accionClave       String
+  /// La misma acción, en lenguaje comprensible ("Aprobó la solicitud").
+  accionHumana      String
+  descripcionHumana String
+  camposClave       Json?
+  datosRelevantes   Json?
+  /// EXITOSO | RECHAZADO | ERROR
+  resultado         String
+  motivo            String?
+  ip                String?
+  userAgent         String?
+  /// WEB | API
+  origen            String   @default("API")
+  correlacionId     String?
+  sessionId         String?
+
+  @@index([fechaHora])
+  @@index([actorId])
+  @@index([entidad, entidadId])
+  @@index([accionClave])
+  @@index([modulo])
+  @@map("bitacora_sistema")
+}
+
+/// Preferencias de notificaciones y sonido del usuario (Sprint 8 - US-804).
+model ConfiguracionUsuario {
+  id                    String   @id @default(uuid())
+  usuarioId             String   @unique
+  notificacionesActivas Boolean  @default(true)
+  sonidoNotificaciones  Boolean  @default(true)
+  volumenSonido         Int      @default(40)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("configuracion_usuario")
+}
+
+// ==========================================
 // ASISTENTE IA
 // ==========================================
 
@@ -571,10 +698,10 @@ model AsistenteBaseConocimiento {
 }
 
 model AsistenteConversacion {
-  id        String    @id @default(uuid())
+  id        String   @id @default(uuid())
   usuarioId String?
   sesionId  String?
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   mensajes AsistenteMensaje[]
 

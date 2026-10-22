@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { fetchConToken } from '@/lib/api-auth';
 import { traducirError } from '@/lib/mensajes-error';
 import { Button } from '@/components/ui/Button';
@@ -19,16 +19,27 @@ export function PasoEnviar({
   onError: (msg: string) => void;
 }) {
   const [checklist, setChecklist] = useState<SolicitudChecklist | null>(null);
+  const [cargando, setCargando] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [conformidad, setConformidad] = useState(false);
 
-  useEffect(() => {
-    fetchConToken<SolicitudChecklist>(`/solicitudes/${solicitudId}/checklist`)
-      .then(setChecklist)
-      .catch((e) =>
-        onError(traducirError(e, 'No se pudo cargar el resumen de la postulación')),
+  const cargar = useCallback(async () => {
+    setCargando(true);
+    try {
+      const data = await fetchConToken<SolicitudChecklist>(
+        `/solicitudes/${solicitudId}/checklist`,
       );
-  }, [solicitudId]);
+      setChecklist(data);
+    } catch (e) {
+      onError(traducirError(e, 'No se pudo cargar el resumen de la postulación'));
+    } finally {
+      setCargando(false);
+    }
+  }, [solicitudId, onError]);
+
+  useEffect(() => {
+    void cargar();
+  }, [cargar]);
 
   const enviar = async () => {
     setEnviando(true);
@@ -45,11 +56,29 @@ export function PasoEnviar({
     }
   };
 
-  if (!checklist) {
+  if (cargando && !checklist) {
     return (
       <div className="flex justify-center py-20">
         <Spinner />
       </div>
+    );
+  }
+
+  if (!checklist) {
+    return (
+      <Card className="text-center">
+        <p className="text-lg font-bold text-brutal-tinta">
+          No se pudo cargar el resumen de la postulación
+        </p>
+        <p className="mt-1 text-sm text-brutal-tinta/70">
+          Revisa tu conexión e inténtalo de nuevo.
+        </p>
+        <div className="mt-4 flex justify-center">
+          <Button variant="ghost" onClick={cargar}>
+            Reintentar
+          </Button>
+        </div>
+      </Card>
     );
   }
 
@@ -70,13 +99,13 @@ export function PasoEnviar({
         <ul className="space-y-2 text-sm text-brutal-tinta/80">
           <li className="flex justify-between">
             <span>Perfil académico</span>
-            <span className={checklist.perfilAcademico ? 'font-semibold text-green-700' : 'font-semibold text-red-600'}>
+            <span className={checklist.perfilAcademico ? 'font-semibold text-brutal-lima' : 'font-semibold text-brutal-rojo'}>
               {checklist.perfilAcademico ? 'Completo' : 'Incompleto'}
             </span>
           </li>
           <li className="flex justify-between">
             <span>Perfil financiero</span>
-            <span className={checklist.perfilFinanciero ? 'font-semibold text-green-700' : 'font-semibold text-red-600'}>
+            <span className={checklist.perfilFinanciero ? 'font-semibold text-brutal-lima' : 'font-semibold text-brutal-rojo'}>
               {checklist.perfilFinanciero ? 'Completo' : 'Incompleto'}
             </span>
           </li>

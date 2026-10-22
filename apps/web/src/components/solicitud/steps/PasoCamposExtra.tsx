@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Spinner } from '@/components/ui/Spinner';
+import { Textarea } from '@/components/ui/Textarea';
 import type {
   CampoFormulario,
   SeccionCampoFormulario,
@@ -245,16 +246,12 @@ function CampoExtra({
   if (campo.tipo === 'textarea') {
     return (
       <div className="md:col-span-2">
-        <label className="mb-1 block font-brut text-xs font-bold uppercase tracking-wide text-brutal-tinta">
-          {etiqueta}
-        </label>
-        <textarea
+        <Textarea
+          label={etiqueta}
           rows={3}
           value={typeof valor === 'string' ? valor : ''}
           onChange={(e) => onChange(e.target.value)}
-          className={`w-full rounded-brutal border-[3px] bg-brutal-blanco px-3 py-2 text-sm text-brutal-tinta focus:bg-brutal-cyan/10 focus:outline-none ${
-            error ? 'border-brutal-rojo bg-red-50' : 'border-brutal-tinta'
-          }`}
+          error={error}
         />
         <Ayuda texto={campo.ayuda} />
         <ErrorCampo texto={error} />
@@ -270,6 +267,7 @@ function CampoExtra({
           value={typeof valor === 'string' ? valor : ''}
           onChange={(e) => onChange(e.target.value)}
           options={(campo.opciones ?? []).map((o) => ({ value: o, label: o }))}
+          error={error}
         />
         <Ayuda texto={campo.ayuda} />
         <ErrorCampo texto={error} />
@@ -301,7 +299,7 @@ function CampoExtra({
           {etiqueta}
         </label>
         <div className="flex flex-wrap items-center gap-3">
-          <label className="cursor-pointer rounded-brutal border-[3px] border-brutal-tinta bg-brutal-cyan px-4 py-2 font-brut text-sm font-bold uppercase tracking-wide text-brutal-tinta shadow-brutal-sm transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none">
+          <label className="cursor-pointer rounded-brutal border-[3px] border-brutal-tinta bg-sigeb-blue-dark px-4 py-2 font-brut text-sm font-bold uppercase tracking-wide text-brutal-blanco shadow-brutal-sm transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none">
             {subiendo ? 'Subiendo…' : typeof valor === 'string' && valor ? 'Reemplazar' : 'Subir archivo'}
             <input
               type="file"

@@ -8,10 +8,12 @@ import { LoginAttemptService } from './login-attempt.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { SseJwtStrategy } from './strategies/sse-jwt.strategy';
 import { PrismaModule } from '../prisma/prisma.module';
+import { BitacoraModule } from '../bitacora/bitacora.module';
 
 @Module({
   imports: [
     PrismaModule,
+    BitacoraModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

@@ -127,7 +127,15 @@ export function KpisPanel() {
     };
   }, [usuario?.rol]);
 
-  if (!kpis) return null;
+  if (!kpis) {
+    // Sin este aviso los indicadores desaparecían en silencio si la carga
+    // fallaba, y la página saltaba de posición al aparecer las tarjetas.
+    return (
+      <p className="mt-10 font-mono text-xs font-bold uppercase text-brutal-tinta/60">
+        No se pudieron cargar tus indicadores.
+      </p>
+    );
+  }
 
   return (
     <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-4">

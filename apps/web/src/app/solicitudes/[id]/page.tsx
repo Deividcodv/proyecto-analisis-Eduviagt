@@ -119,8 +119,8 @@ function SolicitudDetalleContent() {
     return (
       <Container className="flex min-h-[50vh] items-center justify-center py-16">
         {error ? (
-          <div className="max-w-md rounded-xl border border-red-200 bg-red-50 p-6 text-center">
-            <p className="text-red-700">{error}</p>
+          <div className="max-w-md rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-6 text-center">
+            <p className="font-bold text-brutal-rojo">{error}</p>
             <Button
               variant="ghost"
               className="mt-4"
@@ -454,7 +454,7 @@ function DocsSection({
                 <div className="flex items-center gap-3">
                   {doc.cargado ? (
                     <>
-                      <label className="cursor-pointer rounded-brutal border-[3px] border-brutal-tinta bg-brutal-cyan px-4 py-1.5 font-brut text-sm font-bold uppercase tracking-wide text-brutal-tinta shadow-brutal-sm transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none">
+                      <label className="cursor-pointer rounded-brutal border-[3px] border-brutal-tinta bg-sigeb-blue-dark px-4 py-1.5 font-brut text-sm font-bold uppercase tracking-wide text-brutal-blanco shadow-brutal-sm transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none">
                         {subiendo === doc.documentoTipoId
                           ? 'Subiendo…'
                           : rechazado
@@ -481,7 +481,7 @@ function DocsSection({
                       </Button>
                     </>
                   ) : (
-                    <label className="cursor-pointer rounded-brutal border-[3px] border-brutal-tinta bg-brutal-cyan px-4 py-1.5 font-brut text-sm font-bold uppercase tracking-wide text-brutal-tinta shadow-brutal-sm transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none">
+                    <label className="cursor-pointer rounded-brutal border-[3px] border-brutal-tinta bg-sigeb-blue-dark px-4 py-1.5 font-brut text-sm font-bold uppercase tracking-wide text-brutal-blanco shadow-brutal-sm transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none">
                       {subiendo === doc.documentoTipoId ? 'Subiendo…' : 'Subir'}
                       <input
                         type="file"

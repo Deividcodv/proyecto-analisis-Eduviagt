@@ -32,6 +32,7 @@ import {
   PerfilFinancieroDto,
   MarcarEstadoDocumentoDto,
   GuardarRespuestasDto,
+  OverrideMontoDto,
 } from './dto';
 import { Permisos } from '../common/decorators/permisos.decorator';
 import { Public } from '../common/decorators/public.decorator';
@@ -119,14 +120,37 @@ export class SolicitudesController {
 
   @Post(':id/transicion')
   @Permisos('solicitud:editar')
-  @ApiOperation({ summary: 'Aplicar transición de estado (máquina de estados)' })
+  @ApiOperation({
+    summary:
+      'Aplicar transición de estado (máquina de estados). Incluye la segunda instancia de aprobación.',
+  })
   @ApiResponse({ status: 400, description: 'Transición inválida' })
+  @ApiResponse({
+    status: 403,
+    description:
+      'La segunda aprobación debe realizarla una persona distinta a la primera',
+  })
   transicion(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: TransicionSolicitudDto,
     @CurrentUser() usuario: AuthenticatedUser,
   ) {
     return this.solicitudesService.transicion(id, dto, usuario);
+  }
+
+  @Post(':id/monto')
+  @Permisos('solicitud:montos-override')
+  @ApiOperation({
+    summary:
+      'Ajustar manualmente el monto otorgable (requiere justificación obligatoria)',
+  })
+  @ApiResponse({ status: 400, description: 'Justificación insuficiente' })
+  overrideMonto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: OverrideMontoDto,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.solicitudesService.overrideMonto(id, dto, usuario);
   }
 
   @Post(':id/solicitar-correccion')
