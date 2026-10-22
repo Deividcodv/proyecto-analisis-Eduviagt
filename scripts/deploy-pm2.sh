@@ -35,6 +35,11 @@ PM2_CONFIG="${PM2_CONFIG_PATH:-/home/davi/sigeb.pm2.config.cjs}"
 DEPLOY_REPO_URL="${DEPLOY_REPO_URL:-https://github.com/Deividcodv/sigeb-prod.git}"
 DEPLOY_REPO_URL_FALLBACK="${DEPLOY_REPO_URL_FALLBACK:-https://github.com/Deividcodv/sigeb-prod.git}"
 
+# Marca de que se ha tenido que recurrir al repositorio de respaldo. Al
+# terminar, el remoto se devuelve al principal: la VM queda configurada con
+# EDUVIAGT aunque hoy se haya desplegado desde el respaldo.
+RESPALDO_ACTIVO=0
+
 # Archivo que solo existe en la versión actual del proyecto. Sirve de marca:
 # si el remoto de destino no lo tiene, es que todavía no recibió la réplica
 # y desplegaría una versión antigua.
@@ -67,6 +72,7 @@ if ! tiene_la_version_actual "$RAMA"; then
     echo "ERROR: ningún remoto tiene la versión actual del proyecto ($MARCA)." >&2
     exit 1
   fi
+  RESPALDO_ACTIVO=1
 fi
 
 git pull --ff-only origin "$RAMA"
@@ -131,5 +137,13 @@ if [ "$CODIGO" != "200" ]; then
   exit 1
 fi
 echo "    CSS $CSS_RELATIVO -> $CODIGO"
+
+if [ "$RESPALDO_ACTIVO" = "1" ]; then
+  # El despliegue salió del respaldo, pero la VM queda apuntando al
+  # repositorio principal: en cuanto la réplica exista, el siguiente
+  # despliegue traerá el código de EDUVIAGT.
+  git remote set-url origin "$DEPLOY_REPO_URL"
+  echo "    Repositorio principal restablecido: $DEPLOY_REPO_URL"
+fi
 
 echo "==> Despliegue completado"
