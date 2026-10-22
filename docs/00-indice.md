@@ -16,10 +16,7 @@
 | 4 | `04-pr-paso-a-paso-por-persona.md` | Cómo cada persona crea su rama, sube su código y abre su Pull Request paso a paso | Cada persona |
 | 5 | `03-github-david-aprobar-pr.md` | Cómo David revisa, prueba, aprueba y mergea los PRs, y cómo verifica que todo quede fiel al proyecto original | Solo David |
 | 6 | `guia-recreacion-6-personas.md` | Resumen general de toda la simulación (este sí se lee completo al final) | Todos |
-
-> La guía de la **réplica de `sigeb-prod` en `proyecto-analisis-Eduviagt`** vive en el repositorio del
-> equipo: `Docs/README-JOSE-REPLICA-SIGEB-PROD.md`. No se duplica aquí para que no haya dos copias
-> que se desincronicen.
+| 7 | `06-jose-replica-sigeb-prod.md` | Réplica de los cambios recientes de `sigeb-prod` en `proyecto-analisis-Eduviagt`: qué falta, cómo fusionar, cómo resolver conflictos y cómo verificar | José |
 
 ---
 

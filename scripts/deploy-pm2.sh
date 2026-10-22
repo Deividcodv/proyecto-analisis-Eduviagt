@@ -64,7 +64,7 @@ git checkout "$RAMA"
 if ! tiene_la_version_actual "$RAMA"; then
   echo "AVISO: el remoto $DEPLOY_REPO_URL todavía no tiene $MARCA en la rama $RAMA." >&2
   echo "       Se despliega desde $DEPLOY_REPO_URL_FALLBACK hasta que la réplica esté lista." >&2
-  echo "       Ver la guía del equipo: docs/equipo/README-JOSE-REPLICA-SIGEB-PROD.md" >&2
+  echo "       Ver la guía: docs/06-jose-replica-sigeb-prod.md" >&2
   git remote set-url origin "$DEPLOY_REPO_URL_FALLBACK"
   git fetch origin --prune
   git checkout "$RAMA"
