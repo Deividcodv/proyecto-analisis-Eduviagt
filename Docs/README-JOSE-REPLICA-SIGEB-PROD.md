@@ -350,28 +350,39 @@ DEPLOY_REPO_URL="${DEPLOY_REPO_URL:-https://github.com/Deividcodv/sigeb-prod.git
 ```
 
 Y una comprobación de seguridad: si el remoto de destino **no** tiene todavía
-la réplica, el despliegue **se aborta con un mensaje claro** en lugar de
-publicar una versión antigua:
+la réplica, el despliegue **se avisa y sale del repositorio de respaldo** en
+lugar de publicar una versión antigua:
 
 ```bash
-if ! git ls-tree -r --name-only "origin/$RAMA" | grep -qx "$MARCA"; then
-  echo "ERROR: el remoto $DEPLOY_REPO_URL no tiene $MARCA en la rama $RAMA." >&2
-  echo "       Todavia no se ha hecho la replica; no se despliega una version antigua." >&2
-  exit 1
+if ! tiene_la_version_actual "$RAMA"; then
+  echo "AVISO: el remoto $DEPLOY_REPO_URL todavía no tiene $MARCA en la rama $RAMA." >&2
+  echo "       Se despliega desde $DEPLOY_REPO_URL_FALLBACK hasta que la réplica esté lista." >&2
 fi
 ```
 
-### Activar el cambio (David, tras el merge)
+### Estado actual de la variable
 
-En el repositorio, Settings → Environments → staging → Add variable:
+| Variable | Valor |
+|---|---|
+| `DEPLOY_REPO_URL` | `https://github.com/Deividcodv/proyecto-analisis-Eduviagt.git` |
+| `DEPLOY_REPO_URL_FALLBACK` | `https://github.com/Deividcodv/sigeb-prod.git` |
+
+**La VM ya apunta a EDUVIAGT** y la variable ya está activa en GitHub. Eso
+significa que, en cuanto tu PR esté fusionado, el siguiente despliegue tira
+de EDUVIAGT **sin que nadie tenga que tocar nada**.
+
+Hasta entonces, cada despliegue muestra este aviso y sale del respaldo:
 
 ```text
-DEPLOY_REPO_URL = https://github.com/Deividcodv/proyecto-analisis-Eduviagt.git
+AVISO: el remoto https://github.com/Deividcodv/proyecto-analisis-Eduviagt.git
+       todavía no tiene apps/api/src/auth/eliminar-cuenta.service.ts en la rama develop.
+       Se despliega desde https://github.com/Deividcodv/sigeb-prod.git hasta que la réplica esté lista.
 ```
 
-A partir del siguiente push a `develop`, el despliegue tira de EDUVIAGT.
+En cuanto la réplica exista, ese aviso desaparece y el portal se actualiza
+desde EDUVIAGT.
 
-Comprobación desde la VM:
+### Comprobación desde la VM
 
 ```bash
 cd /home/davi/sigeb
@@ -429,9 +440,12 @@ rechaza; un PR con una pregunta se resuelve en dos minutos.
 3. Prueba localmente el flujo principal: entrar, ver el panel, abrir una
    convocatoria, revisar el chat de Eduvi.
 4. Aprueba y hace **squash merge** a `develop`.
-5. Activa la variable `DEPLOY_REPO_URL` (sección 11.1).
-6. Verifica en la VM que el portal responde y que los recursos estáticos
+5. Verifica en la VM que el portal responde y que los recursos estáticos
    devuelven 200.
+
+> La variable `DEPLOY_REPO_URL` ya está activa: no hace falta cambiar nada
+> después del merge. El primer push a `develop` posterior al tuyo despliega
+> desde EDUVIAGT y el aviso de «todavía no se ha hecho la réplica» desaparece.
 
 ---
 
