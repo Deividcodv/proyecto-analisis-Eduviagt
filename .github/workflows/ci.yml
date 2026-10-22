@@ -261,7 +261,10 @@ jobs:
           script: |
             set -e
             cd ${{ secrets.DEPLOY_PATH }}
-            PM2_CONFIG_PATH=${{ vars.PM2_CONFIG_PATH || '/home/davi/sigeb.pm2.config.cjs' }} bash scripts/deploy-pm2.sh
+            PM2_CONFIG_PATH=${{ vars.PM2_CONFIG_PATH || '/home/davi/sigeb.pm2.config.cjs' }} \
+            DEPLOY_REPO_URL=${{ vars.DEPLOY_REPO_URL || 'https://github.com/Deividcodv/sigeb-prod.git' }} \
+            DEPLOY_REPO_URL_FALLBACK=${{ vars.DEPLOY_REPO_URL_FALLBACK || 'https://github.com/Deividcodv/sigeb-prod.git' }} \
+            bash scripts/deploy-pm2.sh
 
   deploy-production:
     needs: [api-tests, docker-build]
@@ -297,4 +300,8 @@ jobs:
           script: |
             set -e
             cd ${{ secrets.DEPLOY_PATH }}
-            DEPLOY_BRANCH=master PM2_CONFIG_PATH=${{ vars.PM2_CONFIG_PATH || '/home/davi/sigeb.pm2.config.cjs' }} bash scripts/deploy-pm2.sh
+            DEPLOY_BRANCH=master \
+            PM2_CONFIG_PATH=${{ vars.PM2_CONFIG_PATH || '/home/davi/sigeb.pm2.config.cjs' }} \
+            DEPLOY_REPO_URL=${{ vars.DEPLOY_REPO_URL || 'https://github.com/Deividcodv/sigeb-prod.git' }} \
+            DEPLOY_REPO_URL_FALLBACK=${{ vars.DEPLOY_REPO_URL_FALLBACK || 'https://github.com/Deividcodv/sigeb-prod.git' }} \
+            bash scripts/deploy-pm2.sh

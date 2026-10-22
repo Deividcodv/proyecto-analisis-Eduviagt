@@ -7,6 +7,17 @@
 #   DEPLOY_BRANCH    rama que se despliega (por defecto: develop)
 #   PM2_CONFIG_PATH  archivo de configuración de PM2
 #                    (por defecto: /home/davi/sigeb.pm2.config.cjs)
+#   DEPLOY_REPO_URL  repositorio del que se despliega. Por defecto es
+#                    `sigeb-prod`; cuando el repositorio del equipo
+#                    (`proyecto-analisis-Eduviagt`) tenga ya la réplica
+#                    completa, se define en GitHub Actions (variable
+#                    `DEPLOY_REPO_URL` del entorno `staging`) y el servidor
+#                    pasa a actualizarse desde EDUVIAGT.
+#   DEPLOY_REPO_URL_FALLBACK
+#                    repositorio de respaldo. Si el de destino todavía no
+#                    tiene la versión actual del proyecto (porque la réplica
+#                    aún no se ha hecho), se despliega desde este en lugar
+#                    de publicar una versión antigua. Por defecto: sigeb-prod.
 #
 # La configuración de la base de datos y de los secretos la lee el propio
 # servidor de `apps/api/.env`, que no se versiona: es la única fuente de
@@ -19,13 +30,40 @@ cd "$RAIZ"
 
 RAMA="${DEPLOY_BRANCH:-develop}"
 PM2_CONFIG="${PM2_CONFIG_PATH:-/home/davi/sigeb.pm2.config.cjs}"
+DEPLOY_REPO_URL="${DEPLOY_REPO_URL:-https://github.com/Deividcodv/sigeb-prod.git}"
+DEPLOY_REPO_URL_FALLBACK="${DEPLOY_REPO_URL_FALLBACK:-https://github.com/Deividcodv/sigeb-prod.git}"
+
+# Archivo que solo existe en la versión actual del proyecto. Sirve de marca:
+# si el remoto de destino no lo tiene, es que todavía no recibió la réplica
+# y desplegaría una versión antigua.
+MARCA="apps/api/src/auth/eliminar-cuenta.service.ts"
+
+tiene_la_version_actual() {
+  git ls-tree -r --name-only "origin/$1" 2>/dev/null | grep -qx "$MARCA"
+}
 
 echo "==> Repositorio: $RAIZ (rama $RAMA)"
+echo "==> Origen: $DEPLOY_REPO_URL"
 
 echo "==> Código"
 git stash || true
+git remote set-url origin "$DEPLOY_REPO_URL"
 git fetch origin --prune
 git checkout "$RAMA"
+
+if ! tiene_la_version_actual "$RAMA"; then
+  echo "AVISO: el remoto $DEPLOY_REPO_URL todavía no tiene $MARCA en la rama $RAMA." >&2
+  echo "       Se despliega desde $DEPLOY_REPO_URL_FALLBACK hasta que la réplica esté lista." >&2
+  echo "       Ver docs/06-jose-replica-sigeb-prod.md en el repositorio del equipo." >&2
+  git remote set-url origin "$DEPLOY_REPO_URL_FALLBACK"
+  git fetch origin --prune
+  git checkout "$RAMA"
+  if ! tiene_la_version_actual "$RAMA"; then
+    echo "ERROR: ningún remoto tiene la versión actual del proyecto ($MARCA)." >&2
+    exit 1
+  fi
+fi
+
 git pull --ff-only origin "$RAMA"
 
 echo "==> Dependencias"

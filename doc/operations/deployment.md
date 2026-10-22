@@ -83,10 +83,40 @@ Variable de repositorio (opcional):
 | Variable | Por defecto | Uso |
 |---|---|---|
 | `PM2_CONFIG_PATH` | `/home/davi/sigeb.pm2.config.cjs` | archivo de configuración de PM2 |
+| `DEPLOY_REPO_URL` | `https://github.com/Deividcodv/sigeb-prod.git` | repositorio del que se despliega |
+| `DEPLOY_REPO_URL_FALLBACK` | `https://github.com/Deividcodv/sigeb-prod.git` | repositorio de respaldo |
 
 `DEPLOY_DATABASE_URL` y `DEPLOY_JWT_SECRET` **ya no se usan**: la API y las
 migraciones leen el `.env` del servidor, y duplicar esos valores en dos
 lugares es la forma más fácil de que se desincronicen.
+
+### Cambiar el origen del despliegue a EDUVIAGT
+
+Hoy el servidor se actualiza desde `sigeb-prod`. Cuando el repositorio del
+equipo (`proyecto-analisis-Eduviagt`) tenga ya la réplica completa —la guía
+está en `Docs/README-JOSE-REPLICA-SIGEB-PROD.md` de ese repositorio—, se
+añade la variable `DEPLOY_REPO_URL` en el entorno `staging` de GitHub:
+
+```text
+DEPLOY_REPO_URL = https://github.com/Deividcodv/proyecto-analisis-Eduviagt.git
+```
+
+A partir del siguiente push a `develop`, el despliegue tira de EDUVIAGT.
+
+**No se publica una versión antigua por error.** El script comprueba que el
+remoto de destino tenga la versión actual del proyecto (el archivo
+`apps/api/src/auth/eliminar-cuenta.service.ts` sirve de marca). Si todavía
+no se hizo la réplica, **despliega desde el repositorio de respaldo** y lo
+avisa:
+
+```text
+AVISO: el remoto .../proyecto-analisis-Eduviagt.git todavía no tiene
+       apps/api/src/auth/eliminar-cuenta.service.ts en la rama develop.
+       Se despliega desde .../sigeb-prod.git hasta que la réplica esté lista.
+```
+
+En cuanto la réplica esté mergeada, el despliegue pasa a EDUVIAGT sin tocar
+nada más.
 
 ---
 

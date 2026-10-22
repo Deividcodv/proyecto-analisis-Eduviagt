@@ -17,6 +17,10 @@
 | 5 | `03-github-david-aprobar-pr.md` | Cómo David revisa, prueba, aprueba y mergea los PRs, y cómo verifica que todo quede fiel al proyecto original | Solo David |
 | 6 | `guia-recreacion-6-personas.md` | Resumen general de toda la simulación (este sí se lee completo al final) | Todos |
 
+> La guía de la **réplica de `sigeb-prod` en `proyecto-analisis-Eduviagt`** vive en el repositorio del
+> equipo: `Docs/README-JOSE-REPLICA-SIGEB-PROD.md`. No se duplica aquí para que no haya dos copias
+> que se desincronicen.
+
 ---
 
 ## Datos clave de referencia (los usas en casi todos los documentos)
