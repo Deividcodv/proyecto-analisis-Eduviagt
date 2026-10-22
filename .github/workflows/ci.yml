@@ -170,6 +170,15 @@ jobs:
       - name: Generar cliente Prisma
         run: cd apps/api && npx prisma generate
 
+      - name: Aplicar el esquema en la base de pruebas
+        # Imprescindible: Playwright espera a que su `webServer` (la API)
+        # responda antes de ejecutar el `globalSetup`. Si la base esta vacia,
+        # la API nunca esta sana, el `globalSetup` que crea el esquema no
+        # llega a correr y la suite expira. Con el esquema ya aplicado, la
+        # API arranca sana y el `globalSetup` puede reiniciar y sembrar la
+        # base de pruebas con normalidad.
+        run: cd apps/api && npx prisma migrate deploy
+
       - name: Instalar Chromium de Playwright
         run: cd apps/web && npx playwright install --with-deps chromium
 

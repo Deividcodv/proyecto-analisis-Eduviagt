@@ -68,7 +68,10 @@ export default async function globalSetup(): Promise<void> {
   // `migrate reset --force` reinicia el esquema sin pedir confirmación.
   // `--skip-seed` evita el seed implícito de reset y se ejecuta por separado
   // con `prisma db seed`, reutilizando la config `prisma.seed` del package.json.
-  ejecutarPrisma(['migrate', 'reset', '--force', '--skip-seed']);
+  // `--skip-generate` evita regenerar el cliente de Prisma: el job de CI ya
+  // lo genera antes de arrancar, y hacerlo aqui en paralelo con el arranque
+  // de la API produce conflictos de fichero.
+  ejecutarPrisma(['migrate', 'reset', '--force', '--skip-seed', '--skip-generate']);
   ejecutarPrisma(['db', 'seed']);
 
   const segundos = ((Date.now() - inicio) / 1000).toFixed(1);

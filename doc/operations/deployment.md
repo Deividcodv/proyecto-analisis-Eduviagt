@@ -7,7 +7,7 @@
 | Entorno | Propósito | URL |
 |---|---|---|
 | **Local** | Desarrollo individual | `localhost:3001` |
-| **Servidor (Azure)** | Instancia desplegada del prototipo | `http://57.156.58.111` |
+| **Servidor (Azure)** | Instancia desplegada del prototipo | `http://57.156.58.111:3001` |
 
 > El prototipo se despliega hoy en **una sola VM** (`vm-ubuntu-server`, Azure
 > Ubuntu). No hay staging ni producción separados: el entorno `staging` de
@@ -21,12 +21,24 @@
 | Pieza | Detalle |
 |---|---|
 | Clone del repositorio | `/home/davi/sigeb` (rama `develop`, remoto `sigeb-prod`) |
-| Gestor de procesos | PM2 — `sigeb-api` (`:3000`) y `sigeb-web` (`:3001`) |
+| Gestor de procesos | PM2 — `sigeb-api` (`:3000`) y `sigeb-web` (`:3002`) |
+| Proxy inverso | nginx en `:3001` → web en `127.0.0.1:3002` |
 | Configuración de PM2 | `/home/davi/sigeb.pm2.config.cjs` (fuera del repositorio) |
 | Configuración de la API | `/home/davi/sigeb/apps/api/.env` (fuera del repositorio, permisos `600`) |
 | Base de datos | PostgreSQL local, escuchando solo en `127.0.0.1:5432` |
 | Documentos subidos | `/home/davi/sigeb/storage` |
 | Cortafuegos | `ufw` activo, entrada por defecto denegada |
+
+Solo queda expuesto a internet el puerto **3001**, que atiende nginx. La web
+(Next.js standalone) y la API escuchan únicamente en la interfaz local del
+loopback: las consume el proxy, que corre en la misma máquina. La API además
+lee `HOST` para atarse a `127.0.0.1` (`apps/api/src/main.ts`).
+
+El cortafuegos del sistema (`ufw`) cierra el 3000, pero **el NSG de Azure es
+la primera barrera** y hay que mantenerlo alineado: por ahora permite 22, 21,
+3001 y el rango pasivo de FTP (40000-40100). Cuando exista un dominio propio
+hay que **abrir el 80 y el 443** en el NSG y añadir esos *listeners* en
+`/etc/nginx/sites-available/sigeb`.
 
 La API lee su configuración con `ConfigModule.forRoot({ isGlobal: true })`
 de NestJS, es decir del `.env` del directorio de trabajo del proceso
@@ -98,6 +110,10 @@ AI_BASE_URL=https://api.openai.com/v1
 CHROME_EXECUTABLE_PATH=
 ```
 
+> `HOST`, `CORS_ORIGIN`, `PORT` y `STORAGE_PATH` también están en
+> `/home/davi/sigeb.pm2.config.cjs`. El entorno del proceso tiene prioridad
+> sobre el `.env`, así que ambos archivos deben coincidir.
+>
 > `CHROME_EXECUTABLE_PATH` apunta a un Chromium/Chrome del sistema para generar
 > las constancias en PDF (US-F7). Si no se define, Puppeteer usa el navegador
 > de su caché.
@@ -115,6 +131,28 @@ cp .env.example .env      # definir JWT_SECRET y DB_PASSWORD obligatorios
 docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml run --rm api npx prisma migrate deploy
 ```
+
+---
+
+## Proxy inverso (nginx)
+
+`/etc/nginx/sites-available/sigeb` (habilitado por symlink en
+`sites-enabled`). Es la única entrada pública: escucha en el 3001 y reenvía a
+la web en `127.0.0.1:3002`.
+
+```bash
+sudo nginx -t                 # validar la configuración
+sudo systemctl reload nginx   # recargar sin cortar el servicio
+```
+
+Puntos a tener en cuenta:
+
+- `client_max_body_size 10m` es obligatorio: el límite por defecto de nginx
+  (1 MB) cortaría las cargas de documentos, que la API admite hasta 5 MB.
+- El bloque `map $http_upgrade $connection_upgrade` hace que la cabecera
+  `Connection: upgrade` solo se reenvíe cuando el cliente la pide.
+- Cuando haya dominio propio, se añaden los `listen 443 ssl` y la redirección
+  del 80, y se instala `certbot` para el certificado.
 
 ---
 

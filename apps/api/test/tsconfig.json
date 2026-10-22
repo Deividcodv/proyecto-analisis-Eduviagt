@@ -5,5 +5,7 @@
     "noEmit": true,
     "types": ["node", "jest"]
   },
-  "include": ["./**/*.ts", "../src/**/*.ts"]
+  "include": ["./**/*.ts", "../src/**/*.ts"],
+  "//exclude": "Se declara de forma explicita: el exclude heredado de ../tsconfig.json excluye 'test' y, al resolverse respecto a apps/api, dejaba este proyecto sin archivos que analizar.",
+  "exclude": ["node_modules"]
 }

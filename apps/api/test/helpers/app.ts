@@ -2,7 +2,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { PdfRenderer } from '../../src/solicitudes/pdf/pdf-renderer.interface';
+import { PDF_RENDERER } from '../../src/solicitudes/pdf/pdf-renderer.interface';
 
 const PDF_MINIMO = Buffer.from('%PDF-1.4\n%%EOF\n');
 
@@ -15,10 +15,9 @@ export async function crearApp(): Promise<INestApplication> {
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
   })
-    .overrideProvider(PdfRenderer)
+    .overrideProvider(PDF_RENDERER)
     .useValue({
-      renderHtml: async () => PDF_MINIMO,
-      renderUrl: async () => PDF_MINIMO,
+      render: async () => PDF_MINIMO,
     })
     .compile();
 

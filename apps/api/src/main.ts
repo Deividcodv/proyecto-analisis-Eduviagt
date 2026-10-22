@@ -45,8 +45,12 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
-  console.log(`🚀 EDUVIAGT API running on http://localhost:${port}`);
-  console.log(`📚 Swagger docs: http://localhost:${port}/api/docs`);
+  // Interfaz de escucha. En el servidor la API queda atada a 127.0.0.1 porque
+  // la web —que la consume por proxy— corre en la misma maquina: no hace
+  // falta dejarla escuchando en la red publica.
+  const host = process.env.HOST || '0.0.0.0';
+  await app.listen(port, host);
+  console.log(`🚀 EDUVIAGT API running on http://${host}:${port}`);
+  console.log(`📚 Swagger docs: http://${host}:${port}/api/docs`);
 }
 bootstrap();
