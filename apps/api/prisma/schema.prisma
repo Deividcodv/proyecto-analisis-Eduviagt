@@ -73,6 +73,9 @@ model Usuario {
   municipioId     String?
   rolId           String
   estado          UsuarioEstado @default(ACTIVO)
+  /// Marca la cuenta como eliminada: los datos personales se anonimizan, pero
+  /// la fila se conserva para no romper la trazabilidad de las decisiones.
+  eliminadoAt     DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -90,6 +93,7 @@ model Usuario {
   aprobacionesHechas SolicitudAprobacion[]
   configuracion      ConfiguracionUsuario?
 
+  @@index([eliminadoAt])
   @@map("usuario")
 }
 

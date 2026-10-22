@@ -299,20 +299,22 @@ export class SolicitudesService {
           estado: siguienteEstado,
           comentario: dto.comentario ?? null,
           usuarioId: usuario.id,
-          accion: dto.accion,
+          // Se registra la acción EFECTIVA: si el monto superó el umbral,
+          // lo que ocurrió fue "solicitar segunda aprobación", no "aprobar".
+          accion,
           resultado: 'EXITOSO',
         },
       });
 
       // Trazabilidad de las dos instancias de aprobación (Sprint 8).
-      if (this.esAccionDeAprobacion(dto.accion)) {
+      if (this.esAccionDeAprobacion(accion)) {
         await tx.solicitudAprobacion.create({
           data: {
             solicitudId: id,
             usuarioId: usuario.id,
             rolNombre: usuario.rol?.nombre ?? 'SIN_ROL',
             nivel: nivelAprobacion,
-            accion: dto.accion,
+            accion,
             resultado: this.resultadoDeAprobacion(siguienteEstado),
             comentario: dto.comentario ?? null,
           },
@@ -325,7 +327,7 @@ export class SolicitudesService {
           accion: 'transicion',
           entidad: 'solicitud',
           entidadId: id,
-          detalle: { accion: dto.accion, estado: siguienteEstado },
+          detalle: { accion, estado: siguienteEstado },
         },
         tx,
       );
@@ -341,8 +343,8 @@ export class SolicitudesService {
           modulo: 'solicitud',
           entidad: 'solicitud',
           entidadId: id,
-          accionClave: `solicitud.${dto.accion}`,
-          accionHumana: this.accionHumana(dto.accion, solicitud.convocatoria),
+          accionClave: `solicitud.${accion}`,
+          accionHumana: this.accionHumana(accion, solicitud.convocatoria),
           descripcionHumana:
             dto.comentario?.trim() ||
             `La solicitud pasó de ${solicitud.estado} a ${siguienteEstado}.`,
@@ -363,11 +365,14 @@ export class SolicitudesService {
       return upd;
     });
 
-    await this.notificarTransicion(dto, {
-      id,
-      usuarioId: solicitud.usuarioId,
-      convocatoria: solicitud.convocatoria,
-    });
+    await this.notificarTransicion(
+      { ...dto, accion },
+      {
+        id,
+        usuarioId: solicitud.usuarioId,
+        convocatoria: solicitud.convocatoria,
+      },
+    );
 
     return actualizada;
   }
@@ -934,6 +939,18 @@ export class SolicitudesService {
     usuario: AuthenticatedUser,
   ) {
     return this.documentos.eliminar(id, tipoId, usuario);
+  }
+
+  /**
+   * Descarga el archivo de un documento. Los archivos ya no se sirven como
+   * estáticos: cada descarga comprueba quién la pide.
+   */
+  async descargarDocumento(
+    id: string,
+    documentoId: string,
+    usuario: AuthenticatedUser,
+  ) {
+    return this.documentos.descargar(id, documentoId, usuario);
   }
 
   async marcarEstadoDocumento(

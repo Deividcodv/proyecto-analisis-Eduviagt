@@ -117,7 +117,7 @@ function AuditoriaContent() {
           <div className="flex justify-center py-20"><Spinner /></div>
         ) : (
           <>
-            <p className="brut-label mb-4 text-xs font-bold text-brutal-tinta/60">
+            <p className="brut-label mb-4 text-xs font-bold text-brutal-tinta/70">
               {data.total} registros · Página {data.page}/{totalPaginas}
             </p>
 
@@ -142,7 +142,7 @@ function AuditoriaContent() {
                       </td>
                       <td className="px-3 py-2">
                         <p className="font-bold text-brutal-tinta">{item.usuario.nombres}</p>
-                        <p className="text-xs text-brutal-tinta/60">{item.usuario.email}</p>
+                        <p className="text-xs text-brutal-tinta/70">{item.usuario.email}</p>
                       </td>
                       <td className="px-3 py-2 text-xs font-bold uppercase">{item.usuario.rol.nombre}</td>
                       <td className="px-3 py-2">
@@ -151,15 +151,15 @@ function AuditoriaContent() {
                         </span>
                       </td>
                       <td className="px-3 py-2 font-mono text-xs">{item.entidad}</td>
-                      <td className="px-3 py-2 font-mono text-[10px] text-brutal-tinta/50">
+                      <td className="px-3 py-2 font-mono text-[10px] text-brutal-tinta/70">
                         {item.entidadId ? `${item.entidadId.slice(0, 8)}…` : '—'}
                       </td>
-                      <td className="px-3 py-2 font-mono text-xs text-brutal-tinta/50">{item.ip ?? '—'}</td>
+                      <td className="px-3 py-2 font-mono text-xs text-brutal-tinta/70">{item.ip ?? '—'}</td>
                     </tr>
                   ))}
                   {data.items.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-3 py-10 text-center text-brutal-tinta/50">
+                      <td colSpan={7} className="px-3 py-10 text-center text-brutal-tinta/70">
                         No se encontraron registros de auditoría
                       </td>
                     </tr>
@@ -176,7 +176,7 @@ function AuditoriaContent() {
               >
                 ← Anterior
               </Button>
-              <span className="font-mono text-xs text-brutal-tinta/60">
+              <span className="font-mono text-xs text-brutal-tinta/70">
                 Página {page} de {totalPaginas || 1}
               </span>
               <Button

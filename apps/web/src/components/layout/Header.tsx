@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
@@ -21,11 +21,23 @@ export function Header() {
   const { usuario, cargando } = useAuth();
   const esLogueado = !cargando && !!usuario;
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const botonMenuRef = useRef<HTMLButtonElement>(null);
+  const menuEstabaAbierto = useRef(false);
+
+  // Al cerrar el menú, el foco vuelve al botón que lo abrió, para que la
+  // persona que navega con teclado no quede desorientada (WCAG 2.4.3).
+  useEffect(() => {
+    if (menuEstabaAbierto.current && !menuAbierto) {
+      botonMenuRef.current?.focus();
+    }
+    menuEstabaAbierto.current = menuAbierto;
+  }, [menuAbierto]);
 
   return (
     <header className="sticky top-0 z-40 border-b-[3px] border-brutal-tinta bg-brutal-tinta">
       <Container className="flex items-center gap-3 py-3">
         <button
+          ref={botonMenuRef}
           type="button"
           onClick={() => setMenuAbierto(true)}
           aria-label="Abrir menú de navegación"
@@ -38,7 +50,7 @@ export function Header() {
 
         <Link href="/" className="group flex items-center gap-3">
           <div className="h-11 w-11 overflow-hidden rounded-md border-[3px] border-brutal-tinta shadow-brutal-sm transition-transform group-hover:-rotate-6">
-            <Image src="/marca.svg" alt="EDUVIAGT" width={44} height={44} className="h-full w-full object-cover" />
+            <Image src="/marca.svg" alt="" width={44} height={44} className="h-full w-full object-cover" />
           </div>
           <div>
             <p className="font-brut text-lg font-black uppercase leading-tight tracking-wide text-brutal-papel">

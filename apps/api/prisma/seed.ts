@@ -1054,7 +1054,7 @@ async function main() {
       id: '00000000-0000-4000-8000-000000000021',
       nombre: 'Convocatoria Nacional 2026 — Beca de Excelencia Académica',
       descripcion:
-        'La Dirección General de Becas abre la convocatoria nacional 2026 de la Beca de Excelencia Académica, dirigida a estudiantes inscritos en universidades del país que acreditan un promedio igual o superior a 85 puntos. La beca cubre matrícula, colegiatura y un apoyo mensual de Q800.00 durante los diez meses del ciclo lectivo. La evaluación se realiza por comité mediante criterios ponderados de rendimiento académico (50%), situación socioeconómica (30%) y actividades extracurriculares (20%).',
+        'El sistema abre la convocatoria nacional 2026 de la Beca de Excelencia Académica, dirigida a estudiantes inscritos en universidades del país que acreditan un promedio igual o superior a 85 puntos. La beca cubre matrícula, colegiatura y un apoyo mensual de Q800.00 durante los diez meses del ciclo lectivo. La evaluación se realiza por comité mediante criterios ponderados de rendimiento académico (50%), situación socioeconómica (30%) y actividades extracurriculares (20%).',
       becaId: '00000000-0000-4000-8000-000000000001',
       nivel: 'Universitario',
       cobertura: 'COMPLETA' as const,
@@ -1155,7 +1155,7 @@ async function main() {
       id: '00000000-0000-4000-8000-000000000023',
       nombre: 'Convocatoria 2027 — Beca de Apoyo a Estudios de Diversificado (preparatoria)',
       descripcion:
-        'Convocatoria preliminar de la Beca de Apoyo a Estudios de Diversificado para el ciclo 2027. Está dirigida a estudiantes de nivel básico y diversificado de instituciones educativas públicas y privadas que han finalizado el último año de diversificado y buscan reincorporarse al bachillerato. La beca cubre matrícula y materiales de estudio. La convocatoria se encuentra en preparación: la Dirección General de Becas publicará la fecha de apertura definitiva.',
+        'Convocatoria preliminar de la Beca de Apoyo a Estudios de Diversificado para el ciclo 2027. Está dirigida a estudiantes de nivel básico y diversificado de instituciones educativas públicas y privadas que han finalizado el último año de diversificado y buscan reincorporarse al bachillerato. La beca cubre matrícula y materiales de estudio. La convocatoria se encuentra en preparación: el sistema publicará la fecha de apertura definitiva.',
       becaId: '00000000-0000-4000-8000-000000000003',
       nivel: 'Diversificado',
       cobertura: 'PARCIAL' as const,
@@ -1240,7 +1240,7 @@ async function main() {
   const conocimiento = [
     {
       titulo: '¿Qué es una beca?',
-      contenido: 'Una beca es un apoyo económico otorgado al estudiante para cubrir gastos de estudios, como matrícula, colegiatura o materiales. En EDUVIAGT el Ministerio de Educación administra las becas mediante convocatorias públicas.',
+      contenido: 'Una beca es un apoyo económico otorgado al estudiante para cubrir gastos de estudios, como matrícula, colegiatura o materiales. En EDUVIAGT las becas se administran mediante convocatorias públicas.',
       tags: ['beca', 'definicion', 'que es'],
     },
     {
@@ -1355,12 +1355,12 @@ async function main() {
     },
     {
       titulo: 'Contraseña olvidada',
-      contenido: 'Si olvidaste tu contraseña, contacta al administrador del sistema o al personal de soporte del Ministerio de Educación para restablecer el acceso a tu cuenta.',
+      contenido: 'Si olvidaste tu contraseña, contacta al administrador del sistema o al personal de soporte para restablecer el acceso a tu cuenta.',
       tags: ['contraseña', 'olvidada', 'password', 'soporte'],
     },
     {
       titulo: 'Soporte y contactos',
-      contenido: 'Para dudas sobre tu postulación contacta al equipo de EDUVIAGT del Ministerio de Educación durante horario de atención. El sistema registra cada acción sensible para auditoría.',
+      contenido: 'Para dudas sobre tu postulación contacta al equipo de EDUVIAGT durante el horario de atención. El sistema registra cada acción sensible para auditoría.',
       tags: ['soporte', 'contacto', 'ayuda', 'atencion'],
     },
     {

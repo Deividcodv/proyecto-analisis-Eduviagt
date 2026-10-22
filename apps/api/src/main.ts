@@ -1,8 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import * as express from 'express';
-import * as path from 'path';
 import { AppModule } from './app.module';
 import { formatearErroresValidacion } from './common/filters/mensajes-error';
 
@@ -12,9 +10,10 @@ async function bootstrap() {
   // Global prefix
   app.setGlobalPrefix('api');
 
-  // Almacenamiento estático (documentos subidos)
-  const storagePath = path.resolve(process.env.STORAGE_PATH || './storage');
-  app.use('/storage', express.static(storagePath));
+  // Los documentos que suben los postulantes NO se sirven como archivos
+  // estáticos: se entregan por un endpoint autenticado que comprueba que
+  // quien los pide es el dueño de la solicitud o alguien que participa en
+  // su revisión. Ver SolicitudesService.descargarDocumento.
 
   // CORS
   app.enableCors({

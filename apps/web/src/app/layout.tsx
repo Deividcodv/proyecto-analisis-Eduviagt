@@ -27,7 +27,7 @@ const mono = Space_Mono({
 export const metadata: Metadata = {
   title: 'EDUVIAGT - Sistema Integral de Gestión de Becas',
   description:
-    'EDUVIAGT es la plataforma del Ministerio de Educación de Guatemala para administrar el ciclo completo de una beca: publicación de convocatorias, postulación de estudiantes, carga y revisión de documentos, evaluación, decisión de comités evaluadores y consulta de estado.',
+    'EDUVIAGT es un prototipo académico que administra el ciclo completo de una beca: publicación de convocatorias, postulación, carga y revisión de documentos, evaluación, decisión de comités y consulta de estado.',
   keywords: ['becas', 'MINEDUC', 'Guatemala', 'educación', 'postulación', 'EDUVIAGT'],
   icons: {
     icon: '/favicon.svg',
@@ -46,8 +46,16 @@ export default function RootLayout({
       <body className={`${body.className} brut-body`}>
         <AuthProvider>
           <div className="flex min-h-screen flex-col">
+            <a
+              href="#contenido-principal"
+              className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-brutal focus:border-[3px] focus:border-brutal-tinta focus:bg-brutal-gold focus:px-4 focus:py-2 focus:font-brut focus:text-sm focus:font-bold focus:uppercase focus:tracking-wide focus:text-brutal-tinta"
+            >
+              Saltar al contenido principal
+            </a>
             <Header />
-            <main className="flex-1">{children}</main>
+            <main id="contenido-principal" className="flex-1" tabIndex={-1}>
+              {children}
+            </main>
             <Footer />
             <ChatWidget />
           </div>

@@ -3,6 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { httpData } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import { Icon } from '@/components/ui/Icon';
+import {
+  DESCRIPCION_ASISTENTE,
+  NOMBRE_ASISTENTE,
+  mensajeEspera,
+  saludoAsistente,
+} from '@/lib/asistente';
 
 interface Mensaje {
   rol: 'usuario' | 'asistente';
@@ -74,25 +81,29 @@ export function MiniAsistente() {
   return (
     <div className="overflow-hidden rounded-brutal border-[3px] border-brutal-tinta bg-brutal-blanco shadow-brutal">
       <div className="flex items-center justify-between border-b-[3px] border-brutal-tinta bg-brutal-tinta px-5 py-4 text-brutal-papel">
-        <div>
-          <p className="font-brut font-black uppercase tracking-wide text-brutal-gold">
-            Asistente virtual EDUVIAGT
-          </p>
-          <p className="text-xs text-brutal-papel/75">
-            Respuestas acotadas a la base de conocimiento del Ministerio
-          </p>
+        <div className="flex items-center gap-3">
+          <Icon name="eduvi" className="h-7 w-7 shrink-0 text-brutal-gold" />
+          <div>
+            <p className="font-brut font-black uppercase tracking-wide text-brutal-gold">
+              {NOMBRE_ASISTENTE}
+            </p>
+            <p className="text-xs text-brutal-papel/75">{DESCRIPCION_ASISTENTE}</p>
+          </div>
         </div>
         <span className="hidden rounded-brutal border-2 border-brutal-lima bg-brutal-lima px-2 py-1 text-[10px] font-black text-brutal-tinta sm:block">
           ● En línea
         </span>
       </div>
 
-      <div className="flex h-80 flex-col gap-4 overflow-y-auto bg-brutal-papel/60 p-4">
+      <div
+        className="flex h-80 flex-col gap-4 overflow-y-auto bg-brutal-papel/60 p-4"
+        aria-live="polite"
+        aria-atomic="false"
+      >
         {mensajes.length === 0 ? (
           <div className="my-auto">
             <p className="mb-4 font-mono text-sm text-brutal-tinta/80">
-              ¡Hola! Soy el asistente de EDUVIAGT. ¿En qué puedo ayudarte? Por
-              ejemplo:
+              {saludoAsistente(esEquipo)} Por ejemplo:
             </p>
             <div className="flex flex-wrap gap-2">
               {sugerencias.map((s) => (
@@ -125,11 +136,14 @@ export function MiniAsistente() {
         {pensando && (
           <div className="self-start flex items-center gap-2 rounded-brutal border-2 border-brutal-tinta bg-brutal-blanco px-4 py-2 text-sm text-brutal-tinta/70">
             <span className="h-2 w-2 animate-pulse rounded-full bg-brutal-cyan" />
-            {esEquipo ? 'Analizando postulación…' : 'Analizando convocatorias…'}
+            {mensajeEspera(esEquipo)}
           </div>
         )}
         {error && (
-          <div className="rounded-brutal border-2 border-brutal-rojo bg-red-50 px-3 py-2 text-xs text-brutal-rojo">
+          <div
+            role="alert"
+            className="rounded-brutal border-2 border-brutal-rojo bg-red-50 px-3 py-2 text-xs text-brutal-rojo"
+          >
             {error}
           </div>
         )}
@@ -143,7 +157,11 @@ export function MiniAsistente() {
           enviar();
         }}
       >
+        <label htmlFor="pregunta-mini-asistente" className="sr-only">
+          Escribe tu pregunta a {NOMBRE_ASISTENTE}
+        </label>
         <input
+          id="pregunta-mini-asistente"
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
           placeholder="Escribe tu pregunta…"

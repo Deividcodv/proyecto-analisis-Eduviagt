@@ -52,7 +52,7 @@ const recursos: {
   },
   {
     titulo: 'Contacto',
-    texto: 'Canales de atención del Ministerio de Educación.',
+    texto: 'Canales de atención del proyecto.',
     href: '/contacto',
     icono: 'correo',
     acento: 'bg-brutal-naranja',
@@ -117,7 +117,7 @@ export default function AyudaPage() {
               ¿Necesitas atención personalizada?
             </h2>
             <p className="mx-auto mt-2 max-w-xl text-brutal-tinta/80">
-              El Ministerio de Educación atiende de lunes a viernes de 8:00 a
+              El equipo del proyecto atiende de lunes a viernes de 8:00 a
               16:00 horas. Revisa los{' '}
               <a href="/contacto" className="font-brut font-bold underline underline-offset-4">
                 canales de contacto

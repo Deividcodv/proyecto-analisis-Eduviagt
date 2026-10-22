@@ -148,7 +148,7 @@ export default function AdminAuditoriaPage() {
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-brutal-tinta">
                     {entrada.actorNombre ?? 'Sistema'}
-                    <span className="ml-2 font-mono text-xs font-bold uppercase text-brutal-tinta/60">
+                    <span className="ml-2 font-mono text-xs font-bold uppercase text-brutal-tinta/70">
                       {entrada.actorRol ?? '—'}
                     </span>
                   </p>
@@ -166,7 +166,7 @@ export default function AdminAuditoriaPage() {
                   <p className="font-mono text-xs font-bold text-brutal-tinta/70">
                     {fechaLegible(entrada.fechaHora)}
                   </p>
-                  <p className="font-mono text-xs text-brutal-tinta/50">
+                  <p className="font-mono text-xs text-brutal-tinta/70">
                     {entrada.modulo} · {entrada.resultado}
                   </p>
                 </div>
@@ -219,25 +219,25 @@ export default function AdminAuditoriaPage() {
             </h3>
             <dl className="grid gap-2 font-mono text-xs text-brutal-tinta/80">
               <div className="flex gap-2">
-                <dt className="w-36 shrink-0 text-brutal-tinta/50">Persona:</dt>
+                <dt className="w-36 shrink-0 text-brutal-tinta/70">Persona:</dt>
                 <dd className="font-bold text-brutal-tinta">
                   {detalle.actorNombre ?? 'Sistema'}
                 </dd>
               </div>
               <div className="flex gap-2">
-                <dt className="w-36 shrink-0 text-brutal-tinta/50">Rol:</dt>
+                <dt className="w-36 shrink-0 text-brutal-tinta/70">Rol:</dt>
                 <dd className="font-bold text-brutal-tinta">
                   {detalle.actorRol ?? '—'}
                 </dd>
               </div>
               <div className="flex gap-2">
-                <dt className="w-36 shrink-0 text-brutal-tinta/50">Correo:</dt>
+                <dt className="w-36 shrink-0 text-brutal-tinta/70">Correo:</dt>
                 <dd className="font-bold text-brutal-tinta">
                   {detalle.actorCorreo ?? '—'}
                 </dd>
               </div>
               <div className="flex gap-2">
-                <dt className="w-36 shrink-0 text-brutal-tinta/50">
+                <dt className="w-36 shrink-0 text-brutal-tinta/70">
                   Fecha y hora:
                 </dt>
                 <dd className="font-bold text-brutal-tinta">
@@ -245,39 +245,39 @@ export default function AdminAuditoriaPage() {
                 </dd>
               </div>
               <div className="flex gap-2">
-                <dt className="w-36 shrink-0 text-brutal-tinta/50">Módulo:</dt>
+                <dt className="w-36 shrink-0 text-brutal-tinta/70">Módulo:</dt>
                 <dd className="font-bold text-brutal-tinta">
                   {detalle.modulo} · {detalle.entidad}
                 </dd>
               </div>
               <div className="flex gap-2">
-                <dt className="w-36 shrink-0 text-brutal-tinta/50">Acción:</dt>
+                <dt className="w-36 shrink-0 text-brutal-tinta/70">Acción:</dt>
                 <dd className="font-bold text-brutal-tinta">
                   {detalle.accionClave} ({detalle.resultado})
                 </dd>
               </div>
               {detalle.motivo && (
                 <div className="flex gap-2">
-                  <dt className="w-36 shrink-0 text-brutal-tinta/50">Motivo:</dt>
+                  <dt className="w-36 shrink-0 text-brutal-tinta/70">Motivo:</dt>
                   <dd className="font-bold text-brutal-tinta">
                     {detalle.motivo}
                   </dd>
                 </div>
               )}
               <div className="flex gap-2">
-                <dt className="w-36 shrink-0 text-brutal-tinta/50">IP:</dt>
+                <dt className="w-36 shrink-0 text-brutal-tinta/70">IP:</dt>
                 <dd className="font-bold text-brutal-tinta">
                   {detalle.ip ?? '—'}
                 </dd>
               </div>
               <div className="flex gap-2">
-                <dt className="w-36 shrink-0 text-brutal-tinta/50">Origen:</dt>
+                <dt className="w-36 shrink-0 text-brutal-tinta/70">Origen:</dt>
                 <dd className="font-bold text-brutal-tinta">
                   {detalle.origen}
                 </dd>
               </div>
               <div className="flex gap-2">
-                <dt className="w-36 shrink-0 text-brutal-tinta/50">
+                <dt className="w-36 shrink-0 text-brutal-tinta/70">
                   Navegador:
                 </dt>
                 <dd className="break-all font-bold text-brutal-tinta">
@@ -286,7 +286,7 @@ export default function AdminAuditoriaPage() {
               </div>
               {detalle.camposClave != null && (
                 <div className="flex gap-2">
-                  <dt className="w-36 shrink-0 text-brutal-tinta/50">
+                  <dt className="w-36 shrink-0 text-brutal-tinta/70">
                     Campos clave:
                   </dt>
                   <dd className="break-all font-bold text-brutal-tinta">
@@ -296,7 +296,7 @@ export default function AdminAuditoriaPage() {
               )}
               {detalle.datosRelevantes != null && (
                 <div className="flex gap-2">
-                  <dt className="w-36 shrink-0 text-brutal-tinta/50">
+                  <dt className="w-36 shrink-0 text-brutal-tinta/70">
                     Datos relevantes:
                   </dt>
                   <dd className="break-all font-bold text-brutal-tinta">

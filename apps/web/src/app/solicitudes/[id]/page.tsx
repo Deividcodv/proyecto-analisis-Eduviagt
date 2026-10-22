@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { fetchConToken, descargarConstancia } from '@/lib/api-auth';
+import { fetchConToken, descargarConstancia, verDocumento as verDocumentoArchivo } from '@/lib/api-auth';
 import { traducirError } from '@/lib/mensajes-error';
 import { Container } from '@/components/ui/Container';
 import { Card } from '@/components/ui/Card';
@@ -98,8 +98,17 @@ function SolicitudDetalleContent() {
     }
   };
 
-  const enviar = async () => {
-    setEnviando(true);
+  /** Abre el archivo del documento en una pestaña nueva. */
+  const verDocumento = async (documentoId: string) => {
+    setError(null);
+    try {
+      await verDocumentoArchivo(id, documentoId);
+    } catch (e) {
+      setError(traducirError(e, 'No se pudo abrir el documento'));
+    }
+  };
+
+  const enviar = async () => {    setEnviando(true);
     setError(null);
     try {
       await fetchConToken(`/solicitudes/${id}/transicion`, {
@@ -228,6 +237,7 @@ function SolicitudDetalleContent() {
               documentos={checklist?.documentos ?? []}
               subiendo={subiendo}
               onSubir={subir}
+              onVer={verDocumento}
               onConfirmar={(tipoId, accion, archivo) =>
                 setConfirmTipo({ tipoId, accion, archivo })
               }
@@ -391,9 +401,11 @@ function DocsSection({
   documentos,
   subiendo,
   onSubir,
+  onVer,
   onConfirmar,
 }: {
   documentos: {
+    documentoId: string | null;
     documentoTipoId: string;
     nombre: string;
     obligatorio: boolean;
@@ -405,6 +417,7 @@ function DocsSection({
   }[];
   subiendo: string | null;
   onSubir: (tipoId: string, file: File) => void;
+  onVer: (documentoId: string) => void;
   onConfirmar: (
     tipoId: string,
     accion: 'eliminar' | 'reemplazar',
@@ -454,6 +467,15 @@ function DocsSection({
                 <div className="flex items-center gap-3">
                   {doc.cargado ? (
                     <>
+                      {doc.documentoId && (
+                        <Button
+                          variant="ghost"
+                          onClick={() => doc.documentoId && onVer(doc.documentoId)}
+                          disabled={subiendo === doc.documentoTipoId}
+                        >
+                          Ver
+                        </Button>
+                      )}
                       <label className="cursor-pointer rounded-brutal border-[3px] border-brutal-tinta bg-sigeb-blue-dark px-4 py-1.5 font-brut text-sm font-bold uppercase tracking-wide text-brutal-blanco shadow-brutal-sm transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none">
                         {subiendo === doc.documentoTipoId
                           ? 'Subiendo…'

@@ -18,11 +18,30 @@ export function NavigationDrawer({ abierto, onCerrar }: NavigationDrawerProps) {
   const { usuario, logout } = useAuth();
   const router = useRouter();
   const cerrarRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!abierto) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCerrar();
+      if (e.key === 'Escape') {
+        onCerrar();
+        return;
+      }
+      // El foco no debe salirse del menú mientras está abierto (WCAG 2.1.2).
+      if (e.key !== 'Tab' || !panelRef.current) return;
+      const focusables = panelRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusables.length === 0) return;
+      const primero = focusables[0];
+      const ultimo = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === primero) {
+        e.preventDefault();
+        ultimo.focus();
+      } else if (!e.shiftKey && document.activeElement === ultimo) {
+        e.preventDefault();
+        primero.focus();
+      }
     };
     document.addEventListener('keydown', onKey);
     cerrarRef.current?.focus();
@@ -81,13 +100,16 @@ export function NavigationDrawer({ abierto, onCerrar }: NavigationDrawerProps) {
         className="absolute inset-0 h-full w-full cursor-default bg-brutal-tinta/70"
       />
 
-      <aside className="absolute left-0 top-0 flex h-full w-full max-w-sm flex-col overflow-y-auto border-r-[3px] border-brutal-tinta bg-brutal-papel shadow-brutal">
+      <aside
+        ref={panelRef}
+        className="absolute left-0 top-0 flex h-full w-full max-w-sm flex-col overflow-y-auto border-r-[3px] border-brutal-tinta bg-brutal-papel shadow-brutal"
+      >
         <div className="flex items-center justify-between gap-3 border-b-[3px] border-brutal-tinta bg-brutal-tinta px-4 py-3">
           <Link href="/" onClick={onCerrar} className="flex items-center gap-2">
             <span className="h-9 w-9 overflow-hidden rounded-md border-2 border-brutal-papel">
               <Image
                 src="/marca.svg"
-                alt="EDUVIAGT"
+                alt=""
                 width={36}
                 height={36}
                 className="h-full w-full object-cover"

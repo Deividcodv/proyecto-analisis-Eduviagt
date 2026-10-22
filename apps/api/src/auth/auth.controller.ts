@@ -8,14 +8,17 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { EliminarCuentaService } from './eliminar-cuenta.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { UpdatePerfilDto } from './dto/update-perfil.dto';
+import { EliminarCuentaDto } from './dto/eliminar-cuenta.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
@@ -23,7 +26,10 @@ import { Public } from '../common/decorators/public.decorator';
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly eliminarCuentaService: EliminarCuentaService,
+  ) {}
 
   @Post('registro')
   @Public()
@@ -75,5 +81,29 @@ export class AuthController {
     @Body() dto: UpdatePerfilDto,
   ) {
     return this.authService.updatePerfil(userId, dto);
+  }
+
+  @Post('eliminar-cuenta')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Eliminar mi cuenta: se anonimizan los datos personales y se conservan, con seudónimo, los registros de trazabilidad',
+  })
+  @ApiResponse({ status: 401, description: 'Contraseña incorrecta' })
+  async eliminarCuenta(
+    @CurrentUser('id') userId: string,
+    @Body() dto: EliminarCuentaDto,
+  ) {
+    if (dto.confirmacion.trim().toUpperCase() !== 'ELIMINAR') {
+      throw new BadRequestException(
+        'Para confirmar, escribe la palabra ELIMINAR en el campo de confirmación.',
+      );
+    }
+    return this.eliminarCuentaService.eliminar(
+      userId,
+      dto.contrasena,
+      dto.motivo,
+    );
   }
 }

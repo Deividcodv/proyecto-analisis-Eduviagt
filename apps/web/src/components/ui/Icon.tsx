@@ -29,6 +29,7 @@ export type IconName =
   | 'chevron'
   | 'correo'
   | 'chat'
+  | 'eduvi'
   | 'telefono'
   | 'ubicacion';
 
@@ -188,6 +189,18 @@ const paths: Record<IconName, ReactNode> = {
     <>
       <path d="M12 21s7-5.5 7-11a7 7 0 0 0-14 0c0 5.5 7 11 7 11z" />
       <circle cx="12" cy="10" r="2.5" />
+    </>
+  ),
+  /**
+   * Icono propio de Eduvi, la guía virtual: un libro abierto con una
+   * estrella dorada. Es la identidad del asistente, no la de la plataforma
+   * (esa es `marca.svg`).
+   */
+  eduvi: (
+    <>
+      <path d="M11 6C9 4 5 4 3 4v14c2 0 6 0 8 2 2-2 6-2 8-2V4c-2 0-6 0-8 2z" />
+      <path d="M11 6v14" />
+      <path d="m19 2 1.1 2.4 2.4 1.1-2.4 1.1L19 9l-1.1-2.4-2.4-1.1 2.4-1.1z" />
     </>
   ),
 };

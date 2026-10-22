@@ -225,6 +225,32 @@ export class SolicitudesController {
     return this.solicitudesService.subirDocumento(id, tipoId, file, usuario);
   }
 
+  @Get(':id/documentos/:documentoId/descargar')
+  @Permisos('solicitud:ver')
+  @ApiOperation({
+    summary:
+      'Descargar un documento de la solicitud (solo el dueño o quien revisa)',
+  })
+  @ApiResponse({ status: 403, description: 'La solicitud no es del usuario' })
+  @ApiResponse({ status: 404, description: 'El documento no existe' })
+  async descargarDocumento(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('documentoId', ParseUUIDPipe) documentoId: string,
+    @CurrentUser() usuario: AuthenticatedUser,
+    @Res() res: Response,
+  ) {
+    const { buffer, nombreArchivo, contentType } =
+      await this.solicitudesService.descargarDocumento(id, documentoId, usuario);
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="${nombreArchivo.replace(/"/g, '')}"`,
+    );
+    res.setHeader('Content-Length', buffer.length);
+    res.send(buffer);
+  }
+
   @Delete(':id/documentos/:tipoId')
   @Permisos('documento:eliminar')
   @ApiOperation({ summary: 'Eliminar documento por tipo' })

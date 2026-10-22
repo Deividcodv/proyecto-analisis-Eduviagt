@@ -61,8 +61,8 @@ export default function TransparenciaPage() {
                 Compromiso de transparencia
               </h2>
               <p className="text-brutal-tinta/80">
-                El Ministerio de Educación de Guatemala se compromete a administrar
-                los programas de becas con transparencia. Todo el ciclo —postulación,
+                En este prototipo, los programas de becas se administran con
+                transparencia. Todo el ciclo —postulación,
                 documentación, evaluación, comité y resolución— está digitalizado y
                 cada acción deja una huella auditable en la plataforma.
               </p>
@@ -133,7 +133,7 @@ export default function TransparenciaPage() {
               </h2>
               <p className="text-brutal-tinta/80">
                 Los reportes consolidados y el historial de auditoría están
-                disponibles para el personal autorizado del Ministerio a través del
+                disponibles para el personal autorizado del proyecto a través del
                 sistema interno.
               </p>
             </div>

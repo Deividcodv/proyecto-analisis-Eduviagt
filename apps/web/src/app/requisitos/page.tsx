@@ -4,7 +4,7 @@ import { Container } from '@/components/ui/Container';
 export const metadata: Metadata = {
   title: 'Requisitos | EDUVIAGT',
   description:
-    'Requisitos generales para postularte a las becas del Ministerio de Educación de Guatemala a través de EDUVIAGT.',
+    'Requisitos generales para postularte a las becas de EDUVIAGT.',
 };
 
 const generales = [

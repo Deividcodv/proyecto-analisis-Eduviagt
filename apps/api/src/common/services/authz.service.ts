@@ -1,6 +1,6 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { AuthenticatedUser } from '../interfaces/authenticated-user.interface';
-import { ROL } from '../constants/roles';
+import { ROL, ROLES_REVISORES } from '../constants/roles';
 
 @Injectable()
 export class AuthzService {
@@ -22,6 +22,14 @@ export class AuthzService {
    */
   esPersonal(usuario: AuthenticatedUser): boolean {
     return this.esAdmin(usuario) || usuario.rol?.nombre === ROL.JEFE_BECAS;
+  }
+
+  /**
+   * ¿El usuario participa en la revisión de postulaciones ajenas y, por tanto,
+   * puede consultar los documentos que el postulante adjuntó?
+   */
+  esRevisor(usuario: AuthenticatedUser): boolean {
+    return ROLES_REVISORES.includes(usuario.rol?.nombre ?? '');
   }
 
   assertAdmin(usuario: AuthenticatedUser, mensaje?: string): void {

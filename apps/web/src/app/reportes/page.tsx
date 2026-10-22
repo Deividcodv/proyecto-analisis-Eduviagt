@@ -21,7 +21,13 @@ import { EmbudoConversion } from '@/components/reportes/EmbudoConversion';
 import { TablaDetalle } from '@/components/reportes/TablaDetalle';
 import { ExportarReporte } from '@/components/reportes/ExportarReporte';
 
-const ROLES_EMPLEADOS = ['ADMIN', 'EVALUADOR', 'COORDINADOR_COMITE', 'MIEMBRO_COMITE'];
+const ROLES_EMPLEADOS = [
+  'ADMIN',
+  'EVALUADOR',
+  'COORDINADOR_COMITE',
+  'MIEMBRO_COMITE',
+  'JEFE_BECAS',
+];
 
 interface ReporteGeneral {
   solicitudes: { total: number; porEstado: { estado: string; cantidad: number }[] };

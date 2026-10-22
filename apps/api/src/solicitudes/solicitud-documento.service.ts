@@ -19,6 +19,12 @@ import {
 } from '../common/constants/estados';
 import { ROL } from '../common/constants/roles';
 
+export interface DocumentoDescargable {
+  buffer: Buffer;
+  nombreArchivo: string;
+  contentType: string;
+}
+
 @Injectable()
 export class SolicitudDocumentoService {
   constructor(
@@ -27,6 +33,65 @@ export class SolicitudDocumentoService {
     private readonly audit: AuditService,
     private readonly authz: AuthzService,
   ) {}
+
+  /**
+   * Devuelve el archivo de un documento para que lo descargue quien lo
+   * consulta.
+   *
+   * Los archivos ya no se sirven como estáticos (`/storage`): cada descarga
+   * pasa por aquí, se comprueba que el documento pertenece a la solicitud
+   * indicada y que quien pregunta es el dueño del expediente o alguien que
+   * participa en su revisión.
+   */
+  async descargar(
+    solicitudId: string,
+    documentoId: string,
+    usuario: AuthenticatedUser,
+  ): Promise<DocumentoDescargable> {
+    const solicitud = await this.prisma.solicitud.findUnique({
+      where: { id: solicitudId },
+      select: { id: true, usuarioId: true },
+    });
+
+    if (!solicitud) {
+      throw new NotFoundException(`Solicitud con id ${solicitudId} no encontrada`);
+    }
+
+    const esDueño = solicitud.usuarioId === usuario.id;
+    if (!esDueño && !this.authz.esRevisor(usuario)) {
+      throw new ForbiddenException(
+        'No tienes acceso a los documentos de esta solicitud',
+      );
+    }
+
+    const documento = await this.prisma.solicitudDocumento.findFirst({
+      where: { id: documentoId, solicitudId },
+      include: { documentoTipo: { select: { nombre: true } } },
+    });
+
+    if (!documento) {
+      throw new NotFoundException(
+        `Documento con id ${documentoId} no encontrado en la solicitud`,
+      );
+    }
+
+    const key = documento.archivoUrl.replace('/storage/', '');
+    const buffer = await this.storage.read(key);
+
+    await this.audit.log({
+      usuarioId: usuario.id,
+      accion: 'descargar-documento',
+      entidad: 'documento',
+      entidadId: documento.id,
+      detalle: { solicitudId, tipo: documento.documentoTipo.nombre },
+    });
+
+    return {
+      buffer,
+      nombreArchivo: `${sugerirNombreArchivo(documento.documentoTipo.nombre, key)}`,
+      contentType: deducirContentType(key),
+    };
+  }
 
   async subir(
     id: string,
@@ -194,5 +259,39 @@ export class SolicitudDocumentoService {
     }
 
     return solicitud;
+  }
+}
+
+/** Convierte el nombre del tipo de documento en un nombre de archivo seguro. */
+function sugerirNombreArchivo(nombreTipo: string, key: string): string {
+  const extension = key.includes('.') ? key.slice(key.lastIndexOf('.')) : '';
+  // Se separan los diacríticos combinantes (U+0300-U+036F) para que el nombre
+  // del archivo sea portable: "Certificado académico" -> "certificado-academico".
+  const sinDiacriticos = Array.from(nombreTipo.normalize('NFD'))
+    .filter((caracter) => {
+      const codigo = caracter.codePointAt(0) ?? 0;
+      return codigo < 0x300 || codigo > 0x36f;
+    })
+    .join('');
+  const base = sinDiacriticos
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase();
+  return `${base || 'documento'}${extension}`;
+}
+
+/** Deduce el tipo MIME a partir de la extensión del archivo guardado. */
+function deducirContentType(key: string): string {
+  const extension = key.includes('.') ? key.slice(key.lastIndexOf('.') + 1).toLowerCase() : '';
+  switch (extension) {
+    case 'pdf':
+      return 'application/pdf';
+    case 'png':
+      return 'image/png';
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    default:
+      return 'application/octet-stream';
   }
 }

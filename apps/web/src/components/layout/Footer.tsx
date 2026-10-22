@@ -28,23 +28,32 @@ const columnas = [
       { href: '/soporte', label: 'Soporte' },
     ],
   },
+  {
+    titulo: 'Legal',
+    enlaces: [
+      { href: '/privacidad', label: 'Privacidad' },
+      { href: '/terminos', label: 'Términos y condiciones' },
+      { href: '/cookies', label: 'Cookies y almacenamiento' },
+    ],
+  },
 ];
 
 export function Footer() {
   return (
     <footer className="border-t-[3px] border-brutal-tinta bg-brutal-tinta py-12 text-brutal-papel">
       <Container>
-        <div className="grid gap-8 md:grid-cols-4">
+        <div className="grid gap-8 md:grid-cols-3 lg:grid-cols-5">
           <div>
             <div className="mb-4 inline-flex items-center gap-2 rounded-md border-[3px] border-brutal-tinta bg-brutal-gold px-3 py-1 font-brut text-xl font-black uppercase text-brutal-tinta shadow-brutal-sm">
               <Image src="/marca.svg" alt="" width={28} height={28} className="object-cover" />
               EDUVIAGT
             </div>
             <p className="text-sm text-brutal-papel/85">
-              Sistema Integral de Gestión de Becas
+              Prototipo académico de gestión de becas
             </p>
-            <p className="mt-2 text-sm text-brutal-papel/85">Ministerio de Educación</p>
-            <p className="text-sm text-brutal-papel/85">República de Guatemala</p>
+            <p className="mt-2 text-sm text-brutal-papel/85">
+              Proyecto académico, sin autorización institucional
+            </p>
           </div>
 
           {columnas.map((columna) => (
@@ -70,9 +79,10 @@ export function Footer() {
 
         <div className="mt-8 flex flex-col items-center justify-between gap-2 border-t-2 border-brutal-papel/20 pt-6 text-center md:flex-row md:text-left">
           <p className="font-mono text-xs text-brutal-papel/85">
-            © 2026 Ministerio de Educación de Guatemala. Todos los derechos reservados.
+            © 2026 EDUVIAGT. Prototipo académico: no es una plataforma oficial
+            del Ministerio de Educación.
           </p>
-          <p className="brut-label text-[10px] text-brutal-gold">Versión 1.1</p>
+          <p className="brut-label text-[10px] text-brutal-gold">Versión 1.2</p>
         </div>
       </Container>
     </footer>

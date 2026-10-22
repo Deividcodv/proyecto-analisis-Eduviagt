@@ -62,6 +62,7 @@ export class SolicitudChecklistService {
         const estado = ultimo?.estado ?? DOCUMENTO_ESTADO.PENDIENTE;
         const cargado = estado === DOCUMENTO_ESTADO.CARGADO;
         return {
+          documentoId: ultimo?.id ?? null,
           documentoTipoId: dr.documentoTipoId,
           nombre: dr.documentoTipo.nombre,
           obligatorio: dr.obligatorio,

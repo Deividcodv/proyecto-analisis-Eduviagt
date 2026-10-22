@@ -266,6 +266,73 @@ describe('SolicitudesService', () => {
       expect(storage.save).not.toHaveBeenCalled();
     });
 
+    describe('descarga de documentos (control de acceso)', () => {
+      const documento = {
+        id: 'd1',
+        solicitudId: 's1',
+        archivoUrl: '/storage/solicitudes/s1/abc.pdf',
+        documentoTipo: { nombre: 'Certificado académico' },
+      };
+
+      beforeEach(() => {
+        storage.read.mockResolvedValue(Buffer.from('%PDF-1.4'));
+        prisma.solicitudDocumento = {
+          findFirst: jest.fn().mockResolvedValue(documento),
+        };
+      });
+
+      it('el dueño de la solicitud descarga su documento', async () => {
+        prisma.solicitud.findUnique.mockResolvedValue({
+          id: 's1',
+          usuarioId: postulante.id,
+        });
+
+        const resultado = await service.descargarDocumento('s1', 'd1', postulante);
+
+        expect(resultado.buffer.toString()).toBe('%PDF-1.4');
+        expect(resultado.contentType).toBe('application/pdf');
+        expect(resultado.nombreArchivo).toBe('certificado-academico.pdf');
+      });
+
+      it('otro postulante no puede descargar un documento ajeno', async () => {
+        prisma.solicitud.findUnique.mockResolvedValue({
+          id: 's1',
+          usuarioId: 'otro-usuario',
+        });
+
+        await expect(
+          service.descargarDocumento('s1', 'd1', postulante),
+        ).rejects.toThrow('No tienes acceso a los documentos');
+        expect(storage.read).not.toHaveBeenCalled();
+      });
+
+      it('quien revisa postulaciones sí puede descargar el documento', async () => {
+        prisma.solicitud.findUnique.mockResolvedValue({
+          id: 's1',
+          usuarioId: 'otro-usuario',
+        });
+
+        const resultado = await service.descargarDocumento('s1', 'd1', {
+          ...postulante,
+          rol: { id: 'r-eval', nombre: 'EVALUADOR', descripcion: null },
+        });
+
+        expect(resultado.buffer.length).toBeGreaterThan(0);
+      });
+
+      it('no sirve un documento que pertenece a otra solicitud', async () => {
+        prisma.solicitud.findUnique.mockResolvedValue({
+          id: 's1',
+          usuarioId: postulante.id,
+        });
+        prisma.solicitudDocumento.findFirst.mockResolvedValue(null);
+
+        await expect(
+          service.descargarDocumento('s1', 'd1', postulante),
+        ).rejects.toThrow('no encontrado en la solicitud');
+      });
+    });
+
     it('elimina fila y archivo', async () => {
       prisma.solicitud.findUnique.mockResolvedValue({
         id: 's1',
@@ -492,11 +559,54 @@ describe('SolicitudesService', () => {
         expect.objectContaining({
           data: expect.objectContaining({
             nivel: 1,
-            accion: 'aprobar',
+            accion: 'solicitar_segunda_aprobacion',
             resultado: 'PENDIENTE_SEGUNDA_APROBACION',
           }),
         }),
       );
+    });
+
+    it('avisa de la segunda aprobación, no de una aprobación consumada', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        id: 's1',
+        usuarioId: 'u-postulante',
+        estado: 'EVALUADA',
+        correccionesCount: 0,
+        montoOtorgable: '12000',
+        aprobaciones: [],
+        convocatoria: {
+          id: 'c1',
+          nombre: 'Beca de prueba',
+          beca: { id: 'b1', nombre: 'Beca de prueba' },
+          maxCorrecciones: 3,
+        },
+        perfilFinanciero: { ingresoFamiliar: 2500 },
+      });
+      prisma.solicitud.update.mockResolvedValue({
+        id: 's1',
+        estado: 'PENDIENTE_SEGUNDA_APROBACION',
+      });
+      montos.requiereSegundaAprobacion.mockReturnValue(true);
+
+      await service.transicion(
+        's1',
+        { accion: 'aprobar' },
+        {
+          id: 'u-admin',
+          cui: '1234567890123',
+          nombres: 'Admin',
+          email: 'admin@sigeb.gov.gt',
+          rol: { id: 'r-admin', nombre: 'ADMIN', descripcion: null },
+        } as AuthenticatedUser,
+      );
+
+      // La persona no debe recibir un "tu solicitud fue aprobada": sigue
+      // pendiente de una segunda firma.
+      const tipos = prisma.notificacion.create.mock.calls.map(
+        (c: [{ data: { tipo: string } }]) => c[0].data.tipo,
+      );
+      expect(tipos).toContain('SOLICITUD_SEGUNDA_APROBACION');
+      expect(tipos).not.toContain('SOLICITUD_APROBADA');
     });
 
     it('un monto bajo el umbral se aprueba de una vez', async () => {

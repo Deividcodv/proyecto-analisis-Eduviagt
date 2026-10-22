@@ -34,13 +34,13 @@ export function LandingPublico() {
       <section className="brut-cinta border-b-[3px] border-brutal-tinta bg-brutal-tinta py-24 text-brutal-papel">
         <Container className="text-left">
           <p className="brut-label mb-4 inline-block rounded-brutal border-2 border-brutal-gold bg-brutal-gold px-3 py-1 text-xs font-bold text-brutal-tinta">
-            ⬢ Ministerio de Educación · Guatemala
+            ⬢ Prototipo académico · Guatemala
           </p>
           <h1 className="text-mega max-w-4xl font-black text-5xl md:text-7xl">
             Oportunidades que transforman vidas
           </h1>
           <p className="mt-6 max-w-2xl font-mono text-base text-brutal-papel/80 md:text-lg">
-            Encuentra programas de becas del Ministerio de Educación de Guatemala
+            Encuentra programas de becas del sistema EDUVIAGT
             y realiza tu proceso de postulación de forma sencilla, segura y
             transparente. Toda tu postulación, un solo lugar.
           </p>
@@ -141,7 +141,7 @@ export function LandingPublico() {
             <h2 className="text-mega text-3xl font-black md:text-5xl">Transparencia total</h2>
             <p className="mt-4 font-mono text-base text-brutal-papel/80">
               EDUVIAGT es la plataforma para la gestión integral de programas de
-              becas del Ministerio de Educación de Guatemala. Cada paso queda
+              becas del sistema EDUVIAGT. Cada paso queda
               documentado y auditable.
             </p>
             <div className="mt-10 grid gap-6 md:grid-cols-3">

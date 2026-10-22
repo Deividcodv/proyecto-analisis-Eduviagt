@@ -4,7 +4,7 @@ import { Container } from '@/components/ui/Container';
 export const metadata: Metadata = {
   title: 'Preguntas frecuentes | EDUVIAGT',
   description:
-    'Respuestas a las preguntas más frecuentes sobre el proceso de becas del Ministerio de Educación de Guatemala en EDUVIAGT.',
+    'Respuestas a las preguntas más frecuentes sobre el proceso de becas en EDUVIAGT.',
 };
 
 const faqs = [
@@ -16,7 +16,7 @@ const faqs = [
   {
     pregunta: '¿Qué tipos de beca se gestionan?',
     respuesta:
-      'EDUVIAGT gestiona programas de becas de excelencia académica, inspiración cívica y apoyo a la formación técnica y profesional del Ministerio de Educación.',
+      'EDUVIAGT gestiona programas de becas de excelencia académica, inspiración cívica y apoyo a la formación técnica y profesional.',
   },
   {
     pregunta: '¿Cuáles son los requisitos para postularme?',

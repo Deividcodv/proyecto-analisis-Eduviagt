@@ -22,6 +22,9 @@ const PAGINAS_PUBLICAS = [
   { ruta: '/contacto', nombre: 'contacto' },
   { ruta: '/soporte', nombre: 'soporte' },
   { ruta: '/transparencia', nombre: 'transparencia' },
+  { ruta: '/privacidad', nombre: 'privacidad' },
+  { ruta: '/terminos', nombre: 'terminos' },
+  { ruta: '/cookies', nombre: 'cookies' },
 ];
 
 test.describe('Accesibilidad WCAG AA (axe)', () => {
@@ -65,6 +68,7 @@ const PAGINAS_INTERNAS = [
   { ruta: '/admin/comites', nombre: 'admin-comites' },
   { ruta: '/admin/sesiones', nombre: 'admin-sesiones' },
   { ruta: '/admin/seguridad', nombre: 'admin-seguridad' },
+  { ruta: '/admin/auditoria', nombre: 'admin-auditoria' },
   { ruta: '/perfil', nombre: 'perfil' },
 ];
 
@@ -137,13 +141,26 @@ test.describe('Accesibilidad de formularios y foco', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    await page.keyboard.press('Tab');
-    const primerFoco = await page.evaluate(() => {
-      const el = document.activeElement;
-      return el ? el.tagName + (el.textContent ? `: ${el.textContent.trim().slice(0, 40)}` : '') : 'ninguno';
-    });
+    // En una página que no es la primera del contexto, el frame puede no
+    // tener el foco y la tecla no se procesa. Se pulsa sobre el body (que
+    // fija el punto de partida de la navegación) y se reintenta un par de
+    // veces por si el foco aún no ha llegado al documento.
+    let primerFoco = 'ninguno';
+    for (let intento = 0; intento < 3; intento++) {
+      await page.locator('body').press('Tab');
+      primerFoco = await page.evaluate(() => {
+        const el = document.activeElement;
+        return el
+          ? el.tagName + (el.textContent ? `: ${el.textContent.trim().slice(0, 40)}` : '')
+          : 'ninguno';
+      });
+      if (primerFoco !== 'ninguno' && !primerFoco.startsWith('BODY')) break;
+    }
+
     expect(primerFoco).not.toBe('ninguno');
     expect(primerFoco).not.toContain('BODY');
+    // El primer elemento enfocable es el salto al contenido principal.
+    expect(primerFoco).toContain('Saltar al contenido principal');
   });
 });
 

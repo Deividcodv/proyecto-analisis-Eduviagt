@@ -9,6 +9,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { SseJwtStrategy } from './strategies/sse-jwt.strategy';
 import { PrismaModule } from '../prisma/prisma.module';
 import { BitacoraModule } from '../bitacora/bitacora.module';
+import { EliminarCuentaService } from './eliminar-cuenta.service';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { BitacoraModule } from '../bitacora/bitacora.module';
   controllers: [AuthController],
   providers: [
     AuthService,
+    EliminarCuentaService,
     // Se construye por fábrica: sus parámetros (máximo de intentos, ventana,
     // reloj) tienen valores por defecto y NO deben resolverse por inyección.
     { provide: LoginAttemptService, useFactory: () => new LoginAttemptService() },

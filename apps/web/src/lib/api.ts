@@ -176,6 +176,7 @@ export interface SolicitudDetalle extends Solicitud {
 }
 
 export interface SolicitudChecklistDocumento {
+  documentoId: string | null;
   documentoTipoId: string;
   nombre: string;
   obligatorio: boolean;

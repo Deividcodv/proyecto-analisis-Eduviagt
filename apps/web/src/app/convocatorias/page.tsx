@@ -13,7 +13,7 @@ import {
 export const metadata: Metadata = {
   title: 'Convocatorias | EDUVIAGT',
   description:
-    'Explora las convocatorias abiertas de becas del Ministerio de Educación de Guatemala.',
+    'Explora las convocatorias abiertas de becas de EDUVIAGT.',
 };
 
 interface Props {
@@ -81,7 +81,7 @@ export default async function ConvocatoriasPage({ searchParams }: Props) {
           <p className="brut-label text-xs font-bold text-brutal-gold">// Becas</p>
           <h1 className="text-mega text-3xl font-black md:text-5xl">Convocatorias</h1>
           <p className="mt-2 max-w-2xl font-mono text-sm text-brutal-papel/80">
-            Encuentra las becas del Ministerio de Educación. Filtra por nombre,
+            Encuentra las becas disponibles. Filtra por nombre,
             tipo de beca o estado para encontrar la oportunidad ideal.
           </p>
         </Container>

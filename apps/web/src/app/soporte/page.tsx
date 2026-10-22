@@ -18,12 +18,12 @@ const canales: {
   {
     icono: 'correo',
     titulo: 'Correo',
-    texto: 'mesadeayuda@mineduc.gob.gt',
+    texto: 'soporte@eduviagt.example',
   },
   {
     icono: 'telefono',
     titulo: 'Teléfono',
-    texto: '+502 2411-9595',
+    texto: '+502 0000-0000 (ejemplo)',
   },
   {
     icono: 'reloj',
@@ -46,7 +46,7 @@ export default function SoportePage() {
           <p className="brut-label text-xs font-bold text-brutal-gold">// Soporte</p>
           <h1 className="text-mega text-3xl font-black md:text-5xl">Soporte</h1>
           <p className="mt-2 max-w-2xl font-mono text-sm text-brutal-papel/80">
-            Mesa de ayuda del Ministerio de Educación. Resuelve tus dudas con el
+            Mesa de ayuda de EDUVIAGT. Resuelve tus dudas con el
             asistente virtual o contacta a nuestro equipo.
           </p>
         </Container>

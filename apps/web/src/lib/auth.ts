@@ -48,6 +48,18 @@ export function clearTokens() {
   window.localStorage.removeItem(REFRESH_KEY);
 }
 
+/**
+ * Cierra la sesión en el navegador sin tocar el estado de la interfaz: se
+ * usa cuando la persona debe poder seguir viendo una pantalla (por ejemplo,
+ * el resumen de qué se borró al eliminar su cuenta).
+ *
+ * Los tokens de acceso son de corta duración y el servidor ya invalida la
+ * cuenta eliminada, así que no hace falta llamar a ningún endpoint.
+ */
+export function cerrarSesionLocal(): void {
+  clearTokens();
+}
+
 export async function login(email: string, password: string): Promise<LoginResponse> {
   const data = await httpData<LoginResponse>('/auth/login', {
     method: 'POST',
