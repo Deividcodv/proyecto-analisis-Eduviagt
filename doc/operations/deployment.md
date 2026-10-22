@@ -83,10 +83,40 @@ Variable de repositorio (opcional):
 | Variable | Por defecto | Uso |
 |---|---|---|
 | `PM2_CONFIG_PATH` | `/home/davi/sigeb.pm2.config.cjs` | archivo de configuración de PM2 |
+| `DEPLOY_REPO_URL` | `https://github.com/Deividcodv/sigeb-prod.git` | repositorio del que se despliega |
+| `DEPLOY_REPO_URL_FALLBACK` | `https://github.com/Deividcodv/sigeb-prod.git` | repositorio de respaldo |
 
 `DEPLOY_DATABASE_URL` y `DEPLOY_JWT_SECRET` **ya no se usan**: la API y las
 migraciones leen el `.env` del servidor, y duplicar esos valores en dos
 lugares es la forma más fácil de que se desincronicen.
+
+### Cambiar el origen del despliegue a EDUVIAGT
+
+Hoy el servidor se actualiza desde `sigeb-prod`. Cuando el repositorio del
+equipo (`proyecto-analisis-Eduviagt`) tenga ya la réplica completa —la guía
+está en `Docs/README-JOSE-REPLICA-SIGEB-PROD.md` de ese repositorio—, se
+añade la variable `DEPLOY_REPO_URL` en el entorno `staging` de GitHub:
+
+```text
+DEPLOY_REPO_URL = https://github.com/Deividcodv/proyecto-analisis-Eduviagt.git
+```
+
+A partir del siguiente push a `develop`, el despliegue tira de EDUVIAGT.
+
+**No se publica una versión antigua por error.** El script comprueba que el
+remoto de destino tenga la versión actual del proyecto (el archivo
+`apps/api/src/auth/eliminar-cuenta.service.ts` sirve de marca). Si todavía
+no se hizo la réplica, **despliega desde el repositorio de respaldo** y lo
+avisa:
+
+```text
+AVISO: el remoto .../proyecto-analisis-Eduviagt.git todavía no tiene
+       apps/api/src/auth/eliminar-cuenta.service.ts en la rama develop.
+       Se despliega desde .../sigeb-prod.git hasta que la réplica esté lista.
+```
+
+En cuanto la réplica esté mergeada, el despliegue pasa a EDUVIAGT sin tocar
+nada más.
 
 ---
 
@@ -158,24 +188,35 @@ Puntos a tener en cuenta:
 
 ## Deploy manual
 
-Los mismos pasos que ejecuta el workflow, por SSH:
+Los mismos pasos que ejecuta el workflow, por SSH. El script vive en el
+repositorio, así que el despliegue manual y el de CI ejecutan exactamente lo
+mismo:
 
 ```bash
 ssh -i ~/.ssh/ssh-ubuntu.pem davi@57.156.58.111
 cd /home/davi/sigeb
-git checkout develop
-git pull --ff-only origin develop
-npm ci
-export DATABASE_URL="$(grep -m1 '^DATABASE_URL=' apps/api/.env | cut -d= -f2-)"
-cd apps/api && npx prisma migrate deploy && npx prisma generate && cd ../..
-npm run build
-pm2 startOrRestart /home/davi/sigeb.pm2.config.cjs --only sigeb-api,sigeb-web
-pm2 save
+bash scripts/deploy-pm2.sh
 ```
 
-`pm2 startOrRestart` arranca el proceso si no existe todavía y aplica siempre
-el directorio de trabajo y el entorno del archivo de configuración. Un
-`pm2 restart` con `|| true` deja el servicio caído sin avisar.
+Qué hace, en orden:
+
+1. `git fetch` + `git pull --ff-only` de la rama que se despliega
+   (`DEPLOY_BRANCH`, por defecto `develop`).
+2. `npm ci`.
+3. `prisma migrate deploy` y `prisma generate`. La `DATABASE_URL` se lee del
+   `apps/api/.env` del servidor, que no se versiona.
+4. `npm run build`.
+5. **Copia de `.next/static` y de `public` al árbol standalone.** El output
+   `standalone` de Next.js no los incluye: sin este paso el servidor responde
+   404 a cada CSS, cada chunk de JavaScript y cada SVG, y el portal se sirve
+   sin estilos y sin funcionar. Es el mismo paso que hace el `Dockerfile`.
+6. `pm2 startOrRestart` de `sigeb-api` y `sigeb-web`, y `pm2 save`.
+7. Comprobación: el script pide el CSS al servidor y **falla si no responde
+   200**, para que un despliegue roto no pase inadvertido.
+
+> `pm2 startOrRestart` arranca el proceso si no existe todavía y aplica siempre
+> el directorio de trabajo y el entorno del archivo de configuración. Un
+> `pm2 restart` con `|| true` deja el servicio caído sin avisar.
 
 ---
 
