@@ -232,9 +232,13 @@ jobs:
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
           [ -n "${DEPLOY_HOST}" ] || { echo "Falta el secreto DEPLOY_HOST en el entorno ${{ github.environment }}"; exit 1; }
           [ -n "${DEPLOY_USER}" ] || { echo "Falta el secreto DEPLOY_USER en el entorno ${{ github.environment }}"; exit 1; }
+          [ -n "${DEPLOY_KEY}" ] || { echo "Falta el secreto DEPLOY_KEY en el entorno ${{ github.environment }}"; exit 1; }
+          [ -n "${DEPLOY_PATH}" ] || { echo "Falta el secreto DEPLOY_PATH en el entorno ${{ github.environment }}"; exit 1; }
 
       - name: Deploy to staging (PM2)
         uses: appleboy/ssh-action@v1.2.0
@@ -247,20 +251,31 @@ jobs:
             set -e
             cd ${{ secrets.DEPLOY_PATH }}
             git stash || true
-            git pull origin develop
+            git checkout develop
+            git pull --ff-only origin develop
             npm ci
+            # La configuracion de la API vive en apps/api/.env, que no se
+            # versiona: es la unica fuente de verdad. De ahi se toma la URL de
+            # la base para aplicar las migraciones.
+            export DATABASE_URL="$(grep -m1 '^DATABASE_URL=' apps/api/.env | cut -d= -f2-)"
             cd apps/api
-            DATABASE_URL=${{ secrets.DEPLOY_DATABASE_URL }} npx prisma migrate deploy
+            npx prisma migrate deploy
             npx prisma generate
             cd ../..
             npm run build
-            DATABASE_URL=${{ secrets.DEPLOY_DATABASE_URL }} JWT_SECRET=${{ secrets.DEPLOY_JWT_SECRET }} pm2 restart sigeb-api --update-env || true
-            pm2 restart sigeb-web --update-env || true
-            pm2 save || true
+            # startOrRestart arranca el proceso si todavia no existe (un
+            # `pm2 restart` con `|| true` dejaba el servicio caido) y aplica
+            # siempre el cwd y el entorno del archivo de configuracion.
+            pm2 startOrRestart ${{ vars.PM2_CONFIG_PATH || '/home/davi/sigeb.pm2.config.cjs' }} --only sigeb-api,sigeb-web
+            pm2 save
 
   deploy-production:
     needs: [api-tests, docker-build]
-    if: github.ref == 'refs/heads/master'
+    # Deshabilitado a proposito: `master` esta varias sprints por detras de
+    # `develop`, asi que un push a master desplegaria un codigo ancientisimo.
+    # Se activa poniendo PRODUCTION_READY=true en el entorno `production`,
+    # una vez que master y el servidor de produccion esten alineados.
+    if: github.ref == 'refs/heads/master' && vars.PRODUCTION_READY == 'true'
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -270,9 +285,13 @@ jobs:
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
           [ -n "${DEPLOY_HOST}" ] || { echo "Falta el secreto DEPLOY_HOST en el entorno ${{ github.environment }}"; exit 1; }
           [ -n "${DEPLOY_USER}" ] || { echo "Falta el secreto DEPLOY_USER en el entorno ${{ github.environment }}"; exit 1; }
+          [ -n "${DEPLOY_KEY}" ] || { echo "Falta el secreto DEPLOY_KEY en el entorno ${{ github.environment }}"; exit 1; }
+          [ -n "${DEPLOY_PATH}" ] || { echo "Falta el secreto DEPLOY_PATH en el entorno ${{ github.environment }}"; exit 1; }
 
       - name: Deploy to production (PM2)
         uses: appleboy/ssh-action@v1.2.0
@@ -285,13 +304,14 @@ jobs:
             set -e
             cd ${{ secrets.DEPLOY_PATH }}
             git stash || true
-            git pull origin master
+            git checkout master
+            git pull --ff-only origin master
             npm ci
+            export DATABASE_URL="$(grep -m1 '^DATABASE_URL=' apps/api/.env | cut -d= -f2-)"
             cd apps/api
-            DATABASE_URL=${{ secrets.DEPLOY_DATABASE_URL }} npx prisma migrate deploy
+            npx prisma migrate deploy
             npx prisma generate
             cd ../..
             npm run build
-            DATABASE_URL=${{ secrets.DEPLOY_DATABASE_URL }} JWT_SECRET=${{ secrets.DEPLOY_JWT_SECRET }} pm2 restart sigeb-api --update-env || true
-            pm2 restart sigeb-web --update-env || true
-            pm2 save || true
+            pm2 startOrRestart ${{ vars.PM2_CONFIG_PATH || '/home/davi/sigeb.pm2.config.cjs' }} --only sigeb-api,sigeb-web
+            pm2 save
