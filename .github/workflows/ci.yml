@@ -256,27 +256,12 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
+          # El script vive en el repositorio: CI y el despliegue manual
+          # ejecutan exactamente los mismos pasos.
           script: |
             set -e
             cd ${{ secrets.DEPLOY_PATH }}
-            git stash || true
-            git checkout develop
-            git pull --ff-only origin develop
-            npm ci
-            # La configuracion de la API vive en apps/api/.env, que no se
-            # versiona: es la unica fuente de verdad. De ahi se toma la URL de
-            # la base para aplicar las migraciones.
-            export DATABASE_URL="$(grep -m1 '^DATABASE_URL=' apps/api/.env | cut -d= -f2-)"
-            cd apps/api
-            npx prisma migrate deploy
-            npx prisma generate
-            cd ../..
-            npm run build
-            # startOrRestart arranca el proceso si todavia no existe (un
-            # `pm2 restart` con `|| true` dejaba el servicio caido) y aplica
-            # siempre el cwd y el entorno del archivo de configuracion.
-            pm2 startOrRestart ${{ vars.PM2_CONFIG_PATH || '/home/davi/sigeb.pm2.config.cjs' }} --only sigeb-api,sigeb-web
-            pm2 save
+            PM2_CONFIG_PATH=${{ vars.PM2_CONFIG_PATH || '/home/davi/sigeb.pm2.config.cjs' }} bash scripts/deploy-pm2.sh
 
   deploy-production:
     needs: [api-tests, docker-build]
@@ -312,15 +297,4 @@ jobs:
           script: |
             set -e
             cd ${{ secrets.DEPLOY_PATH }}
-            git stash || true
-            git checkout master
-            git pull --ff-only origin master
-            npm ci
-            export DATABASE_URL="$(grep -m1 '^DATABASE_URL=' apps/api/.env | cut -d= -f2-)"
-            cd apps/api
-            npx prisma migrate deploy
-            npx prisma generate
-            cd ../..
-            npm run build
-            pm2 startOrRestart ${{ vars.PM2_CONFIG_PATH || '/home/davi/sigeb.pm2.config.cjs' }} --only sigeb-api,sigeb-web
-            pm2 save
+            DEPLOY_BRANCH=master PM2_CONFIG_PATH=${{ vars.PM2_CONFIG_PATH || '/home/davi/sigeb.pm2.config.cjs' }} bash scripts/deploy-pm2.sh
