@@ -248,8 +248,11 @@ bash scripts/deploy-pm2.sh
 
 Qué hace, en orden:
 
-1. `git fetch` + `git pull --ff-only` de la rama que se despliega
-   (`DEPLOY_BRANCH`, por defecto `develop`).
+1. `git fetch` + `git reset --hard` a la rama del remoto configurado. El
+   árbol de trabajo queda **exactamente** como el remoto: los residuos sin
+   versionar se limpian con `git clean` (sin `-x`, así que la configuración
+   `apps/api/.env` y los documentos `storage/` no se tocan) y el código se
+   sobrescribe sin dejar restos de versiones anteriores.
 2. `npm ci`.
 3. `prisma migrate deploy` y `prisma generate`. La `DATABASE_URL` se lee del
    `apps/api/.env` del servidor, que no se versiona.
@@ -261,6 +264,10 @@ Qué hace, en orden:
 6. `pm2 startOrRestart` de `sigeb-api` y `sigeb-web`, y `pm2 save`.
 7. Comprobación: el script pide el CSS al servidor y **falla si no responde
    200**, para que un despliegue roto no pase inadvertido.
+
+> La comprobación de versión es **por commit exacto** (`DEPLOY_EXPECTED_SHA`):
+> el remoto de destino tiene que contener el commit que se despliega. Si no
+> lo tiene, el script avisa y sale del repositorio de respaldo.
 
 > `pm2 startOrRestart` arranca el proceso si no existe todavía y aplica siempre
 > el directorio de trabajo y el entorno del archivo de configuración. Un

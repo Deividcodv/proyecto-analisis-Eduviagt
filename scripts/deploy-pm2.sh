@@ -86,7 +86,14 @@ if ! tiene_la_version_actual; then
   RESPALDO_ACTIVO=1
 fi
 
-git pull --ff-only origin "$RAMA"
+# El arbol de trabajo tiene que quedar exactamente igual que el remoto. Los
+# residuos sin versionar (copias de pruebas) se quitan: si no, bloquean la
+# actualizacion con "untracked working tree files would be overwritten".
+# `git clean` sin `-x` respeta lo ignorado, asi que la configuracion
+# (`apps/api/.env`) y los documentos (`storage/`) no se tocan.
+git clean -fdq
+git reset --hard "origin/$RAMA"
+echo "    desplegado: $(git log --oneline -1)"
 
 echo "==> Dependencias"
 npm ci
