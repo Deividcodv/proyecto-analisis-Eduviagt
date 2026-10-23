@@ -10,6 +10,7 @@ import {
 import { AuthzService } from './services/authz.service';
 import { AllExceptionsFilter } from './filters/http-exception.filter';
 import { TransformInterceptor } from './interceptors/transform.interceptor';
+import { LoggingInterceptor } from './interceptors/logging.interceptor';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Global()
@@ -40,6 +41,12 @@ import { PrismaModule } from '../prisma/prisma.module';
     {
       provide: APP_INTERCEPTOR,
       useClass: TransformInterceptor,
+    },
+    {
+      // El registro va antes de la transformacion: asi la linea de log se
+      // escribe cuando la peticion termina, con el estado ya fijado.
+      provide: APP_INTERCEPTOR,
+      useClass: LoggingInterceptor,
     },
   ],
   exports: [AuthzService],

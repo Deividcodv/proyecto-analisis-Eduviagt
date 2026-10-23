@@ -42,6 +42,23 @@ import { AuthenticatedUser } from '../common/interfaces/authenticated-user.inter
 export const DOCUMENTO_MAX_BYTES = 5 * 1024 * 1024;
 const DOCUMENTO_MIME_PERMITIDOS = ['application/pdf', 'image/jpeg', 'image/png'];
 
+/**
+ * Limites del cuerpo multipart.
+ *
+ * No basta con limitar el tamaño del archivo: los avisos de denegacion de
+ * servicio de los parsers multipart vienen de un numero excesivo de campos
+ * o de nombres de campo crafted. Acotarlos aqui corta de raiz esos
+ * vectores, ademas del limite de tamano del archivo.
+ */
+export const DOCUMENTO_LIMITS = {
+  fileSize: DOCUMENTO_MAX_BYTES,
+  files: 1,
+  fields: 20,
+  parts: 25,
+  fieldNameSize: 100,
+  fieldSize: 64 * 1024,
+} as const;
+
 export function documentoFileFilter(
   _req: unknown,
   file: Express.Multer.File,
@@ -207,7 +224,7 @@ export class SolicitudesController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
-      limits: { fileSize: DOCUMENTO_MAX_BYTES, files: 1 },
+      limits: DOCUMENTO_LIMITS,
       fileFilter: documentoFileFilter,
     }),
   )

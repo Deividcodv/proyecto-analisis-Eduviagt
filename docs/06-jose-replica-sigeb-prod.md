@@ -378,11 +378,12 @@ fi
 | `DEPLOY_REPO_URL` | `https://github.com/Deividcodv/proyecto-analisis-Eduviagt.git` |
 | `DEPLOY_REPO_URL_FALLBACK` | `https://github.com/Deividcodv/sigeb-prod.git` |
 
-**La VM ya apunta a EDUVIAGT** y la variable ya está activa en GitHub. Eso
-significa que, en cuanto tu PR esté fusionado, el siguiente despliegue tira
-de EDUVIAGT **sin que nadie tenga que tocar nada**.
+La variable ya está activa en GitHub. **No tienes que hacer nada con
+ella.**
 
-Hasta entonces, cada despliegue muestra este aviso y sale del respaldo:
+Hasta que tu réplica esté fusionada, cada despliegue comprueba que EDUVIAGT
+tenga la versión actual del proyecto y, como todavía no la tiene, **despliega
+desde el respaldo** y lo avisa:
 
 ```text
 AVISO: el remoto https://github.com/Deividcodv/proyecto-analisis-Eduviagt.git
@@ -390,8 +391,8 @@ AVISO: el remoto https://github.com/Deividcodv/proyecto-analisis-Eduviagt.git
        Se despliega desde https://github.com/Deividcodv/sigeb-prod.git hasta que la réplica esté lista.
 ```
 
-En cuanto la réplica exista, ese aviso desaparece y el portal se actualiza
-desde EDUVIAGT.
+En cuanto tu PR esté fusionado, el aviso desaparece y el portal se actualiza
+desde EDUVIAGT sin tocar nada.
 
 ### Comprobación desde la VM
 

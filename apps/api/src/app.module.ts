@@ -16,6 +16,7 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { AuditModule } from './audit/audit.module';
 import { BitacoraModule } from './bitacora/bitacora.module';
 import { AsistenteModule } from './asistente/asistente.module';
+import { SaludModule } from './salud/salud.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { AsistenteModule } from './asistente/asistente.module';
     AuditModule,
     BitacoraModule,
     AsistenteModule,
+    SaludModule,
   ],
   controllers: [],
   providers: [],

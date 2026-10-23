@@ -1,27 +1,49 @@
 import type { Metadata } from 'next';
-import { Archivo, Space_Mono, Instrument_Sans } from 'next/font/google';
+import localFont from 'next/font/local';
 import '@/styles/globals.css';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { AuthProvider } from '@/context/AuthContext';
 import { ChatWidget } from '@/components/chat/ChatWidget';
 
-const display = Archivo({
-  subsets: ['latin'],
-  weight: ['700', '800', '900'],
+/*
+ * Las fuentes se auto-alojan en `src/fonts` en vez de descargarse de Google
+ * Fonts durante el build. Con `next/font/google` el build dependia de una
+ * conexion externa y ya fallo en produccion con
+ * `An error occurred in next/font: Cannot read properties of null`.
+ * Ahora el build es determinista y funciona sin red.
+ *
+ * Archivo e Instrument Sans son fuentes variables: un solo archivo cubre
+ * todos los pesos. Space Mono es estatica y necesita uno por peso.
+ */
+
+const display = localFont({
+  src: '../fonts/archivo-variable.woff2',
+  weight: '700 900',
+  style: 'normal',
   variable: '--font-display',
+  display: 'swap',
+  fallback: ['system-ui', 'sans-serif'],
 });
 
-const body = Instrument_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+const body = localFont({
+  src: '../fonts/instrumentsans-variable.woff2',
+  weight: '400 700',
+  style: 'normal',
   variable: '--font-body',
+  display: 'swap',
+  fallback: ['system-ui', 'sans-serif'],
 });
 
-const mono = Space_Mono({
-  subsets: ['latin'],
-  weight: ['400', '700'],
+const mono = localFont({
+  src: [
+    { path: '../fonts/spacemono-400.woff2', weight: '400' },
+    { path: '../fonts/spacemono-700.woff2', weight: '700' },
+  ],
+  style: 'normal',
   variable: '--font-mono',
+  display: 'swap',
+  fallback: ['ui-monospace', 'monospace'],
 });
 
 export const metadata: Metadata = {

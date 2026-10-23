@@ -35,6 +35,7 @@ Esta carpeta contiene toda la documentación administrativa, técnica y de proce
 - [Convenciones de Git](standards/git-conventions.md)
 - [Estrategia de testing](standards/testing-strategy.md)
 - [Directrices de seguridad](standards/security-guidelines.md)
+- [Deuda técnica conocida](standards/deuda-tecnica.md) — lo que se sabe que está pendiente y por qué
 
 ### Operaciones
 - [Guía de setup](operations/setup-guide.md)

@@ -21,6 +21,9 @@
     "up": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-up.ps1",
     "up:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-up.ps1 -Stop"
   },
+  "dependencies": {
+    "multer": "^2.5.0"
+  },
   "devDependencies": {
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.2",
@@ -30,6 +33,9 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "overrides": {
+    "multer": "^2.5.0"
   },
   "packageManager": "npm@10.0.0"
 }

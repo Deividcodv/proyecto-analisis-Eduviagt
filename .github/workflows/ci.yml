@@ -256,19 +256,20 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
-          # El script vive en el repositorio: CI y el despliegue manual
-          # ejecutan exactamente los mismos pasos.
-          script: |
-            set -e
-            # El script se copia desde el propio checkout del workflow: el
-            # repositorio de destino puede no tenerlo todavia (la replica
-            # de EDUVIAGT todavia no esta hecha).
-            cp ${{ github.workspace }}/scripts/deploy-pm2.sh /tmp/deploy-pm2.sh
-            DEPLOY_PATH=${{ secrets.DEPLOY_PATH }} \
-            PM2_CONFIG_PATH=${{ vars.PM2_CONFIG_PATH || '/home/davi/sigeb.pm2.config.cjs' }} \
-            DEPLOY_REPO_URL=${{ vars.DEPLOY_REPO_URL || 'https://github.com/Deividcodv/sigeb-prod.git' }} \
-            DEPLOY_REPO_URL_FALLBACK=${{ vars.DEPLOY_REPO_URL_FALLBACK || 'https://github.com/Deividcodv/sigeb-prod.git' }} \
-            bash /tmp/deploy-pm2.sh
+          # `script_path` transfiere el archivo al servidor y lo ejecuta alli.
+          # Con `script` el texto se ejecutaria en el servidor, y no se podria
+          # copiar el script desde el checkout del workflow.
+          script_path: scripts/deploy-pm2.sh
+          envs: 'DEPLOY_PATH,DEPLOY_EXPECTED_SHA,PM2_CONFIG_PATH,DEPLOY_REPO_URL,DEPLOY_REPO_URL_FALLBACK'
+        env:
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          # Commit exacto que se quiere desplegar: el remoto de destino tiene
+          # que contenerlo. Si no lo tiene (la replica de EDUVIAGT todavia no
+          # esta hecha), el script avisa y despliega desde el respaldo.
+          DEPLOY_EXPECTED_SHA: ${{ github.sha }}
+          PM2_CONFIG_PATH: ${{ vars.PM2_CONFIG_PATH || '/home/davi/sigeb.pm2.config.cjs' }}
+          DEPLOY_REPO_URL: ${{ vars.DEPLOY_REPO_URL || 'https://github.com/Deividcodv/sigeb-prod.git' }}
+          DEPLOY_REPO_URL_FALLBACK: ${{ vars.DEPLOY_REPO_URL_FALLBACK || 'https://github.com/Deividcodv/sigeb-prod.git' }}
 
   deploy-production:
     needs: [api-tests, docker-build]
@@ -301,12 +302,15 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
-          script: |
-            set -e
-            cp ${{ github.workspace }}/scripts/deploy-pm2.sh /tmp/deploy-pm2.sh
-            DEPLOY_PATH=${{ secrets.DEPLOY_PATH }} \
-            DEPLOY_BRANCH=master \
-            PM2_CONFIG_PATH=${{ vars.PM2_CONFIG_PATH || '/home/davi/sigeb.pm2.config.cjs' }} \
-            DEPLOY_REPO_URL=${{ vars.DEPLOY_REPO_URL || 'https://github.com/Deividcodv/sigeb-prod.git' }} \
-            DEPLOY_REPO_URL_FALLBACK=${{ vars.DEPLOY_REPO_URL_FALLBACK || 'https://github.com/Deividcodv/sigeb-prod.git' }} \
-            bash /tmp/deploy-pm2.sh
+          script_path: scripts/deploy-pm2.sh
+          envs: 'DEPLOY_PATH,DEPLOY_BRANCH,DEPLOY_EXPECTED_SHA,PM2_CONFIG_PATH,DEPLOY_REPO_URL,DEPLOY_REPO_URL_FALLBACK'
+        env:
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_BRANCH: master
+          # Commit exacto que se quiere desplegar: el remoto de destino tiene
+          # que contenerlo. Si no lo tiene (la replica de EDUVIAGT todavia no
+          # esta hecha), el script avisa y despliega desde el respaldo.
+          DEPLOY_EXPECTED_SHA: ${{ github.sha }}
+          PM2_CONFIG_PATH: ${{ vars.PM2_CONFIG_PATH || '/home/davi/sigeb.pm2.config.cjs' }}
+          DEPLOY_REPO_URL: ${{ vars.DEPLOY_REPO_URL || 'https://github.com/Deividcodv/sigeb-prod.git' }}
+          DEPLOY_REPO_URL_FALLBACK: ${{ vars.DEPLOY_REPO_URL_FALLBACK || 'https://github.com/Deividcodv/sigeb-prod.git' }}

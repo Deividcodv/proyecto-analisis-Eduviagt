@@ -35,25 +35,36 @@ PM2_CONFIG="${PM2_CONFIG_PATH:-/home/davi/sigeb.pm2.config.cjs}"
 DEPLOY_REPO_URL="${DEPLOY_REPO_URL:-https://github.com/Deividcodv/sigeb-prod.git}"
 DEPLOY_REPO_URL_FALLBACK="${DEPLOY_REPO_URL_FALLBACK:-https://github.com/Deividcodv/sigeb-prod.git}"
 
-# Marca de que se ha tenido que recurrir al repositorio de respaldo. Al
-# terminar, el remoto se devuelve al principal: la VM queda configurada con
-# EDUVIAGT aunque hoy se haya desplegado desde el respaldo.
+# Marca de que se ha tenido que recurrir al repositorio de respaldo. El
+# remoto se queda en el repositorio del que se ha desplegado: forzar el
+# principal cuando aun no tiene la replica haria que el siguiente
+# despliegue bajara un codigo antiguo.
 RESPALDO_ACTIVO=0
 
-# Archivo que solo existe en la versión actual del proyecto. Sirve de marca:
-# si el remoto de destino no lo tiene, es que todavía no recibió la réplica
-# y desplegaría una versión antigua.
-MARCA="apps/api/src/auth/eliminar-cuenta.service.ts"
+# Commit que se quiere desplegar. El workflow lo pasa en
+# `DEPLOY_EXPECTED_SHA` y es la comprobacion exacta: el remoto de destino
+# tiene que contener ese commit. Sin el, se usa la marca por archivo.
+DEPLOY_EXPECTED_SHA="${DEPLOY_EXPECTED_SHA:-}"
+
+# Archivo que solo existe en la version actual del proyecto. Sirve de marca
+# cuando no se conoce el commit exacto.
+MARCA="apps/api/src/salud/health.controller.ts"
 
 tiene_la_version_actual() {
-  # Sin `-q`: `grep -q` cerraría el pipe antes de que `git ls-tree` termine y,
-  # con `pipefail`, el pipeline devolvería error aunque hubiera encontrado la
+  if [ -n "$DEPLOY_EXPECTED_SHA" ]; then
+    # El commit esperado tiene que estar en la rama del remoto configurado.
+    git merge-base --is-ancestor "$DEPLOY_EXPECTED_SHA" "origin/$RAMA" 2>/dev/null
+    return $?
+  fi
+  # Sin `-q`: `grep -q` cerraria el pipe antes de que `git ls-tree` termine y,
+  # con `pipefail`, el pipeline devolveria error aunque hubiera encontrado la
   # coincidencia.
-  git ls-tree -r --name-only "origin/$1" 2>/dev/null | grep -x "$MARCA" > /dev/null
+  git ls-tree -r --name-only "origin/$RAMA" 2>/dev/null | grep -x "$MARCA" > /dev/null
 }
 
 echo "==> Repositorio: $RAIZ (rama $RAMA)"
 echo "==> Origen: $DEPLOY_REPO_URL"
+[ -n "$DEPLOY_EXPECTED_SHA" ] && echo "==> Commit a desplegar: $DEPLOY_EXPECTED_SHA"
 
 echo "==> Código"
 git stash || true
@@ -61,15 +72,15 @@ git remote set-url origin "$DEPLOY_REPO_URL"
 git fetch origin --prune
 git checkout "$RAMA"
 
-if ! tiene_la_version_actual "$RAMA"; then
-  echo "AVISO: el remoto $DEPLOY_REPO_URL todavía no tiene $MARCA en la rama $RAMA." >&2
-  echo "       Se despliega desde $DEPLOY_REPO_URL_FALLBACK hasta que la réplica esté lista." >&2
-  echo "       Ver la guía: docs/06-jose-replica-sigeb-prod.md" >&2
+if ! tiene_la_version_actual; then
+  echo "AVISO: el remoto $DEPLOY_REPO_URL no tiene la version a desplegar en la rama $RAMA." >&2
+  echo "       Se despliega desde $DEPLOY_REPO_URL_FALLBACK hasta que la replica este lista." >&2
+  echo "       Ver la guia: docs/06-jose-replica-sigeb-prod.md" >&2
   git remote set-url origin "$DEPLOY_REPO_URL_FALLBACK"
   git fetch origin --prune
   git checkout "$RAMA"
-  if ! tiene_la_version_actual "$RAMA"; then
-    echo "ERROR: ningún remoto tiene la versión actual del proyecto ($MARCA)." >&2
+  if ! tiene_la_version_actual; then
+    echo "ERROR: ningun remoto tiene la version a desplegar." >&2
     exit 1
   fi
   RESPALDO_ACTIVO=1
@@ -139,11 +150,11 @@ fi
 echo "    CSS $CSS_RELATIVO -> $CODIGO"
 
 if [ "$RESPALDO_ACTIVO" = "1" ]; then
-  # El despliegue salió del respaldo, pero la VM queda apuntando al
-  # repositorio principal: en cuanto la réplica exista, el siguiente
-  # despliegue traerá el código de EDUVIAGT.
-  git remote set-url origin "$DEPLOY_REPO_URL"
-  echo "    Repositorio principal restablecido: $DEPLOY_REPO_URL"
+  # El remoto se queda en el repositorio del que se ha desplegado. Forzar el
+  # principal cuando aún no tiene la réplica haría que el siguiente despliegue
+  # bajara un código antiguo.
+  echo "    Se desplegó desde el respaldo: $DEPLOY_REPO_URL_FALLBACK"
+  echo "    EDUVIAGT será el origen en cuanto tenga la réplica."
 fi
 
 echo "==> Despliegue completado"
