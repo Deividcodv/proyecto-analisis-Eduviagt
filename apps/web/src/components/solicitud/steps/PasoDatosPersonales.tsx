@@ -21,10 +21,13 @@ interface Perfil {
 export function PasoDatosPersonales({
   solicitudId,
   onGuardado,
+  onEstado,
   onError,
 }: {
   solicitudId: string;
   onGuardado: () => void;
+  /** Informa si el paso ya quedó completo (para el Stepper). */
+  onEstado?: (guardado: boolean) => void;
   onError: (msg: string) => void;
 }) {
   const [cargando, setCargando] = useState(true);
@@ -59,6 +62,7 @@ export function PasoDatosPersonales({
           departamentoId: perfil.departamento?.id ?? '',
           municipioId: perfil.municipio?.id ?? '',
         });
+        onEstado?.(Boolean(perfil.genero?.id));
       })
       .catch((e) => {
         if (activo) {
@@ -73,7 +77,7 @@ export function PasoDatosPersonales({
     return () => {
       activo = false;
     };
-  }, [onError]);
+  }, [onError, onEstado]);
 
   const departamento = departamentos.find(
     (d) => d.id === form.departamentoId,
@@ -106,6 +110,7 @@ export function PasoDatosPersonales({
           municipioId: form.municipioId || undefined,
         },
       });
+      onEstado?.(true);
       onGuardado();
     } catch (e) {
       onError(

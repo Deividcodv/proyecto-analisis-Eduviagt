@@ -62,15 +62,66 @@ describe('SolicitudStateMachine', () => {
     expect(SolicitudStateMachine.isAllowed('CORRECCION', 'corregir')).toBe(true);
   });
 
-  it('expone los siete estados del flujo', () => {
+  it('expone los ocho estados del flujo', () => {
     expect(SOLICITUD_ESTADOS).toEqual([
       'BORRADOR',
       'ENVIADA',
       'EN_REVISION',
       'CORRECCION',
       'EVALUADA',
+      'PENDIENTE_SEGUNDA_APROBACION',
       'APROBADA',
       'RECHAZADA',
     ]);
+  });
+
+  describe('segunda instancia de aprobación (Sprint 8)', () => {
+    it('lleva EVALUADA a PENDIENTE_SEGUNDA_APROBACION', () => {
+      expect(
+        SolicitudStateMachine.next(
+          'EVALUADA',
+          'solicitar_segunda_aprobacion',
+        ),
+      ).toBe('PENDIENTE_SEGUNDA_APROBACION');
+    });
+
+    it('aprueba en segunda instancia', () => {
+      expect(
+        SolicitudStateMachine.next(
+          'PENDIENTE_SEGUNDA_APROBACION',
+          'aprobar_segunda',
+        ),
+      ).toBe('APROBADA');
+    });
+
+    it('rechaza en segunda instancia', () => {
+      expect(
+        SolicitudStateMachine.next(
+          'PENDIENTE_SEGUNDA_APROBACION',
+          'rechazar',
+        ),
+      ).toBe('RECHAZADA');
+    });
+
+    it('devuelve a revisión desde la segunda instancia', () => {
+      expect(
+        SolicitudStateMachine.next(
+          'PENDIENTE_SEGUNDA_APROBACION',
+          'devolver_a_revision',
+        ),
+      ).toBe('EN_REVISION');
+    });
+
+    it('no permite aprobar en segunda instancia desde EVALUADA', () => {
+      expect(() =>
+        SolicitudStateMachine.next('EVALUADA', 'aprobar_segunda'),
+      ).toThrow(BadRequestException);
+    });
+
+    it('no permite devolver a revisión sin pasar por la segunda instancia', () => {
+      expect(() =>
+        SolicitudStateMachine.next('EVALUADA', 'devolver_a_revision'),
+      ).toThrow(BadRequestException);
+    });
   });
 });

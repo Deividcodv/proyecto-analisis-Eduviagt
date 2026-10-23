@@ -1,0 +1,16 @@
+task_type: presentation
+title: "Marca EDUVIAGT — rediseño del logotipo (hoja de marca)"
+language: "es"
+audience: "Estudiantes de Guatemala (niños a adultos), familias y personal del Ministerio de Educación"
+scenario: "Identidad visual oficial de la plataforma de becas; encabezado web (fondo oscuro), favicon (16 px), documentos PDF"
+research_required: false
+research_question: ""
+generation_mode: Build
+direction_confirmation_required: true
+theme_lock_version: 1
+resolved_theme_path: "out/resolved_theme.json"
+resolved_theme_fingerprint: "sha256:EAFB557FA8A8F5C3615045AFA6E4F793A5B8FCD4B9454706FA0838BEECC14D6C"
+resolved_theme_seed: 7
+pptx_designer_version: "1.0.0b11"
+pptx_designer_module_path: "C:\\Users\\daviv\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\site-packages\\pptx_designer\\__init__.py"
+status: READY_FOR_REVIEW

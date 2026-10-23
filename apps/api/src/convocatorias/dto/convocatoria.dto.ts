@@ -4,12 +4,14 @@ import {
   IsUUID,
   IsISO8601,
   MinLength,
+  MaxLength,
   IsIn,
   IsArray,
   ValidateNested,
   IsBoolean,
   IsEnum,
   IsInt,
+  IsNumber,
   Min,
   Max,
 } from 'class-validator';
@@ -83,6 +85,61 @@ export class CampoFormularioDto {
   claveBase?: string;
 }
 
+/**
+ * Regla de cálculo del monto por tramo de ingreso familiar (Sprint 8).
+ * Se declara antes que `CreateConvocatoriaDto` porque los decoradores
+ * necesitan la clase ya definida cuando se la referencia.
+ */
+export class ReglaMontoDto {
+  @ApiProperty({ description: 'Nombre de la regla', example: 'Ingreso hasta Q3,000' })
+  @IsString()
+  @MinLength(3)
+  @MaxLength(120)
+  nombre!: string;
+
+  @ApiPropertyOptional({ description: 'Ingreso mínimo del tramo (inclusivo)' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  ingresoMin?: number | null;
+
+  @ApiPropertyOptional({ description: 'Ingreso máximo del tramo (exclusivo)' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  ingresoMax?: number | null;
+
+  @ApiProperty({ enum: ['FIJO', 'PORCENTAJE', 'COMPLETO'] })
+  @IsIn(['FIJO', 'PORCENTAJE', 'COMPLETO'])
+  tipo!: 'FIJO' | 'PORCENTAJE' | 'COMPLETO';
+
+  @ApiPropertyOptional({ description: 'Monto fijo cuando tipo = FIJO' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  montoFijo?: number | null;
+
+  @ApiPropertyOptional({
+    description: 'Porcentaje del monto base (0.4 = 40%) cuando tipo = PORCENTAJE',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @Min(0)
+  @Max(1)
+  porcentaje?: number | null;
+
+  @ApiPropertyOptional({ description: 'Orden de aplicación (menor = primero)', default: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  prioridad?: number;
+}
+
 export class CreateConvocatoriaDto {
   @ApiProperty({ example: 'Beca de Excelencia Académica' })
   @IsString()
@@ -146,6 +203,69 @@ export class CreateConvocatoriaDto {
   @Min(0)
   @Max(20)
   maxCorrecciones?: number;
+
+  // Montos (Sprint 8 - US-801)
+  @ApiPropertyOptional({ description: 'Moneda del monto base', default: 'GTQ' })
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(3)
+  moneda?: string;
+
+  @ApiPropertyOptional({
+    description: 'Monto base de la beca, en la moneda indicada',
+    example: 12000,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  montoBase?: number;
+
+  @ApiPropertyOptional({
+    description: 'Si la beca puede otorgarse de forma parcial',
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  permiteParcial?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Si el monto se calcula con reglas por tramo de ingreso',
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  usarReglasMonto?: boolean;
+
+  @ApiPropertyOptional({
+    type: [ReglaMontoDto],
+    description: 'Reglas por tramo de ingreso familiar (Sprint 8 - US-801)',
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ReglaMontoDto)
+  reglasMonto?: ReglaMontoDto[];
+}
+
+/**
+ * Conjunto de reglas de monto de una convocatoria (Sprint 8 - US-801).
+ * Reemplaza por completo las reglas anteriores.
+ */
+export class ReglasMontoDto {
+  @ApiPropertyOptional({ description: 'Monto base de la convocatoria' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  montoBase?: number | null;
+
+  @ApiProperty({ type: [ReglaMontoDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ReglaMontoDto)
+  reglas!: ReglaMontoDto[];
 }
 
 export class UpdateConvocatoriaDto {
@@ -211,6 +331,43 @@ export class UpdateConvocatoriaDto {
   @Min(0)
   @Max(20)
   maxCorrecciones?: number;
+
+  // Montos (Sprint 8 - US-801)
+  @ApiPropertyOptional({ description: 'Moneda del monto base' })
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(3)
+  moneda?: string;
+
+  @ApiPropertyOptional({ description: 'Monto base de la beca' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  montoBase?: number | null;
+
+  @ApiPropertyOptional({ description: 'Si la beca puede otorgarse de forma parcial' })
+  @IsOptional()
+  @IsBoolean()
+  permiteParcial?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Si el monto se calcula con reglas por tramo de ingreso',
+  })
+  @IsOptional()
+  @IsBoolean()
+  usarReglasMonto?: boolean;
+
+  @ApiPropertyOptional({
+    type: [ReglaMontoDto],
+    description: 'Reglas por tramo de ingreso familiar (Sprint 8 - US-801)',
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ReglaMontoDto)
+  reglasMonto?: ReglaMontoDto[];
 }
 
 export class TransicionDto {

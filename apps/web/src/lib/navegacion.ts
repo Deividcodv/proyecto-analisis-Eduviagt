@@ -20,6 +20,17 @@ export const enlacesPublicos: EnlaceNav[] = [
   { label: 'Ayuda', href: '/ayuda', icono: 'libro' },
 ];
 
+/**
+ * Enlace al perfil personal. Todos los roles con cuenta pueden editar sus
+ * datos y sus preferencias de notificación, no solo los postulantes.
+ */
+const ENLACE_MI_PERFIL: EnlaceNav = {
+  label: 'Mi perfil',
+  href: '/perfil',
+  icono: 'usuario',
+  descripcion: 'Tus datos y preferencias',
+};
+
 export const navegacionPorRol: Record<string, GrupoNav[]> = {
   POSTULANTE: [
     {
@@ -65,6 +76,24 @@ export const navegacionPorRol: Record<string, GrupoNav[]> = {
         { label: 'Seguridad', href: '/admin/seguridad', icono: 'escudo' },
       ],
     },
+    {
+      titulo: 'Mi cuenta',
+      enlaces: [ENLACE_MI_PERFIL],
+    },
+  ],
+  JEFE_BECAS: [
+    {
+      titulo: 'Gestión de becas',
+      enlaces: [
+        { label: 'Convocatorias', href: '/convocatorias', icono: 'becas' },
+        { label: 'Reportes', href: '/reportes', icono: 'grafica' },
+        { label: 'Consultar solicitud', href: '/consulta', icono: 'buscar' },
+      ],
+    },
+    {
+      titulo: 'Mi cuenta',
+      enlaces: [ENLACE_MI_PERFIL],
+    },
   ],
   EVALUADOR: [
     {
@@ -73,6 +102,10 @@ export const navegacionPorRol: Record<string, GrupoNav[]> = {
         { label: 'Mis evaluaciones', href: '/evaluador', icono: 'estrella' },
         { label: 'Mis reportes', href: '/reportes', icono: 'grafica' },
       ],
+    },
+    {
+      titulo: 'Mi cuenta',
+      enlaces: [ENLACE_MI_PERFIL],
     },
   ],
   COORDINADOR_COMITE: [
@@ -83,6 +116,10 @@ export const navegacionPorRol: Record<string, GrupoNav[]> = {
         { label: 'Mis reportes', href: '/reportes', icono: 'grafica' },
       ],
     },
+    {
+      titulo: 'Mi cuenta',
+      enlaces: [ENLACE_MI_PERFIL],
+    },
   ],
   MIEMBRO_COMITE: [
     {
@@ -91,6 +128,10 @@ export const navegacionPorRol: Record<string, GrupoNav[]> = {
         { label: 'Votar en sesión', href: '/comite', icono: 'votar' },
         { label: 'Mis reportes', href: '/reportes', icono: 'grafica' },
       ],
+    },
+    {
+      titulo: 'Mi cuenta',
+      enlaces: [ENLACE_MI_PERFIL],
     },
   ],
 };

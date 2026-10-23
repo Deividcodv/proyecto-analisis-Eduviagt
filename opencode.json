@@ -1,0 +1,15 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "jira": {
+      "type": "local",
+      "command": ["npx", "-y", "@DevelopmentAgentSDD/opencode-jira-mcp"],
+      "enabled": true,
+      "environment": {
+        "JIRA_HOST": "{env:JIRA_HOST}",
+        "JIRA_EMAIL": "{env:JIRA_EMAIL}",
+        "JIRA_API_TOKEN": "{env:JIRA_API_TOKEN}"
+      }
+    }
+  }
+}

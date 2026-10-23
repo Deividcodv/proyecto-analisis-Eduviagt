@@ -5,7 +5,7 @@ import { Icon, type IconName } from '@/components/ui/Icon';
 export const metadata: Metadata = {
   title: 'Contacto | EDUVIAGT',
   description:
-    'Contacta al Ministerio de Educación de Guatemala para resolver dudas sobre el proceso de becas gestionado a través de EDUVIAGT.',
+    'Escríbenos para resolver dudas sobre el proceso de becas del prototipo EDUVIAGT.',
 };
 
 const canales: {
@@ -16,12 +16,12 @@ const canales: {
   {
     icono: 'correo',
     titulo: 'Correo',
-    lineas: ['mesadeayuda@mineduc.gob.gt', 'becas@mineduc.gob.gt'],
+    lineas: ['soporte@eduviagt.example'],
   },
   {
     icono: 'telefono',
     titulo: 'Teléfono',
-    lineas: ['+502 2411-9595', '+502 2411-9596'],
+    lineas: ['+502 0000-0000 (ejemplo)'],
   },
   {
     icono: 'reloj',
@@ -32,7 +32,7 @@ const canales: {
     icono: 'ubicacion',
     titulo: 'Dirección',
     lineas: [
-      '5a. calle 6-56 zona 1',
+      'Sede del proyecto (dirección de ejemplo)',
       'Ciudad de Guatemala, Guatemala',
     ],
   },
@@ -46,7 +46,7 @@ export default function ContactoPage() {
           <p className="brut-label text-xs font-bold text-brutal-gold">// Contacto</p>
           <h1 className="text-mega text-3xl font-black md:text-5xl">Contáctanos</h1>
           <p className="mt-2 max-w-2xl font-mono text-sm text-brutal-papel/80">
-            El equipo del Ministerio de Educación de Guatemala está para ayudarte
+            El equipo del proyecto está para ayudarte
             con tu proceso de becas.
           </p>
         </Container>
@@ -60,7 +60,7 @@ export default function ContactoPage() {
                 Canales de atención
               </h2>
               <p className="mb-6 text-brutal-tinta/80">
-                El Ministerio de Educación de Guatemala atiende consultas sobre
+                El proyecto atiende consultas sobre
                 becas a través de los siguientes canales.
               </p>
               <div className="grid gap-4 sm:grid-cols-2">

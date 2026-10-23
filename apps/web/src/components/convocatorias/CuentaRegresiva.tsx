@@ -2,13 +2,17 @@
 
 import { useEffect, useState } from 'react';
 
-export function CuentaRegresiva({ fecha }: { fecha: string }) {
+export function CuentaRegresiva({ fecha }: { fecha?: string | null }) {
   const [ahora, setAhora] = useState(() => Date.now());
 
   useEffect(() => {
     const temporizador = setInterval(() => setAhora(Date.now()), 1000);
     return () => clearInterval(temporizador);
   }, []);
+
+  // Sin fecha de cierre no hay cuenta regresiva. Antes, new Date(null) daba
+  // 1970 y se mostraba "Convocatoria cerrada" junto al botón de postular.
+  if (!fecha) return null;
 
   const objetivo = new Date(fecha).getTime();
   const diff = objetivo - ahora;

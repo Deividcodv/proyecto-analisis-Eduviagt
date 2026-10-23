@@ -1,10 +1,28 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
+import type { Permiso, Rol } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+
+/**
+ * Seed de EDUVIAGT.
+ *
+ * Nota importante: los nombres de modelo que usa Prisma son los del
+ * `schema.prisma` (snake_case en las tablas hijas: `rol_permiso`,
+ * `nivel_academico`, `documento_tipo`, `institucion_educativa`,
+ * `criterio_evaluacion`, `convocatoria_doc_requerido`, ...). Además, los
+ * modelos con `id` sin `@default` y `updatedAt` sin `@updatedAt` requieren que
+ * se envíen explícitamente.
+ */
 
 const prisma = new PrismaClient();
 
 interface InstitucionSeed {
   nombre: string;
+  /**
+   * Nivel en el formato que usa el portal para filtrar instituciones
+   * (`UNIVERSIDAD`, `DIVERSIFICADO`, `TECNICO`, `SECUNDARIA`, `PRIMARIA`).
+   * Debe coincidir con lo que devuelve `PasoPerfilAcademico` al mapear el
+   * nombre del nivel académico del catálogo.
+   */
   nivel: string;
   sector?: string;
   departamento?: string;
@@ -12,26 +30,26 @@ interface InstitucionSeed {
 }
 
 const INSTITUCIONES_EDUCATIVAS: InstitucionSeed[] = [
-  // ==================== UNIVERSITARIOS ====================
-  { nombre: 'Universidad de San Carlos de Guatemala', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
-  { nombre: 'Universidad Rafael Landívar', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
-  { nombre: 'Universidad del Valle de Guatemala', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
-  { nombre: 'Universidad Mariano Gálvez de Guatemala', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
-  { nombre: 'Universidad Francisco Marroquín', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
-  { nombre: 'Universidad Rural de Guatemala', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
-  { nombre: 'Universidad del Istmo', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
-  { nombre: 'Universidad Panamericana de Guatemala', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
-  { nombre: 'Universidad Mesoamericana', nivel: 'UNIVERSITARIO', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'PRIVADO' },
-  { nombre: 'Universidad Galileo', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
-  { nombre: 'Universidad San Pablo de Guatemala', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
-  { nombre: 'Universidad InterNaciones', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
-  { nombre: 'Universidad de Occidente', nivel: 'UNIVERSITARIO', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'PRIVADO' },
-  { nombre: 'Universidad Da Vinci de Guatemala', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
-  { nombre: 'Universidad Regional de Guatemala', nivel: 'UNIVERSITARIO', departamento: 'Escuintla', municipio: 'Escuintla', sector: 'PRIVADO' },
-  { nombre: 'Universidad Juan José Arévalo Bermejo', nivel: 'UNIVERSITARIO', departamento: 'Sololá', municipio: 'Sololá', sector: 'PRIVADO' },
-  { nombre: 'Universidad Americana', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
-  { nombre: 'Universidad de la Guardia de Honor Presidencial', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
-  { nombre: 'Universidad de las Fuerzas Armadas - ESFOR', nivel: 'UNIVERSITARIO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  // ==================== UNIVERSIDAD ====================
+  { nombre: 'Universidad de San Carlos de Guatemala', nivel: 'UNIVERSIDAD', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Universidad Rafael Landívar', nivel: 'UNIVERSIDAD', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad del Valle de Guatemala', nivel: 'UNIVERSIDAD', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad Mariano Gálvez de Guatemala', nivel: 'UNIVERSIDAD', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad Francisco Marroquín', nivel: 'UNIVERSIDAD', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad Rural de Guatemala', nivel: 'UNIVERSIDAD', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad del Istmo', nivel: 'UNIVERSIDAD', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad Panamericana de Guatemala', nivel: 'UNIVERSIDAD', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad Mesoamericana', nivel: 'UNIVERSIDAD', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'PRIVADO' },
+  { nombre: 'Universidad Galileo', nivel: 'UNIVERSIDAD', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad San Pablo de Guatemala', nivel: 'UNIVERSIDAD', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad InterNaciones', nivel: 'UNIVERSIDAD', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad de Occidente', nivel: 'UNIVERSIDAD', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'PRIVADO' },
+  { nombre: 'Universidad Da Vinci de Guatemala', nivel: 'UNIVERSIDAD', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad Regional de Guatemala', nivel: 'UNIVERSIDAD', departamento: 'Escuintla', municipio: 'Escuintla', sector: 'PRIVADO' },
+  { nombre: 'Universidad Juan José Arévalo Bermejo', nivel: 'UNIVERSIDAD', departamento: 'Sololá', municipio: 'Sololá', sector: 'PRIVADO' },
+  { nombre: 'Universidad Americana', nivel: 'UNIVERSIDAD', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad de la Guardia de Honor Presidencial', nivel: 'UNIVERSIDAD', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Universidad de las Fuerzas Armadas - ESFOR', nivel: 'UNIVERSIDAD', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
 
   // ==================== DIVERSIFICADO ====================
   { nombre: 'Instituto Nacional de Educación Radiofonica (INER)', nivel: 'DIVERSIFICADO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
@@ -91,39 +109,57 @@ const INSTITUCIONES_EDUCATIVAS: InstitucionSeed[] = [
   { nombre: 'Instituto Nacional de Educación Básica de Jutiapa', nivel: 'DIVERSIFICADO', departamento: 'Jutiapa', municipio: 'Jutiapa', sector: 'OFICIAL' },
   { nombre: 'Instituto Adolfo V. Hall de Occidente', nivel: 'DIVERSIFICADO', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'OFICIAL' },
 
-  // ==================== BÁSICO ====================
-  { nombre: 'Escuela Oficial Rural Mixta "Liceo Guatemala"', nivel: 'BASICO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Urbana Mixta "Rafael Aqueche"', nivel: 'BASICO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Urbana Mixta "Manuel Estrada Cabrera"', nivel: 'BASICO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
-  { nombre: 'Colegio San Carlos', nivel: 'BASICO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
-  { nombre: 'Colegio Miguel Ángel Asturias', nivel: 'BASICO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
-  { nombre: 'Escuela Oficial Rural Mixta de Mixco', nivel: 'BASICO', departamento: 'Guatemala', municipio: 'Mixco', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Rural Mixta de Villa Nueva', nivel: 'BASICO', departamento: 'Guatemala', municipio: 'Villa Nueva', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Rural Mixta de Quetzaltenango', nivel: 'BASICO', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Rural Mixta de Cobán', nivel: 'BASICO', departamento: 'Alta Verapaz', municipio: 'Cobán', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Rural Mixta de Salamá', nivel: 'BASICO', departamento: 'Baja Verapaz', municipio: 'Salamá', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Rural Mixta de Chimaltenango', nivel: 'BASICO', departamento: 'Chimaltenango', municipio: 'Chimaltenango', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Rural Mixta de Chiquimula', nivel: 'BASICO', departamento: 'Chiquimula', municipio: 'Chiquimula', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Rural Mixta de Escuintla', nivel: 'BASICO', departamento: 'Escuintla', municipio: 'Escuintla', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Rural Mixta de Huehuetenango', nivel: 'BASICO', departamento: 'Huehuetenango', municipio: 'Huehuetenango', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Rural Mixta de Puerto Barrios', nivel: 'BASICO', departamento: 'Izabal', municipio: 'Puerto Barrios', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Rural Mixta de Jalapa', nivel: 'BASICO', departamento: 'Jalapa', municipio: 'Jalapa', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Rural Mixta de Jutiapa', nivel: 'BASICO', departamento: 'Jutiapa', municipio: 'Jutiapa', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Rural Mixta de Flores', nivel: 'BASICO', departamento: 'Petén', municipio: 'Flores', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Rural Mixta de Retalhuleu', nivel: 'BASICO', departamento: 'Retalhuleu', municipio: 'Retalhuleu', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Rural Mixta de Antigua Guatemala', nivel: 'BASICO', departamento: 'Sacatepéquez', municipio: 'Antigua Guatemala', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Rural Mixta de San Marcos', nivel: 'BASICO', departamento: 'San Marcos', municipio: 'San Marcos', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Rural Mixta de Cuilapa', nivel: 'BASICO', departamento: 'Santa Rosa', municipio: 'Cuilapa', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Rural Mixta de Sololá', nivel: 'BASICO', departamento: 'Sololá', municipio: 'Sololá', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Rural Mixta de Mazatenango', nivel: 'BASICO', departamento: 'Suchitepéquez', municipio: 'Mazatenango', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Rural Mixta de Totonicapán', nivel: 'BASICO', departamento: 'Totonicapán', municipio: 'Totonicapán', sector: 'OFICIAL' },
-  { nombre: 'Escuela Oficial Rural Mixta de Zacapa', nivel: 'BASICO', departamento: 'Zacapa', municipio: 'Zacapa', sector: 'OFICIAL' },
+  // ==================== BÁSICO / PRIMARIA ====================
+  { nombre: 'Escuela Oficial Rural Mixta "Liceo Guatemala"', nivel: 'PRIMARIA', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Urbana Mixta "Rafael Aqueche"', nivel: 'PRIMARIA', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Urbana Mixta "Manuel Estrada Cabrera"', nivel: 'PRIMARIA', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Colegio San Carlos', nivel: 'PRIMARIA', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Colegio Miguel Ángel Asturias', nivel: 'PRIMARIA', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Escuela Oficial Rural Mixta de Mixco', nivel: 'PRIMARIA', departamento: 'Guatemala', municipio: 'Mixco', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Villa Nueva', nivel: 'PRIMARIA', departamento: 'Guatemala', municipio: 'Villa Nueva', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Quetzaltenango', nivel: 'PRIMARIA', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Cobán', nivel: 'PRIMARIA', departamento: 'Alta Verapaz', municipio: 'Cobán', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Salamá', nivel: 'PRIMARIA', departamento: 'Baja Verapaz', municipio: 'Salamá', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Chimaltenango', nivel: 'PRIMARIA', departamento: 'Chimaltenango', municipio: 'Chimaltenango', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Chiquimula', nivel: 'PRIMARIA', departamento: 'Chiquimula', municipio: 'Chiquimula', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Escuintla', nivel: 'PRIMARIA', departamento: 'Escuintla', municipio: 'Escuintla', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Huehuetenango', nivel: 'PRIMARIA', departamento: 'Huehuetenango', municipio: 'Huehuetenango', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Puerto Barrios', nivel: 'PRIMARIA', departamento: 'Izabal', municipio: 'Puerto Barrios', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Jalapa', nivel: 'PRIMARIA', departamento: 'Jalapa', municipio: 'Jalapa', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Jutiapa', nivel: 'PRIMARIA', departamento: 'Jutiapa', municipio: 'Jutiapa', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Flores', nivel: 'PRIMARIA', departamento: 'Petén', municipio: 'Flores', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Retalhuleu', nivel: 'PRIMARIA', departamento: 'Retalhuleu', municipio: 'Retalhuleu', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Antigua Guatemala', nivel: 'PRIMARIA', departamento: 'Sacatepéquez', municipio: 'Antigua Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de San Marcos', nivel: 'PRIMARIA', departamento: 'San Marcos', municipio: 'San Marcos', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Cuilapa', nivel: 'PRIMARIA', departamento: 'Santa Rosa', municipio: 'Cuilapa', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Sololá', nivel: 'PRIMARIA', departamento: 'Sololá', municipio: 'Sololá', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Mazatenango', nivel: 'PRIMARIA', departamento: 'Suchitepéquez', municipio: 'Mazatenango', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Totonicapán', nivel: 'PRIMARIA', departamento: 'Totonicapán', municipio: 'Totonicapán', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Rural Mixta de Zacapa', nivel: 'PRIMARIA', departamento: 'Zacapa', municipio: 'Zacapa', sector: 'OFICIAL' },
 
   // ==================== PREPRIMARIA ====================
-  { nombre: 'Centro de Educación Inicial "Santa María"', nivel: 'PREPRIMARIA', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
-  { nombre: 'Centro de Educación Inicial "San José"', nivel: 'PREPRIMARIA', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
-  { nombre: 'Centro de Educación Inicial "Los Ángeles"', nivel: 'PREPRIMARIA', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'OFICIAL' },
-  { nombre: 'Centro de Educación Inicial "San Pedro"', nivel: 'PREPRIMARIA', departamento: 'Alta Verapaz', municipio: 'Cobán', sector: 'OFICIAL' },
+  { nombre: 'Centro de Educación Inicial "Santa María"', nivel: 'PRIMARIA', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Centro de Educación Inicial "San José"', nivel: 'PRIMARIA', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+  { nombre: 'Centro de Educación Inicial "Los Ángeles"', nivel: 'PRIMARIA', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'OFICIAL' },
+  { nombre: 'Centro de Educación Inicial "San Pedro"', nivel: 'PRIMARIA', departamento: 'Alta Verapaz', municipio: 'Cobán', sector: 'OFICIAL' },
+
+  // ==================== SECUNDARIA ====================
+  { nombre: 'Escuela Oficial Urbana Mixta "Los Próceres"', nivel: 'SECUNDARIA', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Urbana Mixta "Simón Bolívar"', nivel: 'SECUNDARIA', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Urbana Mixta "José María Carrera"', nivel: 'SECUNDARIA', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Escuela Oficial Urbana Mixta "Guatemala"', nivel: 'SECUNDARIA', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional de Educación Básica "Andrés Avelino Cáceres"', nivel: 'SECUNDARIA', departamento: 'Huehuetenango', municipio: 'Huehuetenango', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional de Educación Básica "San Francisco de Asís"', nivel: 'SECUNDARIA', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'OFICIAL' },
+  { nombre: 'Instituto Nacional de Educación Básica "Julio César Montenegro"', nivel: 'SECUNDARIA', departamento: 'Chimaltenango', municipio: 'Chimaltenango', sector: 'OFICIAL' },
+  { nombre: 'Colegio Bilingüe "San Pablo"', nivel: 'SECUNDARIA', departamento: 'Guatemala', municipio: 'Villa Nueva', sector: 'PRIVADO' },
+  { nombre: 'Colegio "Los Nietos"', nivel: 'SECUNDARIA', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'PRIVADO' },
+
+  // ==================== TÉCNICO ====================
+  { nombre: 'Instituto Técnico y Vocacional "Don Bosco"', nivel: 'TECNICO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Instituto Técnico y Vocacional "La Ciudadela"', nivel: 'TECNICO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Instituto Técnico Industrial "Paul Harris"', nivel: 'TECNICO', departamento: 'Guatemala', municipio: 'Guatemala', sector: 'OFICIAL' },
+  { nombre: 'Instituto Técnico y Vocacional "Aprofamily"', nivel: 'TECNICO', departamento: 'Huehuetenango', municipio: 'Huehuetenango', sector: 'PRIVADO' },
+  { nombre: 'Centro de Educación Técnica "San Ignacio"', nivel: 'TECNICO', departamento: 'Quetzaltenango', municipio: 'Quetzaltenango', sector: 'PRIVADO' },
 ];
 
 const MUNICIPIOS_POR_DEPARTAMENTO: Record<string, string[]> = {
@@ -253,63 +289,268 @@ const MUNICIPIOS_POR_DEPARTAMENTO: Record<string, string[]> = {
   ],
 };
 
+/** Criterios de evaluación por beca, con su peso relativo. */
+const BECAS = [
+  {
+    id: '00000000-0000-4000-8000-000000000001',
+    nombre: 'Beca de Excelencia Académica',
+    descripcion:
+      'Apoyo económico integral para estudiantes universitarios con alto rendimiento académico, para distinguirse por su desempeño y compromiso con su comunidad de estudio.',
+    cobertura: 'COMPLETA' as const,
+    criterios: [
+      { nombre: 'Rendimiento académico', peso: 0.5 },
+      { nombre: 'Situación socioeconómica', peso: 0.3 },
+      { nombre: 'Actividades extracurriculares y comunitarias', peso: 0.2 },
+    ],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000002',
+    nombre: 'Beca de Permanencia Universitaria',
+    descripcion:
+      'Beca de apoyo para estudiantes universitarios que se encuentran en riesgo de deserción por razones económicas o académicas, orientada a garantizar su continuidad en la university.',
+    cobertura: 'PARCIAL' as const,
+    criterios: [
+      { nombre: 'Desempeño académico', peso: 0.45 },
+      { nombre: 'Necesidad socioeconómica', peso: 0.35 },
+      { nombre: 'Participación comunitaria', peso: 0.2 },
+    ],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000003',
+    nombre: 'Beca de Apoyo a Estudios de Diversificado',
+    descripcion:
+      'Beca parcial para estudiantes de educación diversificada que requieren asegurar la continuidad de sus estudios y la reincorporación de quienes interrumpieron su bachillerato.',
+    cobertura: 'PARCIAL' as const,
+    criterios: [
+      { nombre: 'Rendimiento en diversificado', peso: 0.55 },
+      { nombre: 'Condición socioeconómica del hogar', peso: 0.45 },
+    ],
+  },
+];
+
+/** Tipos de documento soportados por el portal. */
+const TIPOS_DOCUMENTO = [
+  'Certificado académico',
+  'Constancia de inscripción',
+  'Copia de DPI',
+  'Fotografía de frente',
+  'Comprobante de ingresos familiares',
+  'Carta de recomendación',
+];
+
+/**
+ * Formulario dinámico de la convocatoria de Excelencia: los campos se
+ * se guardan con el snapshot de la convocatoria al momento de postular.
+ */
+const FORMULARIO_EXCELENCIA = [
+  {
+    id: 'promedioGeneral',
+    seccion: 'academico',
+    etiqueta: 'Promedio general del último ciclo',
+    tipo: 'numero',
+    requerido: true,
+    ayuda: 'Promedio ponderado de 0 a 100 según el boletin o transcripto oficial.',
+    claveBase: 'promedio',
+  },
+  {
+    id: 'carrera',
+    seccion: 'academico',
+    etiqueta: 'Carrera o programa que estudias',
+    tipo: 'texto',
+    requerido: true,
+    ayuda: 'Escribe el nombre completo tal como aparece en tu matricula.',
+  },
+  {
+    id: 'anoAcademico',
+    seccion: 'academico',
+    etiqueta: 'Año académico en el que te encuentras',
+    tipo: 'seleccion',
+    requerido: true,
+    opciones: ['Primer año', 'Segundo año', 'Tercer año', 'Cuarto año', 'Quinto año o más'],
+  },
+  {
+    id: 'ingresoMensual',
+    seccion: 'socioeconomico',
+    etiqueta: 'Ingreso familiar mensual (Q)',
+    tipo: 'numero',
+    requerido: true,
+    ayuda: 'Suma de los ingresos de todas las personas que viven en tu hogar.',
+    claveBase: 'ingresoFamiliar',
+  },
+  {
+    id: 'numeroDependientes',
+    seccion: 'socioeconomico',
+    etiqueta: 'Número de dependientes económicos',
+    tipo: 'numero',
+    requerido: true,
+    ayuda: 'Personas que dependen economically de tu hogar.',
+    claveBase: 'numeroDependientes',
+  },
+  {
+    id: 'tipoVivienda',
+    seccion: 'personal',
+    etiqueta: 'Tipo de vivienda donde vives',
+    tipo: 'seleccion',
+    requerido: true,
+    opciones: ['Propia o de familiares', 'Alquilada', 'Prestada', 'Vivienda de familiar'],
+  },
+  {
+    id: 'responsableEmpleoFormal',
+    seccion: 'personal',
+    etiqueta: '¿Alguna persona responsable de tu hogar tiene empleo formal?',
+    tipo: 'booleano',
+    requerido: false,
+  },
+  {
+    id: 'motivacion',
+    seccion: 'adicional',
+    etiqueta: 'Motivación para continuar tus estudios',
+    tipo: 'textarea',
+    requerido: true,
+    ayuda: 'Máximo 500 caracteres. Cuéntanos por qué te mereces esta beca.',
+  },
+  {
+    id: 'actividades',
+    seccion: 'adicional',
+    etiqueta: 'Actividades extracurriculares o comunitarias',
+    tipo: 'textarea',
+    requerido: false,
+    ayuda: 'Participa en asociaciones, equipos, volunteer trabajo comunitario u otras actividades.',
+  },
+];
+
+const FORMULARIO_PERMANENCIA = [
+  {
+    id: 'promedioGeneral',
+    seccion: 'academico',
+    etiqueta: 'Promedio general del último ciclo',
+    tipo: 'numero',
+    requerido: true,
+    ayuda: 'Promedio ponderado de 0 a 100.',
+    claveBase: 'promedio',
+  },
+  {
+    id: 'carrera',
+    seccion: 'academico',
+    etiqueta: 'Carrera o programa que estudias',
+    tipo: 'texto',
+    requerido: true,
+  },
+  {
+    id: 'ingresoMensual',
+    seccion: 'socioeconomico',
+    etiqueta: 'Ingreso familiar mensual (Q)',
+    tipo: 'numero',
+    requerido: true,
+    ayuda: 'Suma de los ingresos de todas las personas que viven en tu hogar.',
+    claveBase: 'ingresoFamiliar',
+  },
+  {
+    id: 'numeroDependientes',
+    seccion: 'socioeconomico',
+    etiqueta: 'Número de dependientes económicos',
+    tipo: 'numero',
+    requerido: true,
+    claveBase: 'numeroDependientes',
+  },
+  {
+    id: 'motivoIngreso',
+    seccion: 'adicional',
+    etiqueta: 'Motivo por el que suspendiste o retrasaste tus estudios',
+    tipo: 'textarea',
+    requerido: true,
+    ayuda: 'Máximo 500 caracteres.',
+  },
+];
+
+const FORMULARIO_DIVERSIFICADO = [
+  {
+    id: 'promedioGeneral',
+    seccion: 'academico',
+    etiqueta: 'Promedio general de diversificado',
+    tipo: 'numero',
+    requerido: true,
+    claveBase: 'promedio',
+  },
+  {
+    id: 'ultimoGrado',
+    seccion: 'academico',
+    etiqueta: 'Último grado cursado',
+    tipo: 'seleccion',
+    requerido: true,
+    opciones: ['Noveno grado', 'Décimo grado', 'Décimo primero grado', 'Bachillerato concluido'],
+  },
+  {
+    id: 'ingresoMensual',
+    seccion: 'socioeconomico',
+    etiqueta: 'Ingreso familiar mensual (Q)',
+    tipo: 'numero',
+    requerido: true,
+    claveBase: 'ingresoFamiliar',
+  },
+  {
+    id: 'numeroDependientes',
+    seccion: 'socioeconomico',
+    etiqueta: 'Número de dependientes económicos',
+    tipo: 'numero',
+    requerido: true,
+    claveBase: 'numeroDependientes',
+  },
+];
+
+/** Comités evaluadores de demostración. */
+const COMITES = [
+  {
+    id: '00000000-0000-4000-8000-000000000031',
+    nombre: 'Comité Evaluador de Excelencia Académica 2026',
+    descripcion:
+      'Comité encargado de evaluar las postulaciones a la Beca de Excelencia Académica. Sesiona cada semana para revisar las solicitudes ya calificadas.',
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000032',
+    nombre: 'Comité Evaluador de Permanencia Universitaria 2026',
+    descripcion:
+      'Comité encargado de evaluar las postulaciones a la Beca de Permanencia Universitaria y los casos de riesgo de deserción.',
+  },
+];
+
 async function main() {
   console.log('🌱 Seeding database...');
 
   // ==========================================
   // ROLES
   // ==========================================
-  const roles = await Promise.all([
-    prisma.rol.upsert({
-      where: { nombre: 'ADMIN' },
-      update: {},
-      create: {
-        nombre: 'ADMIN',
-        descripcion: 'Administrador del sistema con acceso total',
-      },
-    }),
-    prisma.rol.upsert({
-      where: { nombre: 'POSTULANTE' },
-      update: {},
-      create: {
-        nombre: 'POSTULANTE',
-        descripcion: 'Estudiante que postula a becas',
-      },
-    }),
-    prisma.rol.upsert({
-      where: { nombre: 'EVALUADOR' },
-      update: {},
-      create: {
-        nombre: 'EVALUADOR',
-        descripcion: 'Persona que evalúa solicitudes',
-      },
-    }),
-    prisma.rol.upsert({
-      where: { nombre: 'COORDINADOR_COMITE' },
-      update: {},
-      create: {
-        nombre: 'COORDINADOR_COMITE',
-        descripcion: 'Coordina comités evaluadores y sesiones',
-      },
-    }),
-    prisma.rol.upsert({
-      where: { nombre: 'MIEMBRO_COMITE' },
-      update: {},
-      create: {
-        nombre: 'MIEMBRO_COMITE',
-        descripcion: 'Miembro de un comité evaluador',
-      },
-    }),
-    prisma.rol.upsert({
-      where: { nombre: 'STAFF' },
-      update: {},
-      create: {
-        nombre: 'STAFF',
-        descripcion: 'Personal administrativo del MINEDUC',
-      },
-    }),
-  ]);
+  const definicionesRoles = [
+    { id: '00000000-0000-4000-8000-000000000001', nombre: 'ADMIN', descripcion: 'Administrador del sistema con acceso total' },
+    { id: '00000000-0000-4000-8000-000000000002', nombre: 'POSTULANTE', descripcion: 'Estudiante que postula a becas' },
+    { id: '00000000-0000-4000-8000-000000000003', nombre: 'EVALUADOR', descripcion: 'Persona que evalúa solicitudes' },
+    { id: '00000000-0000-4000-8000-000000000004', nombre: 'COORDINADOR_COMITE', descripcion: 'Coordina comités evaluadores y sesiones' },
+    { id: '00000000-0000-4000-8000-000000000005', nombre: 'MIEMBRO_COMITE', descripcion: 'Miembro de un comité evaluador' },
+    { id: '00000000-0000-4000-8000-000000000006', nombre: 'STAFF', descripcion: 'Personal administrativo del MINEDUC' },
+    // Sprint 8 (US-806): rol con autoridad para crear/publicar convocatorias,
+    // hacer la primera aprobación y ajustar montos con justificación.
+    { id: '00000000-0000-4000-8000-000000000007', nombre: 'JEFE_BECAS', descripcion: 'Jefe de becas: crea y publica convocatorias, aprueba en primera instancia y ajusta montos' },
+  ];
+
+  const roles: Rol[] = [];
+  for (const rol of definicionesRoles) {
+    roles.push(
+      await prisma.rol.upsert({
+        where: { nombre: rol.nombre },
+        update: { descripcion: rol.descripcion },
+        create: { ...rol },
+      }),
+    );
+  }
+  // Se retiran los roles de prueba que dejaron los scripts de humo: no
+  // pertenecen a ningún flujo real y ensucian la administración.
+  await prisma.rol.deleteMany({
+    where: { nombre: { startsWith: 'TESTSMOKE' } },
+  });
+
   console.log('✅ Roles creados');
+
+  const rolPorNombre = (nombre: string) => roles.find((r) => r.nombre === nombre)!;
 
   // ==========================================
   // PERMISOS
@@ -319,10 +560,17 @@ async function main() {
     { modulo: 'convocatoria', accion: 'crear' },
     { modulo: 'convocatoria', accion: 'editar' },
     { modulo: 'convocatoria', accion: 'ver' },
+    { modulo: 'convocatoria', accion: 'publicar' },
     // Solicitudes
     { modulo: 'solicitud', accion: 'crear' },
     { modulo: 'solicitud', accion: 'editar' },
     { modulo: 'solicitud', accion: 'ver' },
+    // Sprint 8 (US-802/803/806): control de montos y de las dos instancias
+    // de aprobación. La separación real la garantiza que el segundo
+    // aprobador sea una persona distinta al primero.
+    { modulo: 'solicitud', accion: 'aprobar-primera' },
+    { modulo: 'solicitud', accion: 'aprobar-segunda' },
+    { modulo: 'solicitud', accion: 'montos-override' },
     // Documentos
     { modulo: 'documento', accion: 'crear' },
     { modulo: 'documento', accion: 'ver' },
@@ -351,55 +599,33 @@ async function main() {
     { modulo: 'auditoria', accion: 'ver' },
     // Seguridad
     { modulo: 'permiso', accion: 'editar' },
+    // Catálogos (S-013: permiso propio en lugar de reutilizar `permiso:editar`)
+    { modulo: 'catalogo', accion: 'gestionar' },
   ];
 
-  const permisos = await Promise.all(
-    permisosData.map((p) =>
-      prisma.permiso.upsert({
+  const permisos: Permiso[] = [];
+  for (const p of permisosData) {
+    permisos.push(
+      await prisma.permiso.upsert({
         where: { modulo_accion: { modulo: p.modulo, accion: p.accion } },
         update: {},
-        create: p,
+        create: { ...p },
       }),
-    ),
-  );
+    );
+  }
   console.log('✅ Permisos creados');
 
   // ==========================================
   // ASIGNAR PERMISOS A ROLES
   // ==========================================
-  const adminRole = roles.find((r) => r.nombre === 'ADMIN');
-  const allPermisos = permisos.map((p) => ({ permisoId: p.id }));
-
-  // ADMIN tiene todos los permisos
-  for (const permiso of allPermisos) {
-    await prisma.rolPermiso.upsert({
-      where: { rolId_permisoId: { rolId: adminRole!.id, permisoId: permiso.permisoId } },
-      update: {},
-      create: { rolId: adminRole!.id, permisoId: permiso.permisoId },
-    });
-  }
-  console.log('✅ Permisos asignados a ADMIN');
-
-  // POSTULANTE tiene permisos de solicitudes y documentos
-  const postulanteRole = roles.find((r) => r.nombre === 'POSTULANTE');
-  const permisosPostulante = permisos.filter((p) =>
-    ['solicitud', 'documento'].includes(p.modulo),
-  );
-  for (const permiso of permisosPostulante) {
-    await prisma.rolPermiso.upsert({
-      where: {
-        rolId_permisoId: { rolId: postulanteRole!.id, permisoId: permiso.id },
-      },
-      update: {},
-      create: { rolId: postulanteRole!.id, permisoId: permiso.id },
-    });
-  }
-  console.log('✅ Permisos de solicitud/documento asignados a POSTULANTE');
-
-  // EVALUADOR: evaluacion completo + solicitud:ver
-  // COORDINADOR_COMITE: comite/sesion/decision/evaluacion/solicitud completo
-  // MIEMBRO_COMITE: voto:crear + ver de sesion/comite/solicitud
-  const permisosPorRol: Array<[string, (p: (typeof permisos)[number]) => boolean]> = [
+  const filtrosPorRol: Array<[string, (p: (typeof permisos)[number]) => boolean]> = [
+    ['ADMIN', () => true],
+    [
+      'POSTULANTE',
+      (p) =>
+        ['solicitud', 'documento'].includes(p.modulo) ||
+        (p.modulo === 'convocatoria' && p.accion === 'ver'),
+    ],
     [
       'EVALUADOR',
       (p) =>
@@ -409,7 +635,7 @@ async function main() {
     [
       'COORDINADOR_COMITE',
       (p) =>
-        ['comite', 'sesion', 'decision', 'evaluacion', 'solicitud', 'documento'].includes(
+        ['comite', 'sesion', 'decision', 'evaluacion', 'solicitud', 'documento', 'reporte'].includes(
           p.modulo,
         ),
     ],
@@ -419,89 +645,48 @@ async function main() {
         p.modulo === 'voto' ||
         (p.accion === 'ver' && ['sesion', 'comite', 'solicitud'].includes(p.modulo)),
     ],
+    // Sprint 8 (US-806): el jefe de becas administra las convocatorias y
+    // participa en las dos instancias de aprobación. Que el segundo
+    // aprobador sea OTRO usuario lo garantiza el servicio, no el permiso.
+    [
+      'JEFE_BECAS',
+      (p) =>
+        (p.modulo === 'convocatoria' &&
+          ['crear', 'editar', 'ver', 'publicar'].includes(p.accion)) ||
+        (p.modulo === 'solicitud' &&
+          // `editar` es el permiso que hoy habilita las transiciones sobre
+          // una solicitud (igual que para el coordinador del comité).
+          ['ver', 'editar', 'aprobar-primera', 'aprobar-segunda', 'montos-override'].includes(
+            p.accion,
+          )) ||
+        (p.modulo === 'decision' && p.accion === 'ver') ||
+        (p.modulo === 'reporte' && p.accion === 'ver') ||
+        (p.modulo === 'comite' && p.accion === 'ver') ||
+        (p.modulo === 'sesion' && p.accion === 'ver') ||
+        (p.modulo === 'evaluacion' && p.accion === 'ver') ||
+        (p.modulo === 'auditoria' && p.accion === 'ver'),
+    ],
   ];
 
-  for (const [rolNombre, filtro] of permisosPorRol) {
-    const rol = roles.find((r) => r.nombre === rolNombre);
+  for (const [rolNombre, filtro] of filtrosPorRol) {
+    const rol = rolPorNombre(rolNombre);
     const permitidos = permisos.filter(filtro).map((p) => p.id);
-    await prisma.rolPermiso.deleteMany({
-      where: { rolId: rol!.id, permisoId: { notIn: permitidos } },
-    });
-    for (const pid of permitidos) {
-      await prisma.rolPermiso.upsert({
-        where: {
-          rolId_permisoId: { rolId: rol!.id, permisoId: pid },
-        },
-        update: {},
-        create: { rolId: rol!.id, permisoId: pid },
+    await prisma.rolPermiso.deleteMany({ where: { rolId: rol.id } });
+    if (permitidos.length > 0) {
+      await prisma.rolPermiso.createMany({
+        data: permitidos.map((permisoId) => ({
+          rolId: rol.id,
+          permisoId,
+        })),
       });
     }
     console.log(`✅ Permisos asignados a ${rolNombre}`);
   }
 
   // ==========================================
-  // BECAS Y CRITERIOS (demo)
-  // ==========================================
-  const becas = await Promise.all([
-    prisma.beca.upsert({
-      where: { id: '00000000-0000-4000-8000-000000000001' },
-      update: {},
-      create: {
-        id: '00000000-0000-4000-8000-000000000001',
-        nombre: 'Beca de Excelencia Académica',
-        descripcion: 'Para estudiantes con alto rendimiento académico',
-      },
-    }),
-    prisma.beca.upsert({
-      where: { id: '00000000-0000-4000-8000-000000000002' },
-      update: {},
-      create: {
-        id: '00000000-0000-4000-8000-000000000002',
-        nombre: 'Beca de Permanencia Universitaria',
-        descripcion: 'Para estudiantes en riesgo de deserción',
-      },
-    }),
-  ]);
-  console.log('✅ Becas creadas');
-
-  const becaDemo = becas[0];
-  await prisma.criterioEvaluacion.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000011' },
-    update: {},
-    create: {
-      id: '00000000-0000-4000-8000-000000000011',
-      becaId: becaDemo.id,
-      nombre: 'Rendimiento académico',
-      peso: 0.6,
-    },
-  });
-  console.log('✅ Criterios de evaluación creados (demo)');
-
-  const becaDemo2 = becas[1];
-  const criteriosBeca2 = [
-    { id: '00000000-0000-4000-8000-000000000012', nombre: 'Situación socioeconómica', peso: 0.4 },
-    { id: '00000000-0000-4000-8000-000000000013', nombre: 'Trayectoria académica', peso: 0.6 },
-  ];
-  for (const c of criteriosBeca2) {
-    await prisma.criterioEvaluacion.upsert({
-      where: { id: c.id },
-      update: {},
-      create: {
-        id: c.id,
-        becaId: becaDemo2.id,
-        nombre: c.nombre,
-        peso: c.peso,
-      },
-    });
-  }
-  console.log('✅ Criterios de evaluación creados para beca 2 (demo)');
-
-  // ==========================================
   // GÉNEROS
   // ==========================================
-  await prisma.genero.deleteMany({
-    where: { nombre: { startsWith: 'Smoke' } },
-  });
+  await prisma.genero.deleteMany({ where: { nombre: { startsWith: 'Smoke' } } });
   await prisma.genero.updateMany({
     where: { nombre: 'Otro' },
     data: { nombre: 'Prefiero no especificar' },
@@ -519,7 +704,15 @@ async function main() {
   // ==========================================
   // NIVELES ACADÉMICOS
   // ==========================================
-  const niveles = ['Primaria', 'Secundaria', 'Técnico', 'Universitario', 'Posgrado'];
+  const niveles = [
+    'Primaria',
+    'Básico',
+    'Diversificado',
+    'Secundaria',
+    'Técnico',
+    'Universitario',
+    'Posgrado',
+  ];
   for (const nombre of niveles) {
     await prisma.nivelAcademico.upsert({
       where: { nombre },
@@ -576,7 +769,9 @@ async function main() {
       });
     }
   }
-  console.log(`✅ Municipios creados (${Object.values(MUNICIPIOS_POR_DEPARTAMENTO).flat().length} en 22 departamentos)`);
+  console.log(
+    `✅ Municipios creados (${Object.values(MUNICIPIOS_POR_DEPARTAMENTO).flat().length} en 22 departamentos)`,
+  );
   await prisma.municipio.deleteMany({
     where: { departamento: { nombre: 'El Proverbio' } },
   });
@@ -585,21 +780,16 @@ async function main() {
   // ==========================================
   // TIPOS DE DOCUMENTO
   // ==========================================
-  const documentos = [
-    'Certificado académico',
-    'Constancia de estudios',
-    'Cédula de depleción',
-    'Fotografía',
-    'Comprobante de ingresos',
-    'Carta de recomendación',
-  ];
-  for (const nombre of documentos) {
+  for (const nombre of TIPOS_DOCUMENTO) {
     await prisma.documentoTipo.upsert({
       where: { nombre },
       update: {},
       create: { nombre },
     });
   }
+  // Se retiran los tipos antiguos que ya no se solicitan (p. ej. el que tenía
+  // el error de tipeo "Cédula de depleción"). El borrado se hace más abajo,
+  // cuando ya se limpiaron las convocatorias que los referenciaban.
   console.log('✅ Tipos de documento creados');
 
   // ==========================================
@@ -646,95 +836,403 @@ async function main() {
   await prisma.institucionEducativa.deleteMany({
     where: { nombre: { in: INSTITUCIONES_ELIMINADAS } },
   });
+  // Se retiran las instituciones que quedaron con un nivel distinto al que
+  // usa el portal para filtrar (p. ej. las que estaban como `UNIVERSITARIO`).
+  await prisma.institucionEducativa.deleteMany({
+    where: {
+      nivel: {
+        notIn: ['UNIVERSIDAD', 'DIVERSIFICADO', 'TECNICO', 'SECUNDARIA', 'PRIMARIA'],
+      },
+    },
+  });
   console.log('✅ Instituciones obsoletas eliminadas');
 
   // ==========================================
-  // USUARIO ADMIN POR DEFECTO
+  // LIMPIEZA DE CONVOCATORIAS Y SOLICITUDES
   // ==========================================
-  const adminRoleData = await prisma.rol.findUnique({ where: { nombre: 'ADMIN' } });
+  // El orden importa: hay relaciones sin `onDelete: Cascade` (por ejemplo
+  // `evaluacion.criterioEvaluacionId` o `decision.solicitudId`).
+  await prisma.decision.deleteMany({});
+  await prisma.voto.deleteMany({});
+  await prisma.sesionAgenda.deleteMany({});
+  await prisma.evaluacion.deleteMany({});
+  await prisma.solicitudDocumento.deleteMany({});
+  await prisma.solicitudPerfilAcademico.deleteMany({});
+  await prisma.solicitudPerfilFinanciero.deleteMany({});
+  await prisma.historialEstado.deleteMany({});
+  await prisma.solicitud.deleteMany({});
+  await prisma.notificacion.deleteMany({});
+  await prisma.sesion.deleteMany({});
+  await prisma.convocatoriaDocRequerido.deleteMany({});
+  await prisma.convocatoria.deleteMany({});
+  console.log('✅ Convocatorias y solicitudes anteriores eliminadas');
+
+  // ==========================================
+  // BECAS Y CRITERIOS DE EVALUACIÓN
+  // ==========================================
+  for (const beca of BECAS) {
+    await prisma.beca.upsert({
+      where: { id: beca.id },
+      update: {
+        nombre: beca.nombre,
+        descripcion: beca.descripcion,
+        activa: true,
+      },
+      create: {
+        id: beca.id,
+        nombre: beca.nombre,
+        descripcion: beca.descripcion,
+        activa: true,
+      },
+    });
+
+    // Se reemplazan los criterios de la beca para que el conjunto de pesos
+    // siempre sume 1 y no queden criterios de rebajas anteriores.
+    await prisma.criterioEvaluacion.deleteMany({ where: { becaId: beca.id } });
+    for (const criterio of beca.criterios) {
+      await prisma.criterioEvaluacion.create({
+        data: {
+          becaId: beca.id,
+          nombre: criterio.nombre,
+          peso: criterio.peso,
+          activo: true,
+        },
+      });
+    }
+  }
+  console.log(`✅ Becas creadas (${BECAS.length}) con sus criterios de evaluación`);
+
+  // Ahora que ninguna convocatoria referencia los tipos de documento
+  // antiguos, se pueden retirar del catálogo.
+  await prisma.documentoTipo.deleteMany({
+    where: { nombre: { notIn: TIPOS_DOCUMENTO } },
+  });
+  console.log('✅ Tipos de documento obsoletos eliminados');
+
+  // ==========================================
+  // USUARIOS BASE (necesarios antes de crear comités)
+  // ==========================================
   const hashedPassword = await bcrypt.hash('Admin123!', 10);
 
+  const adminRole = rolPorNombre('ADMIN');
   await prisma.usuario.upsert({
     where: { cui: '1234567890123' },
-    update: { nombres: 'Administrador EDUVIAGT' },
+    update: {
+      nombres: 'Administrador EDUVIAGT',
+      email: 'admin@sigeb.gov.gt',
+      passwordHash: hashedPassword,
+      rolId: adminRole.id,
+      estado: 'ACTIVO',
+    },
     create: {
       cui: '1234567890123',
       nombres: 'Administrador EDUVIAGT',
       email: 'admin@sigeb.gov.gt',
       passwordHash: hashedPassword,
-      rolId: adminRoleData!.id,
+      rolId: adminRole.id,
       estado: 'ACTIVO',
     },
   });
   console.log('✅ Usuario admin creado (admin@sigeb.gov.gt / Admin123!)');
 
-  // ==========================================
-  // USUARIO POSTULANTE POR DEFECTO
-  // ==========================================
-  const postulanteRoleData = await prisma.rol.findUnique({
-    where: { nombre: 'POSTULANTE' },
-  });
-
+  const postulanteRole = rolPorNombre('POSTULANTE');
   await prisma.usuario.upsert({
     where: { cui: '9999999999999' },
-    update: {},
+    update: {
+      nombres: 'Postulante Demo',
+      email: 'postulante@demo.gt',
+      passwordHash: hashedPassword,
+      rolId: postulanteRole.id,
+      estado: 'ACTIVO',
+    },
     create: {
       cui: '9999999999999',
       nombres: 'Postulante Demo',
       email: 'postulante@demo.gt',
       passwordHash: hashedPassword,
-      rolId: postulanteRoleData!.id,
+      rolId: postulanteRole.id,
       estado: 'ACTIVO',
     },
   });
   console.log('✅ Usuario postulante creado (postulante@demo.gt / Admin123!)');
 
-  // ==========================================
-  // USUARIOS DEMO (Evaluación/Comités)
-  // ==========================================
-  const evaluadorRoleData = await prisma.rol.findUnique({
-    where: { nombre: 'EVALUADOR' },
-  });
-  const coordinadorRoleData = await prisma.rol.findUnique({
-    where: { nombre: 'COORDINADOR_COMITE' },
-  });
-  const miembroRoleData = await prisma.rol.findUnique({
-    where: { nombre: 'MIEMBRO_COMITE' },
-  });
-
   const usuariosDemo = [
-    {
-      cui: '8888888888888',
-      nombres: 'Evaluador Demo',
-      email: 'evaluador@demo.gt',
-      rolId: evaluadorRoleData!.id,
-    },
-    {
-      cui: '7777777777777',
-      nombres: 'Coordinador Demo',
-      email: 'coordinador@demo.gt',
-      rolId: coordinadorRoleData!.id,
-    },
-    {
-      cui: '6666666666666',
-      nombres: 'Miembro Comité Demo',
-      email: 'miembro@demo.gt',
-      rolId: miembroRoleData!.id,
-    },
+    { cui: '8888888888888', nombres: 'Evaluador Demo', email: 'evaluador@demo.gt', rol: 'EVALUADOR' },
+    // La convocatoria de Excelencia exige 3 evaluaciones completas: hacen
+    // falta tres evaluadores distintos para poder evaluarla.
+    { cui: '3333333333333', nombres: 'Evaluadora Segundo Demo', email: 'evaluador2@demo.gt', rol: 'EVALUADOR' },
+    { cui: '2222222222222', nombres: 'Evaluador Tercero Demo', email: 'evaluador3@demo.gt', rol: 'EVALUADOR' },
+    { cui: '7777777777777', nombres: 'Coordinador Demo', email: 'coordinador@demo.gt', rol: 'COORDINADOR_COMITE' },
+    { cui: '6666666666666', nombres: 'Miembro Comité Demo', email: 'miembro@demo.gt', rol: 'MIEMBRO_COMITE' },
+    // Sprint 8 (US-806): dos personas distintas para las dos instancias de
+    // aprobación (la segunda nunca puede firmarla quien aprobó la primera).
+    { cui: '5555555555555', nombres: 'Jefa de Becas Demo', email: 'jefebecas@demo.gt', rol: 'JEFE_BECAS' },
+    { cui: '4444444444444', nombres: 'Director de Becas Demo', email: 'director@demo.gt', rol: 'ADMIN' },
   ];
 
+  const usuariosPorCui: Record<string, { id: string }> = {};
   for (const usuario of usuariosDemo) {
-    await prisma.usuario.upsert({
+    const creado = await prisma.usuario.upsert({
       where: { cui: usuario.cui },
-      update: {},
-      create: {
-        ...usuario,
+      update: {
+        nombres: usuario.nombres,
+        email: usuario.email,
         passwordHash: hashedPassword,
+        rolId: rolPorNombre(usuario.rol).id,
+        estado: 'ACTIVO',
+      },
+      create: {
+        cui: usuario.cui,
+        nombres: usuario.nombres,
+        email: usuario.email,
+        passwordHash: hashedPassword,
+        rolId: rolPorNombre(usuario.rol).id,
         estado: 'ACTIVO',
       },
     });
+    usuariosPorCui[usuario.cui] = creado;
   }
-  console.log('✅ Usuarios demo de evaluación creados (evaluador/coordinador/miembro@demo.gt / Admin123!)');
+  console.log('✅ Usuarios demo creados (evaluador/coordinador/miembro/jefebecas/director@demo.gt / Admin123!)');
+
+  // ==========================================
+  // COMITÉS EVALUADORES
+  // ==========================================
+  await prisma.comiteMiembro.deleteMany({});
+  await prisma.comite.deleteMany({});
+
+  for (const comite of COMITES) {
+    await prisma.comite.create({
+      data: {
+        id: comite.id,
+        nombre: comite.nombre,
+        descripcion: comite.descripcion,
+        activo: true,
+      },
+    });
+  }
+
+  const miembrosPorComite: Record<string, Array<{ usuarioId: string; rol: string }>> = {
+    '00000000-0000-4000-8000-000000000031': [
+      { usuarioId: usuariosPorCui['7777777777777'].id, rol: 'PRESIDENTE' },
+      { usuarioId: usuariosPorCui['8888888888888'].id, rol: 'VOCAL' },
+      { usuarioId: usuariosPorCui['6666666666666'].id, rol: 'VOCAL' },
+    ],
+    '00000000-0000-4000-8000-000000000032': [
+      { usuarioId: usuariosPorCui['7777777777777'].id, rol: 'PRESIDENTE' },
+      { usuarioId: usuariosPorCui['6666666666666'].id, rol: 'VOCAL' },
+    ],
+  };
+
+  for (const [comiteId, miembros] of Object.entries(miembrosPorComite)) {
+    for (const miembro of miembros) {
+      await prisma.comiteMiembro.create({
+        data: { comiteId, ...miembro, activo: true },
+      });
+    }
+  }
+  console.log(`✅ Comités evaluadores creados (${COMITES.length})`);
+
+  // ==========================================
+  // CONVOCATORIAS REALISTAS
+  // ==========================================
+  const nivelAcademicoPorNombre = async (nombre: string) =>
+    prisma.nivelAcademico.findUnique({ where: { nombre } });
+
+  const documentoPorNombre = async (nombre: string) =>
+    prisma.documentoTipo.findUnique({ where: { nombre } });
+
+  const hoy = new Date();
+  const dias = (n: number) => {
+    const d = new Date(hoy);
+    d.setDate(d.getDate() + n);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
+  const definicionesConvocatorias = [
+    {
+      id: '00000000-0000-4000-8000-000000000021',
+      nombre: 'Convocatoria Nacional 2026 — Beca de Excelencia Académica',
+      descripcion:
+        'El sistema abre la convocatoria nacional 2026 de la Beca de Excelencia Académica, dirigida a estudiantes inscritos en universidades del país que acreditan un promedio igual o superior a 85 puntos. La beca cubre matrícula, colegiatura y un apoyo mensual de Q800.00 durante los diez meses del ciclo lectivo. La evaluación se realiza por comité mediante criterios ponderados de rendimiento académico (50%), situación socioeconómica (30%) y actividades extracurriculares (20%).',
+      becaId: '00000000-0000-4000-8000-000000000001',
+      nivel: 'Universitario',
+      cobertura: 'COMPLETA' as const,
+      estado: 'ABIERTA' as const,
+      fechaApertura: dias(-18),
+      fechaCierre: dias(25),
+      evaluadoresMinimos: 3,
+      maxCorrecciones: 2,
+      // Montos (Sprint 8): el monto base supera los Q10,000, así que las
+      // solicitudes de esta convocatoria exigen segunda aprobación.
+      montoBase: 12000,
+      permiteParcial: true,
+      reglasMonto: [
+        {
+          nombre: 'Ingreso familiar hasta Q3,000 — monto completo',
+          ingresoMin: null,
+          ingresoMax: 3000,
+          tipo: 'COMPLETO',
+          montoFijo: null,
+          porcentaje: null,
+          prioridad: 1,
+        },
+        {
+          nombre: 'Ingreso familiar de Q3,001 a Q6,000 — monto parcial',
+          ingresoMin: 3000.01,
+          ingresoMax: 6000,
+          tipo: 'FIJO',
+          montoFijo: 6000,
+          porcentaje: null,
+          prioridad: 2,
+        },
+        {
+          nombre: 'Ingreso familiar superior a Q6,000 — 40% del monto base',
+          ingresoMin: 6000.01,
+          ingresoMax: null,
+          tipo: 'PORCENTAJE',
+          montoFijo: null,
+          porcentaje: 0.4,
+          prioridad: 3,
+        },
+      ],
+      formulario: FORMULARIO_EXCELENCIA,
+      documentos: [
+        { nombre: 'Certificado académico', obligatorio: true },
+        { nombre: 'Constancia de inscripción', obligatorio: true },
+        { nombre: 'Copia de DPI', obligatorio: true },
+        { nombre: 'Comprobante de ingresos familiares', obligatorio: true },
+        { nombre: 'Fotografía de frente', obligatorio: false },
+        { nombre: 'Carta de recomendación', obligatorio: false },
+      ],
+    },
+    {
+      id: '00000000-0000-4000-8000-000000000022',
+      nombre: 'Convocatoria 2026 — Beca de Permanencia Universitaria',
+      descripcion:
+        'Convocatoria de la Beca de Permanencia Universitaria 2026 para estudiantes que reprobaron o interrumpieron un ciclo por motivos económicos o laborales y buscan reincorporarse a sus estudios. La beca es parcial: cubre la matrícula del ciclo en curso y un apoyo de Q500.00 mensuales. Se evaluarán el desempeño académico previo (45%), la necesidad socioeconómica (35%) y la participación comunitaria (20%).',
+      becaId: '00000000-0000-4000-8000-000000000002',
+      nivel: 'Universitario',
+      cobertura: 'PARCIAL' as const,
+      estado: 'ABIERTA' as const,
+      fechaApertura: dias(-10),
+      fechaCierre: dias(14),
+      evaluadoresMinimos: 2,
+      maxCorrecciones: 3,
+      // Montaje bajo el umbral: no exige segunda aprobación.
+      montoBase: 6000,
+      permiteParcial: true,
+      reglasMonto: [
+        {
+          nombre: 'Ingreso familiar hasta Q4,000 — monto completo',
+          ingresoMin: null,
+          ingresoMax: 4000,
+          tipo: 'COMPLETO',
+          montoFijo: null,
+          porcentaje: null,
+          prioridad: 1,
+        },
+        {
+          nombre: 'Ingreso familiar superior a Q4,000 — monto parcial',
+          ingresoMin: 4000.01,
+          ingresoMax: null,
+          tipo: 'FIJO',
+          montoFijo: 3500,
+          porcentaje: null,
+          prioridad: 2,
+        },
+      ],
+      formulario: FORMULARIO_PERMANENCIA,
+      documentos: [
+        { nombre: 'Certificado académico', obligatorio: true },
+        { nombre: 'Constancia de inscripción', obligatorio: true },
+        { nombre: 'Copia de DPI', obligatorio: true },
+        { nombre: 'Comprobante de ingresos familiares', obligatorio: true },
+        { nombre: 'Carta de recomendación', obligatorio: false },
+      ],
+    },
+    {
+      id: '00000000-0000-4000-8000-000000000023',
+      nombre: 'Convocatoria 2027 — Beca de Apoyo a Estudios de Diversificado (preparatoria)',
+      descripcion:
+        'Convocatoria preliminar de la Beca de Apoyo a Estudios de Diversificado para el ciclo 2027. Está dirigida a estudiantes de nivel básico y diversificado de instituciones educativas públicas y privadas que han finalizado el último año de diversificado y buscan reincorporarse al bachillerato. La beca cubre matrícula y materiales de estudio. La convocatoria se encuentra en preparación: el sistema publicará la fecha de apertura definitiva.',
+      becaId: '00000000-0000-4000-8000-000000000003',
+      nivel: 'Diversificado',
+      cobertura: 'PARCIAL' as const,
+      estado: 'BORRADOR' as const,
+      fechaApertura: dias(40),
+      fechaCierre: dias(70),
+      evaluadoresMinimos: 2,
+      maxCorrecciones: 3,
+      montoBase: 3000,
+      permiteParcial: true,
+      reglasMonto: [],
+      formulario: FORMULARIO_DIVERSIFICADO,
+      documentos: [
+        { nombre: 'Certificado académico', obligatorio: true },
+        { nombre: 'Copia de DPI', obligatorio: true },
+        { nombre: 'Comprobante de ingresos familiares', obligatorio: false },
+      ],
+    },
+  ];
+
+  for (const conv of definicionesConvocatorias) {
+    const nivel = await nivelAcademicoPorNombre(conv.nivel);
+
+    await prisma.convocatoria.create({
+      data: {
+        id: conv.id,
+        nombre: conv.nombre,
+        descripcion: conv.descripcion,
+        becaId: conv.becaId,
+        estado: conv.estado,
+        fechaApertura: conv.fechaApertura,
+        fechaCierre: conv.fechaCierre,
+        evaluadoresMinimos: conv.evaluadoresMinimos,
+        maxCorrecciones: conv.maxCorrecciones,
+        cobertura: conv.cobertura,
+        formulario: conv.formulario as unknown as Prisma.InputJsonValue,
+        nivelAcademicoId: nivel?.id ?? null,
+        // Montos (Sprint 8 - US-801)
+        moneda: 'GTQ',
+        montoBase: conv.montoBase != null ? new Prisma.Decimal(conv.montoBase) : null,
+        permiteParcial: conv.permiteParcial,
+        usarReglasMonto: conv.reglasMonto.length > 0,
+      },
+    });
+
+    for (const doc of conv.documentos) {
+      const tipo = await documentoPorNombre(doc.nombre);
+      if (!tipo) continue;
+      await prisma.convocatoriaDocRequerido.create({
+        data: {
+          convocatoriaId: conv.id,
+          documentoTipoId: tipo.id,
+          obligatorio: doc.obligatorio,
+        },
+      });
+    }
+
+    // Reglas por tramo de ingreso familiar (Sprint 8 - US-801)
+    for (const regla of conv.reglasMonto) {
+      await prisma.convocatoriaReglaMonto.create({
+        data: {
+          convocatoriaId: conv.id,
+          nombre: regla.nombre,
+          ingresoMin:
+            regla.ingresoMin != null ? new Prisma.Decimal(regla.ingresoMin) : null,
+          ingresoMax:
+            regla.ingresoMax != null ? new Prisma.Decimal(regla.ingresoMax) : null,
+          tipo: regla.tipo,
+          montoFijo: regla.montoFijo != null ? new Prisma.Decimal(regla.montoFijo) : null,
+          porcentaje: regla.porcentaje ?? null,
+          prioridad: regla.prioridad,
+          activo: true,
+        },
+      });
+    }
+  }
+  console.log(`✅ Convocatorias creadas (${definicionesConvocatorias.length}) con documentos, formulario y montos`);
 
   // ==========================================
   // ASISTENTE IA - BASE DE CONOCIMIENTO (US-37/US-39)
@@ -742,7 +1240,7 @@ async function main() {
   const conocimiento = [
     {
       titulo: '¿Qué es una beca?',
-      contenido: 'Una beca es un apoyo económico otorgado al estudiante para cubrir gastos de estudios, como matrícula, colegiatura o materiales. En EDUVIAGT el Ministerio de Educación administra las becas mediante convocatorias públicas.',
+      contenido: 'Una beca es un apoyo económico otorgado al estudiante para cubrir gastos de estudios, como matrícula, colegiatura o materiales. En EDUVIAGT las becas se administran mediante convocatorias públicas.',
       tags: ['beca', 'definicion', 'que es'],
     },
     {
@@ -767,12 +1265,12 @@ async function main() {
     },
     {
       titulo: 'Estados de una solicitud',
-      contenido: 'Una solicitud pasa por los estados: BORRADOR, ENVIADA, EN_REVISION, EVALUADA, APROBADA y RECHAZADA. Si un documento es rechazado, la solicitud vuelve a necesitar correcciones antes de ser enviada nuevamente.',
+      contenido: 'Una solicitud pasa por los estados: BORRADOR, ENVIADA, EN_REVISION, CORRECCION, EVALUADA, APROBADA y RECHAZADA. Si un documento es rechazado, la solicitud vuelve a necesitar correcciones antes de ser enviada nuevamente.',
       tags: ['estados', 'solicitud', 'borrador', 'enviada', 'aprobada', 'rechazada'],
     },
     {
       titulo: 'Documentos requeridos típicos',
-      contenido: 'Los documentos solicitados típicamente son: certificado académico, constancia de inscripción, DPI o constancia de identidad, comprobante de ingresos familiares y carta de recomendación. Cada convocatoria define su propio listado obligatorio y opcional.',
+      contenido: 'Los documentos solicitados típicamente son: certificado académico, constancia de inscripción, copia de DPI, comprobante de ingresos familiares y carta de recomendación. Cada convocatoria define su propio listado obligatorio y opcional.',
       tags: ['documentos', 'certificado', 'constancia', 'dpi'],
     },
     {
@@ -822,18 +1320,18 @@ async function main() {
     },
     {
       titulo: 'Beca de excelencia académica',
-      contenido: 'La beca de excelencia académica está dirigida a estudiantes con alto promedio (generalmente 85 puntos o más). Incluye apoyo para matrícula y una asignación mensual. Debes presentar certificado académico y constancia de inscripción.',
+      contenido: 'La beca de excelencia académica está dirigida a estudiantes universitarios con alto promedio (generalmente 85 puntos o más). Incluye apoyo para matrícula, colegiatura y una asignación mensual de Q800.00. Debes presentar certificado académico, constancia de inscripción, copia de DPI y comprobante de ingresos familiares.',
       tags: ['excelencia', 'promedio', '85', 'matrícula'],
     },
     {
-      titulo: 'Beca de permanencia',
-      contenido: 'La beca de permanencia apoya a estudiantes que mantienen un rendimiento académico satisfactorio y demuestran necesidad socioeconómica. El perfil financiero es clave en este tipo de beca.',
+      titulo: 'Beca de permanencia universitaria',
+      contenido: 'La beca de permanencia apoya a estudiantes que mantienen un rendimiento académico satisfactorio y demuestran necesidad socioeconómica. Cubre la matrícula del ciclo en curso y entrega Q500.00 mensuales. El perfil financiero es clave en este tipo de beca.',
       tags: ['permanencia', 'rendimiento', 'socioeconomico'],
     },
     {
-      titulo: 'Criterios de evaluación de la beca 2',
-      contenido: 'La beca 2 evalúa: rendimiento académico (peso 50%), situación socioeconómica (peso 30%) y actividad extracurriculares (peso 20%). Los puntajes se calculan sobre 100.',
-      tags: ['beca 2', 'criterios', 'rendimiento', 'socioeconomico', 'extracurricular', 'pesos'],
+      titulo: 'Criterios de evaluación por beca',
+      contenido: 'Cada beca define sus propios criterios y pesos: la Beca de Excelencia evalúa rendimiento académico (50%), situación socioeconómica (30%) y actividades extracurriculares (20%); la Beca de Permanencia evalúa desempeño académico (45%), necesidad socioeconómica (35%) y participación comunitaria (20%).',
+      tags: ['criterios', 'pesos', 'rendimiento', 'socioeconomico', 'extracurricular'],
     },
     {
       titulo: 'Perfil académico',
@@ -851,18 +1349,18 @@ async function main() {
       tags: ['editar', 'enviada', 'modificar', 'correcciones'],
     },
     {
-      titulo: '¿Cancela o eliminar una solicitud?',
+      titulo: '¿Se puede cancelar o eliminar una solicitud?',
       contenido: 'Mientras la solicitud esté en BORRADOR puedes eliminar documentos y no enviarla. Una vez enviada, la solicitud se procesa y no puede cancelarse desde el portal; el estado final llegará tras la evaluación.',
       tags: ['cancelar', 'eliminar', 'solicitud'],
     },
     {
       titulo: 'Contraseña olvidada',
-      contenido: 'Si olvidaste tu contraseña, contacta al administrador del sistema o al personal de soporte del Ministerio de Educación para restablecer el acceso a tu cuenta.',
+      contenido: 'Si olvidaste tu contraseña, contacta al administrador del sistema o al personal de soporte para restablecer el acceso a tu cuenta.',
       tags: ['contraseña', 'olvidada', 'password', 'soporte'],
     },
     {
       titulo: 'Soporte y contactos',
-      contenido: 'Para dudas sobre tu postulación contacta al equipo de EDUVIAGT del Ministerio de Educación durante horario de atención. El sistema registra cada acción sensible para auditoría.',
+      contenido: 'Para dudas sobre tu postulación contacta al equipo de EDUVIAGT durante el horario de atención. El sistema registra cada acción sensible para auditoría.',
       tags: ['soporte', 'contacto', 'ayuda', 'atencion'],
     },
     {
@@ -872,7 +1370,7 @@ async function main() {
     },
     {
       titulo: 'Roles del sistema',
-      contenido: 'EDUVIAGT tiene los roles ADMIN, POSTULANTE, EVALUADOR, COORDINADOR_COMITE y MIEMBRO_COMITE. Cada rol tiene permisos asignados; el ADMIN gestiona roles y permisos.',
+      contenido: 'EDUVIAGT tiene los roles ADMIN, POSTULANTE, EVALUADOR, COORDINADOR_COMITE, MIEMBRO_COMITE y STAFF. Cada rol tiene permisos asignados; el ADMIN gestiona roles y permisos.',
       tags: ['roles', 'permisos', 'admin', 'evaluador', 'coordinador', 'miembro'],
     },
     {
@@ -902,7 +1400,7 @@ async function main() {
     },
     {
       titulo: 'Niveles académicos válidos',
-      contenido: 'Las becas pueden estar dirigidas a niveles como básico, diversificado, técnico o universitario. Para becas de "otro" nivel puedes indicarlo manualmente en el perfil académico.',
+      contenido: 'Las becas pueden estar dirigidas a niveles como primario, básico, diversificado, secundario, técnico o universitario. Para becas de "otro" nivel puedes indicarlo manualmente en el perfil académico.',
       tags: ['niveles', 'basico', 'diversificado', 'tecnico', 'universitario'],
     },
   ];
@@ -914,10 +1412,16 @@ async function main() {
     if (existente) {
       await prisma.asistenteBaseConocimiento.update({
         where: { id: existente.id },
-        data: { contenido: kb.contenido, tags: kb.tags, activo: true },
+        data: {
+          contenido: kb.contenido,
+          tags: kb.tags,
+          activo: true,
+        },
       });
     } else {
-      await prisma.asistenteBaseConocimiento.create({ data: kb });
+      await prisma.asistenteBaseConocimiento.create({
+        data: { ...kb, activo: true },
+      });
     }
   }
   console.log('✅ Base de conocimiento del asistente creada (US-37/US-39)');

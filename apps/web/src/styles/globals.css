@@ -21,6 +21,40 @@ body {
   background: rgb(var(--background-rgb));
 }
 
+/*
+ * Foco visible y coherente en TODO el portal (WCAG 2.2 AA, 2.4.7/2.4.11).
+ * Antes cada control definía su propio anillo, y los que no lo hacían se
+ * quedaban sin indicador de foco al navegar con teclado.
+ */
+:focus-visible {
+  outline: 3px solid #18233a;
+  outline-offset: 2px;
+  border-radius: 0;
+}
+
+/* El anillo global no debe duplicar el de los controles que ya lo traen. */
+.rounded-brutal:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline-offset: 2px;
+}
+
+/*
+ * Si la persona pediu menos movimiento, se desactivan las animaciones y
+ * transiciones no esenciales.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Brutalista: fondo con trama de puntos sutil en todo el body */
 .brut-body {
   background-color: var(--brut-papel, #f5f7fa);

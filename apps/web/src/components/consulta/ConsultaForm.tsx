@@ -53,7 +53,7 @@ export function ConsultaForm() {
           />
         </div>
         <Button type="submit" disabled={cargando}>
-          {cargando ? 'Consultando...' : 'Consultar'}
+          {cargando ? 'Consultando…' : 'Consultar'}
         </Button>
       </form>
 

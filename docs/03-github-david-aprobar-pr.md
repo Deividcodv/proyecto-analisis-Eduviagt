@@ -196,8 +196,18 @@ Antes de cerrar la semana, crea/revisa (con base en los PRs del sprint):
 - `doc/scrum/sprint-N/retrospective.md` — qué mejorar.
 - `doc/scrum/sprint-N/daily-log.md` — avance diario de cada dev.
 
+<<<<<<< HEAD
 > En los sprints de la simulación (S1–S3) las carpetas son `doc/scrum/recreacion-sprint-1-cimientos/`,
 > `doc/scrum/recreacion-sprint-2-portal-publico/` y `doc/scrum/recreacion-sprint-3-login-dashboard/`.
+=======
+> En los sprints de la simulación (S1–S3 y S5) las carpetas son `doc/scrum/recreacion-sprint-1-cimientos/`,
+> `doc/scrum/recreacion-sprint-2-portal-publico/`, `doc/scrum/recreacion-sprint-3-login-dashboard/` y
+> `doc/scrum/recreacion-sprint-5-reportes-ia/`. En S2, S3 y S5 cada una trae un
+> `README-COLABORADORES-SN.md` que es la fuente de la verdad para aprobar: cada dev copia con
+> `git checkout <commit-fuente> -- <rutas>` y se le exige `git diff <commit-fuente> -- <módulo>`
+> **vacío**. Ojo cuando el commit fuente es un *merge* (como `ab66393` en S5): el diff se compara
+> contra el primer padre (`ab66393^1`).
+>>>>>>> sigeb-prod/develop
 
 ---
 

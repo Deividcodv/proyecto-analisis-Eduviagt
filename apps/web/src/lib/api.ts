@@ -61,6 +61,24 @@ export interface Convocatoria {
   nivelAcademico?: NivelAcademicoResumen | null;
   beca: Beca;
   _count?: { solicitudes?: number };
+  // Montos (Sprint 8 - US-801)
+  moneda?: string;
+  montoBase?: string | null;
+  permiteParcial?: boolean;
+  usarReglasMonto?: boolean;
+}
+
+/** Regla de cálculo del monto por tramo de ingreso familiar (Sprint 8). */
+export interface ConvocatoriaReglaMonto {
+  id: string;
+  nombre: string;
+  ingresoMin?: string | null;
+  ingresoMax?: string | null;
+  tipo: 'FIJO' | 'PORCENTAJE' | 'COMPLETO';
+  montoFijo?: string | null;
+  porcentaje?: number | null;
+  prioridad: number;
+  activo: boolean;
 }
 
 export interface DocumentoTipo {
@@ -83,6 +101,7 @@ export interface CriterioEvaluacion {
 export interface ConvocatoriaDetalle extends Convocatoria {
   documentosRequeridos: ConvocatoriaDocRequerido[];
   formulario?: CampoFormulario[] | null;
+  reglasMonto?: ConvocatoriaReglaMonto[];
   beca: Beca & { criteriosEvaluacion: CriterioEvaluacion[] };
 }
 
@@ -90,6 +109,10 @@ export interface HistorialEstado {
   estado: string;
   comentario: string | null;
   fecha: string;
+  /** Acción realizada (Sprint 8 - US-805). */
+  accion?: string | null;
+  /** Resultado de la acción: EXITOSO | RECHAZADO | ERROR. */
+  resultado?: string | null;
 }
 
 export interface Solicitud {
@@ -99,6 +122,10 @@ export interface Solicitud {
   correccionesCount: number;
   createdAt: string;
   updatedAt: string;
+  // Montos (Sprint 8 - US-801). Vienen como texto para no perder decimales.
+  montoOtorgable?: string | null;
+  montoAprobado?: string | null;
+  montoOrigenCalculo?: string | null;
   convocatoria: {
     id: string;
     nombre: string;
@@ -149,6 +176,7 @@ export interface SolicitudDetalle extends Solicitud {
 }
 
 export interface SolicitudChecklistDocumento {
+  documentoId: string | null;
   documentoTipoId: string;
   nombre: string;
   obligatorio: boolean;
@@ -361,6 +389,9 @@ export async function http<T>(
   const res = await fetch(`${API_URL}${path}`, {
     method,
     headers,
+    // Sin esto, Next.js guarda las respuestas GET en su Data Cache y las sirve
+    // para siempre: una convocatoria recién publicada no aparecía en el portal.
+    cache: 'no-store',
     body:
       body === undefined
         ? undefined
@@ -373,7 +404,7 @@ export async function http<T>(
     const data = await res.json().catch(() => null);
     const mensaje =
       (data as { message?: string } | null)?.message ??
-      `La API respondió con estado ${res.status}`;
+      `No pudimos completar la solicitud. Intenta de nuevo.`;
     throw new Error(Array.isArray(mensaje) ? mensaje.join(', ') : mensaje);
   }
 
@@ -393,7 +424,11 @@ export async function httpData<T>(
   return res.data;
 }
 
-export function formatearFecha(fecha: string) {
+export function formatearFecha(fecha?: string | null) {
+  // La API puede devolver null (fechas opcionales). Sin este guardia,
+  // new Date(null) daba el 1 de enero de 1970 y la web lo mostraba tal cual.
+  if (!fecha) return 'Sin fecha';
+
   const d = new Date(fecha);
   if (Number.isNaN(d.getTime())) return fecha;
   return d.toLocaleDateString('es-GT', {
@@ -401,4 +436,28 @@ export function formatearFecha(fecha: string) {
     month: 'long',
     year: 'numeric',
   });
+}
+
+/**
+ * ¿Se puede postular a esta convocatoria ahora mismo?
+ * Debe estar ABIERTA y dentro de su ventana de fechas. Las convocatorias sin
+ * fechas definidas se consideran siempre abiertas.
+ */
+export function convocatoriaAbierta(
+  convocatoria: Pick<Convocatoria, 'estado' | 'fechaApertura' | 'fechaCierre'>,
+  ahora: Date = new Date(),
+): boolean {
+  if (convocatoria.estado !== 'ABIERTA') return false;
+
+  const apertura = convocatoria.fechaApertura
+    ? new Date(convocatoria.fechaApertura)
+    : null;
+  const cierre = convocatoria.fechaCierre
+    ? new Date(convocatoria.fechaCierre)
+    : null;
+
+  if (apertura && ahora < apertura) return false;
+  if (cierre && ahora > cierre) return false;
+
+  return true;
 }

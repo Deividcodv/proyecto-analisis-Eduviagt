@@ -1,5 +1,6 @@
 import {
   Injectable,
+  BadRequestException,
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
@@ -132,25 +133,38 @@ export class RolesService {
   ) {
     await this.findById(rolId);
 
-    await this.prisma.rolPermiso.deleteMany({
-      where: { rolId },
-    });
+    // La tabla RolPermiso tiene @@unique([rolId, permisoId]). Sin deduplicar,
+    // un ID repetido provocaba un error P2002 que llegaba al cliente como 500.
+    const permisoIds = [...new Set(dto.permisoIds)];
 
-    const rolPermisos = dto.permisoIds.map((permisoId) => ({
-      rolId,
-      permisoId,
-    }));
+    try {
+      // Transacción: antes se borraba y se recreaba fuera de ella, así que si
+      // createMany() fallaba el rol se quedaba con CERO permisos.
+      await this.prisma.$transaction(async (tx) => {
+        await tx.rolPermiso.deleteMany({ where: { rolId } });
 
-    await this.prisma.rolPermiso.createMany({
-      data: rolPermisos,
-    });
+        if (permisoIds.length > 0) {
+          await tx.rolPermiso.createMany({
+            data: permisoIds.map((permisoId) => ({ rolId, permisoId })),
+          });
+        }
+      });
+    } catch (error) {
+      const code = (error as { code?: string })?.code;
+      if (code === 'P2002' || code === 'P2003') {
+        throw new BadRequestException(
+          'No se pudieron guardar los permisos. Revisa que todos existan e inténtalo de nuevo.',
+        );
+      }
+      throw error;
+    }
 
     await this.audit.log({
       usuarioId: usuario.id,
       accion: 'asignar-permisos',
       entidad: 'rol',
       entidadId: rolId,
-      detalle: { permisoIds: dto.permisoIds },
+      detalle: { permisoIds },
     });
 
     return this.findById(rolId);

@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # EDUVIA-gt
+=======
+# SIGEB
+>>>>>>> sigeb-prod/develop
 
 > Nombre de trabajo sugerido . Si el equipo prefiere otro
 > nombre, basta con reemplazarlo aquí; el resto del documento no depende del nombre.

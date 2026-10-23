@@ -19,6 +19,7 @@ export function PasoDocumentos({
   onError: (msg: string) => void;
 }) {
   const [checklist, setChecklist] = useState<SolicitudChecklist | null>(null);
+  const [cargando, setCargando] = useState(true);
   const [subiendo, setSubiendo] = useState<string | null>(null);
   const [confirmTipo, setConfirmTipo] = useState<{
     tipoId: string;
@@ -27,6 +28,7 @@ export function PasoDocumentos({
   } | null>(null);
 
   const cargar = async () => {
+    setCargando(true);
     try {
       const data = await fetchConToken<SolicitudChecklist>(
         `/solicitudes/${solicitudId}/checklist`,
@@ -36,6 +38,8 @@ export function PasoDocumentos({
       onError(
         e instanceof Error ? e.message : 'No se pudo cargar el checklist',
       );
+    } finally {
+      setCargando(false);
     }
   };
 
@@ -86,11 +90,29 @@ export function PasoDocumentos({
     }
   };
 
-  if (!checklist) {
+  if (cargando && !checklist) {
     return (
       <div className="flex justify-center py-20">
         <Spinner />
       </div>
+    );
+  }
+
+  if (!checklist) {
+    return (
+      <Card className="text-center">
+        <p className="text-lg font-bold text-brutal-tinta">
+          No se pudieron cargar los documentos requeridos
+        </p>
+        <p className="mt-1 text-sm text-brutal-tinta/70">
+          Revisa tu conexión e inténtalo de nuevo.
+        </p>
+        <div className="mt-4 flex justify-center">
+          <Button variant="ghost" onClick={cargar}>
+            Reintentar
+          </Button>
+        </div>
+      </Card>
     );
   }
 
@@ -162,9 +184,9 @@ export function PasoDocumentos({
               <div className="flex flex-wrap items-center gap-3">
                 {doc.cargado ? (
                   <>
-                    <label className="cursor-pointer rounded-brutal border-[3px] border-brutal-tinta bg-brutal-cyan px-4 py-2 font-brut text-sm font-bold uppercase tracking-wide text-brutal-tinta shadow-brutal-sm transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none">
+                    <label className="cursor-pointer rounded-brutal border-[3px] border-brutal-tinta bg-sigeb-blue-dark px-4 py-2 font-brut text-sm font-bold uppercase tracking-wide text-brutal-blanco shadow-brutal-sm transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none">
                       {subiendo === doc.documentoTipoId
-                        ? 'Subiendo...'
+                        ? 'Subiendo…'
                         : rechazado
                           ? 'Subir de nuevo'
                           : 'Reemplazar'}
@@ -200,9 +222,9 @@ export function PasoDocumentos({
                     </Button>
                   </>
                 ) : (
-                  <label className="cursor-pointer rounded-brutal border-[3px] border-brutal-tinta bg-brutal-cyan px-4 py-2 font-brut text-sm font-bold uppercase tracking-wide text-brutal-tinta shadow-brutal-sm transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none">
+                  <label className="cursor-pointer rounded-brutal border-[3px] border-brutal-tinta bg-sigeb-blue-dark px-4 py-2 font-brut text-sm font-bold uppercase tracking-wide text-brutal-blanco shadow-brutal-sm transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none">
                     {subiendo === doc.documentoTipoId
-                      ? 'Subiendo...'
+                      ? 'Subiendo…'
                       : 'Subir archivo'}
                     <input
                       type="file"

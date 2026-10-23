@@ -8,6 +8,7 @@ import {
   IsBoolean,
   IsObject,
   Min,
+  MinLength,
   Max,
   MaxLength,
 } from 'class-validator';
@@ -24,6 +25,10 @@ const TRANSICIONES: SolicitudTransicion[] = [
   'evaluar',
   'aprobar',
   'rechazar',
+  // Sprint 8 (US-802/803): segunda instancia de aprobación.
+  'solicitar_segunda_aprobacion',
+  'aprobar_segunda',
+  'devolver_a_revision',
 ];
 
 export class CreateSolicitudDto {
@@ -37,10 +42,41 @@ export class TransicionSolicitudDto {
   @IsIn(TRANSICIONES)
   accion!: SolicitudTransicion;
 
-  @ApiPropertyOptional({ description: 'Comentario registrado en el historial' })
+  @ApiPropertyOptional({
+    description:
+      'Comentario registrado en el historial. Es obligatorio en "rechazar" y "devolver_a_revision".',
+  })
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   comentario?: string;
+}
+
+/**
+ * Ajuste manual del monto otorgable (Sprint 8 - US-801). Solo para quien
+ * tenga el permiso `solicitud:montos-override` y con justificación
+ * obligatoria: queda registrada en la bitácora.
+ */
+export class OverrideMontoDto {
+  @ApiProperty({
+    description: 'Monto a otorgar, en quetzales',
+    example: 12500,
+  })
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  monto!: number;
+
+  @ApiProperty({
+    description: 'Justificación del ajuste (queda registrada en la bitácora)',
+    example: 'Ajuste por recálculo de ingreso familiar verificado.',
+  })
+  @IsString()
+  @MinLength(10, {
+    message: 'Escribe la justificación del ajuste (mínimo 10 caracteres)',
+  })
+  @MaxLength(500)
+  justificacion!: string;
 }
 
 export class SolicitarCorreccionDto {

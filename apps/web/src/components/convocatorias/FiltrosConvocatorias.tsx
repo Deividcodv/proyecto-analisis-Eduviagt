@@ -73,7 +73,7 @@ export function FiltrosConvocatorias({ becas, niveles }: FiltrosConvocatoriasPro
               id="busqueda"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Nombre de convocatoria o beca..."
+              placeholder="Nombre de convocatoria o beca…"
               className="w-full rounded-brutal border-[3px] border-brutal-tinta bg-brutal-blanco px-3 py-2 text-sm text-brutal-tinta placeholder:text-brutal-tinta/50 focus:bg-brutal-cyan/10 focus:outline-none"
             />
           </div>

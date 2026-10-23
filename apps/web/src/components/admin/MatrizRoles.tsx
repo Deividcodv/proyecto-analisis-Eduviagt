@@ -136,6 +136,7 @@ export function MatrizRoles() {
                             onChange={(e) =>
                               togglePermiso(rol.id, permiso.id, e.target.checked)
                             }
+                            aria-label={`${permiso.accion} para el rol ${rol.nombre}`}
                             className="h-5 w-5 accent-brutal-tinta"
                           />
                         </td>
@@ -156,7 +157,7 @@ export function MatrizRoles() {
           <div key={rol.id} className="flex items-center gap-2">
             <span className="brut-label text-sm font-bold text-brutal-tinta">{rol.nombre}</span>
             <Button onClick={() => guardar(rol.id)} disabled={enviando} className="!px-4 !py-2 text-xs">
-              {enviando ? 'Guardando...' : 'Guardar'}
+              {enviando ? 'Guardando…' : 'Guardar'}
             </Button>
           </div>
         ))}

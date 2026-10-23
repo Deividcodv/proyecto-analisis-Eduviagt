@@ -21,7 +21,7 @@ const styles: Record<Variant, string> = {
   ghost:
     'border-[3px] border-brutal-tinta bg-transparent text-brutal-tinta hover:bg-brutal-cyan hover:border-brutal-tinta',
   danger:
-    'border-[3px] border-brutal-tinta bg-brutal-rojo text-brutal-tinta shadow-brutal-sm hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none',
+    'border-[3px] border-brutal-tinta bg-brutal-rojo text-brutal-blanco shadow-brutal-sm hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none',
 };
 
 export function Button({

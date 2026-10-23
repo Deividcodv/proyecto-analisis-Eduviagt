@@ -57,6 +57,9 @@ export function PanelUsuarios() {
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudieron cargar los usuarios');
+      // Sin esto la lista queda en `null` y la vista muestra el spinner para
+      // siempre, tragándose el mensaje de error.
+      setUsuarios([]);
     }
   }, []);
 
