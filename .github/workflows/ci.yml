@@ -272,7 +272,7 @@ jobs:
             git remote set-url origin "$DEPLOY_REPO_URL"
             git fetch origin --prune
             git checkout "$RAMA"
-            git pull --ff-only origin "$RAMA"
+            git reset --hard origin/"$RAMA"
             npm ci
             export DATABASE_URL="$(grep -m1 '^DATABASE_URL=' apps/api/.env | cut -d= -f2-)"
             cd apps/api
