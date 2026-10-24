@@ -1,19 +1,19 @@
-# SIGEB — Caza de bugs y revisión (API + Web) — Plan de implementación
+﻿# EDUVIAGT — Caza de bugs y revisión (API + Web) — Plan de implementación
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Descubrir y corregir errores no detectados (comportamiento, contenido/idioma, visual/accesibilidad) en API y web de SIGEB, y entregar sugerencias de mejora priorizadas.
+**Goal:** Descubrir y corregir errores no detectados (comportamiento, contenido/idioma, visual/accesibilidad) en API y web de EDUVIAGT, y entregar sugerencias de mejora priorizadas.
 
-**Architecture:** Investigación por frentes. Primero caja blanca y funcional del API contra la BD `sigeb_test`; luego funcional del front con Playwright; después revisión de contenido y accesibilidad; finalmente triaje, corrección y verificación. Cobertura antes/después como métrica de apoyo, no como fin.
+**Architecture:** Investigación por frentes. Primero caja blanca y funcional del API contra la BD `EDUVIAGT_test`; luego funcional del front con Playwright; después revisión de contenido y accesibilidad; finalmente triaje, corrección y verificación. Cobertura antes/después como métrica de apoyo, no como fin.
 
 **Tech Stack:** NestJS 10, Prisma 5, PostgreSQL 16, Jest, Supertest, Next.js 14, React 18, Playwright, axe-core.
 
-**Spec:** `docs/superpowers/specs/2026-10-16-sigeb-caza-bugs-revision-design.md`
+**Spec:** `docs/superpowers/specs/2026-10-16-EDUVIAGT-caza-bugs-revision-design.md`
 
 ## Global Constraints
 
 - Idioma de contenido y mensajes: **español (Guatemala)**, entendible de niño a adulto.
-- Pruebas funcionales solo contra `sigeb_test` (`postgresql://sigeb:sigeb123@localhost:5432/sigeb_test`), vía `apps/api/.env.test`.
+- Pruebas funcionales solo contra `EDUVIAGT_test` (`postgresql://EDUVIAGT:EDUVIAGT123@localhost:5432/EDUVIAGT_test`), vía `apps/api/.env.test`.
 - Unit tests: `.spec.ts` junto al código. Integración: `*.integration-spec.ts` + Supertest. E2E front: `apps/web/e2e/`.
 - Cobertura mínima: líneas 70%, funciones 70%, statements 70%, branches 60%.
 - Rama de trabajo: `test/bug-hunt-revision`. Committear solo archivos relevantes (el árbol tiene ruido LF→CRLF).
@@ -40,13 +40,13 @@ Las clases de entrada/condición que el spec implica pero que ninguna prueba act
 - Modify (si aplica): `apps/api/package.json` (scripts `test:unit`/`test:integration`/`test:cov` según estrategia)
 
 **Interfaces:**
-- Produces: reporte de cobertura baseline; confirmación de que las E2E existentes corren contra `sigeb_test`.
+- Produces: reporte de cobertura baseline; confirmación de que las E2E existentes corren contra `EDUVIAGT_test`.
 
 - [ ] **Step 1:** Crear rama y baseline de cobertura
   Run: `cd apps/api && npx jest --coverage`
   Expected: 18 suites / 155 tests PASS + tabla de cobertura.
 - [ ] **Step 2:** Generar cliente Prisma y correr E2E existentes
-  Run: `cd apps/api && npx prisma generate && $env:DATABASE_URL="postgresql://sigeb:sigeb123@localhost:5432/sigeb_test"; npm run test:e2e`
+  Run: `cd apps/api && npx prisma generate && $env:DATABASE_URL="postgresql://EDUVIAGT:EDUVIAGT123@localhost:5432/EDUVIAGT_test"; npm run test:e2e`
   Expected: registrar qué pasa y qué falla (línea base de fallas reales).
 - [ ] **Step 3:** Volcar resultados a `docs/pruebas/00-baseline.md`
 - [ ] **Step 4:** Commit del baseline
@@ -75,10 +75,10 @@ Las clases de entrada/condición que el spec implica pero que ninguna prueba act
 - Create: `docs/pruebas/20-funcional-api.md`
 
 **Interfaces:**
-- Consumes: `sigeb_test` migrada + seed.
+- Consumes: `EDUVIAGT_test` migrada + seed.
 - Produces: matriz de autorización por rol; bugs de validación/RBAC/flujo.
 
-- [ ] **Step 1:** Asegurar migración + seed en `sigeb_test`.
+- [ ] **Step 1:** Asegurar migración + seed en `EDUVIAGT_test`.
 - [ ] **Step 2:** Matriz RBAC: cada rol (POSTULANTE, EVALUADOR, COMITE, COORDINADOR, ADMIN) contra endpoints protegidos → esperar 401/403 donde corresponda.
 - [ ] **Step 3:** Validación de DTOs (campos faltantes/ inválidos → 400) y transiciones de estado inválidas → 409/400.
 - [ ] **Step 4:** Flujo completo de beca (reusar/extender `flujo-beca.e2e-spec.ts`).

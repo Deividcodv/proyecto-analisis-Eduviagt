@@ -1,4 +1,4 @@
-# SIGEB — Informe de caja blanca (Task 2)
+﻿# EDUVIAGT — Informe de caja blanca (Task 2)
 
 Rama: `test/bug-hunt-revision` — desde BASE `a05dd4f`.
 Fecha: 2026-10-16 · Enfoque: cubrir ramas en 0% y correrlas con tests rojos.

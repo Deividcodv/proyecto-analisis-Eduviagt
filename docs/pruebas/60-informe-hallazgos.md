@@ -1,4 +1,4 @@
-# SIGEB — Informe consolidado de hallazgos y correcciones (Task 7)
+﻿# EDUVIAGT — Informe consolidado de hallazgos y correcciones (Task 7)
 
 Rama: `test/bug-hunt-revision` · Fecha: 2026-10-16 · Base: `b62070b`
 Alcance: API (`apps/api`) y web (`apps/web`) — correctitud, contenido e idioma,
@@ -106,7 +106,7 @@ páginas** (12 públicas + 6 con sesión) (ver §6).
 | ID | Sev. | Título | Motivo / recomendación |
 |---|---|---|---|
 | F-001 | Media | Cobertura global bajo los mínimos propios (43% vs 70%) y sin `coverageThreshold` | Elevar la cobertura es un trabajo aparte y grande. **Recomendación:** fijar `coverageThreshold` en el valor actual y subirlo de forma incremental (evita que siga bajando sin bloquear hoy). |
-| F-002 | Alta | Las E2E **no reinician** `sigeb_test` → no idempotentes | Requiere una base efímera por corrida (ver S-015). Cambio de infraestructura, fuera del alcance de esta campaña. |
+| F-002 | Alta | Las E2E **no reinician** `EDUVIAGT_test` → no idempotentes | Requiere una base efímera por corrida (ver S-015). Cambio de infraestructura, fuera del alcance de esta campaña. |
 | F-005 | Baja | 53 archivos con ruido LF→CRLF; `.gitattributes` incompleto | Es una particularidad del entorno Windows; normalizarlo genera un diff masivo. Recomendación: añadir `* text=auto eol=lf` en un PR dedicado. |
 
 > **Nota (S-012, Media):** hay una **autorización incoherente** entre

@@ -1,7 +1,7 @@
-# SIGEB — Informe funcional del API (Task 3)
+﻿# EDUVIAGT — Informe funcional del API (Task 3)
 
 Rama: `test/bug-hunt-revision` · Fecha: 2026-10-16
-Enfoque: caja negra contra `sigeb_test` — autorización por rol, validación de
+Enfoque: caja negra contra `EDUVIAGT_test` — autorización por rol, validación de
 entrada y máquinas de estado.
 
 ## 1. Qué se hizo

@@ -1,4 +1,4 @@
-# SIGEB — Informe de contenido e idioma (Task 5)
+﻿# EDUVIAGT — Informe de contenido e idioma (Task 5)
 
 Rama: `test/bug-hunt-revision` · Fecha: 2026-10-16
 Enfoque: revisión de **todos los textos que ve el usuario** en el portal.
