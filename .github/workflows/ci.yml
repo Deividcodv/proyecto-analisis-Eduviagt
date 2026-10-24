@@ -316,7 +316,7 @@ jobs:
   # Este job pasa si api-tests pasa, satisfaciendo la regla sin tocar configuración.
   # ---------------------------------------------------------------------------
   lint-and-test:
-    name: lint-and-test (compat)
+    name: lint-and-test
     needs: api-tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
