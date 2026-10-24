@@ -94,7 +94,7 @@ lugares es la forma más fácil de que se desincronicen.
 
 Hoy el servidor se actualiza desde `sigeb-prod`. Cuando el repositorio del
 equipo (`proyecto-analisis-Eduviagt`) tenga ya la réplica completa —la guía
-está en `docs/06-jose-replica-sigeb-prod.md`—, se añade la variable
+, se añade la variable
 `DEPLOY_REPO_URL` en el entorno `staging` de GitHub:
 
 ```text

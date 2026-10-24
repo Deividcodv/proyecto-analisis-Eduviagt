@@ -327,4 +327,142 @@ mismo (400).
 
 ---
 
-*Última actualización: 2026-09-02*
+---
+
+## ADR-012: Segunda aprobación por monto (Sprint 8 - US-802)
+
+**Estado:** Aceptado
+
+**Fecha:** 2026-10-23
+
+**Contexto:**
+Solicitudes con montos altos (> Q10,000) requieren una segunda firma para aprobar. La segunda firma debe ser de una persona distinta a quien aprobó en primera instancia.
+
+**Decisión:**
+Implementar un estado `PENDIENTE_SEGUNDA_APROBACION` en la máquina de estados de solicitudes. La segunda firma se valida con `AuthzService.assertSegundaAprobacion()`, que verifica que el usuario sea ADMIN o JEFE_BECAS y que no sea la misma persona que firmó la primera. Cada firma se registra en `SolicitudAprobacion`.
+
+**Consecuencias:**
+- Separación real de autoridad (no solo de rol).
+- Trazabilidad completa de cada firma (nivel, acción, resultado, IP, fecha).
+- Notificación diferenciada: la primera firma notifica "pendiente de segunda aprobación", no "aprobada".
+
+---
+
+## ADR-013: Montos flexibles con tramos por ingreso (Sprint 8 - US-801)
+
+**Estado:** Aceptado
+
+**Fecha:** 2026-10-23
+
+**Contexto:**
+El monto otorgable depende del ingreso familiar del postulante. Se necesita un sistema flexible que calcule el monto según tramos configurables.
+
+**Decisión:**
+Modelo `ConvocatoriaReglaMonto` con tramos por ingreso familiar. Tipos de cálculo: `FIJO` (monto fijo), `PORCENTAJE` (porcentaje del monto base), `COMPLETO` (monto base completo). El cálculo se hace al evaluar, con trazabilidad del origen (`REGLA`, `MONTO_BASE`, `OVERRIDE`), fecha y responsable. Override manual con justificación obligatoria.
+
+**Consecuencias:**
+- Configuración flexible por convocatoria.
+- Trazabilidad completa del cálculo.
+- Soporte para ajustes manuales con auditoría.
+
+---
+
+## ADR-014: Bitácora inmutable del sistema (Sprint 8 - US-803)
+
+**Estado:** Aceptado
+
+**Fecha:** 2026-10-23
+
+**Contexto:**
+Se necesita un registro completo de todas las acciones relevantes del sistema: quién, cuándo, qué y con qué resultado.
+
+**Decisión:**
+Modelo `BitacoraSistema` inmutable y de solo consulta. Se escribe dentro de la misma transacción que la acción que audita. Registra: actor (persona, rol, correo), fecha y hora, acción técnica y humana, resultado, IP, datos relevantes. Nunca hace fallar la operación de negocio (try/catch interno).
+
+**Consecuencias:**
+- Trazabilidad completa sin impacto en performance.
+- Inmutable: no existe endpoint para modificar o eliminar entradas.
+- Índices optimizados para consulta por fecha, actor, entidad y módulo.
+
+---
+
+## ADR-015: Eliminación de cuenta con anonimización (Sprint 8)
+
+**Estado:** Aceptado
+
+**Fecha:** 2026-10-23
+
+**Contexto:**
+Los usuarios deben poder eliminar su cuenta, pero sin romper la trazabilidad de las decisiones ya tomadas.
+
+**Decisión:**
+`POST /auth/eliminar-cuenta` exige contraseña y confirmación escrita. Anonimiza datos personales (nombres, email, CUI, etc.), borra documentos y archivos, y conserva con seudónimo lo necesario para justificar decisiones (solicitudes, evaluaciones, votos, decisiones, historial, auditoría). El campo `eliminadoAt` marca la cuenta como eliminada. El detalle de auditoría se sanea para no conservar CUI ni correo.
+
+**Consecuencias:**
+- Cumplimiento de privacidad sin perder trazabilidad.
+- Soft-delete: la fila se conserva, solo se anonimizan los datos personales.
+- Migración `usuario.eliminadoAt`.
+
+---
+
+## ADR-016: Accesibilidad WCAG 2.2 AA (Sprint 8)
+
+**Estado:** Aceptado
+
+**Fecha:** 2026-10-23
+
+**Contexto:**
+La plataforma debe cumplir WCAG 2.2 AA para ser accesible a todos los usuarios.
+
+**Decisión:**
+- Anillo de foco visible y coherente definido una vez en `globals.css`.
+- Respeto global de `prefers-reduced-motion`.
+- Enlace "Saltar al contenido principal" como primer elemento enfocable.
+- Menú lateral atrapa el foco mientras está abierto y lo devuelve al botón que lo abrió.
+- Chats anuncian mensajes nuevos, error y estado de carga.
+- Logotipo sin `alt` redundante.
+
+**Consecuencias:**
+- Cumplimiento de estándares de accesibilidad.
+- Mejor experiencia para usuarios con discapacidades.
+- Tests automatizados con axe sobre todas las páginas.
+
+---
+
+## ADR-017: Identidad Eduvi para el asistente (Sprint 8)
+
+**Estado:** Aceptado
+
+**Fecha:** 2026-10-23
+
+**Contexto:**
+El asistente de IA necesitaba una identidad propia y unificada entre el chat flotante y la sección de soporte.
+
+**Decisión:**
+El asistente pasa a llamarse **Eduvi**, con icono propio (libro abierto con estrella dorada) y un saludo único compartido entre el chat flotante y la sección de soporte. Ambas interfaces dicen lo mismo.
+
+**Consecuencias:**
+- Identidad unificada y reconocible.
+- Mejor experiencia de usuario.
+
+---
+
+## ADR-018: Perfil para todos los roles (Sprint 8)
+
+**Estado:** Aceptado
+
+**Fecha:** 2026-10-23
+
+**Contexto:**
+Los roles ADMIN, EVALUADOR, COORDINADOR_COMITE, MIEMBRO_COMITE y JEFE_BECAS no tenían acceso a su perfil ni a la configuración de sonido.
+
+**Decisión:**
+Todos los roles tienen enlace a "Mi perfil" y su panel propio. El backend ya lo permitía; se agregó el enlace en el frontend y la pestaña de volumen del sonido.
+
+**Consecuencias:**
+- Consistencia en la experiencia de usuario.
+- Acceso a preferencias de notificaciones para todos los roles.
+
+---
+
+*Última actualización: Sprint 8 (2026-10-23)*

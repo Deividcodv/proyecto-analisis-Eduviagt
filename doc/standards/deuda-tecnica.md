@@ -67,12 +67,14 @@ HTTPS. Es el punto de mayor riesgo abierto del proyecto.
 
 ---
 
-## 4. Trabajo de José en curso
+## 4. Estado de la réplica (completada en Sprint 8)
 
-La réplica de `sigeb-prod` en `proyecto-analisis-Eduviagt` está documentada en
-`docs/06-jose-replica-sigeb-prod.md`. Hasta que se complete, el repositorio
-del equipo no tiene el código de la segunda aprobación por monto, la
-privacidad, la accesibilidad ni la eliminación de cuenta.
+La réplica de `sigeb-prod` en `proyecto-analisis-Eduviagt` se completó en Sprint 8. El repositorio
+del equipo ahora incluye el código de la segunda aprobación por monto, la
+privacidad, la accesibilidad y la eliminación de cuenta.
+
+Se eliminó la documentación de proceso de réplica. La documentación restante
+refleja el estado actual del proyecto.
 
 ---
 

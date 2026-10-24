@@ -14,6 +14,7 @@ Esta carpeta contiene toda la documentación administrativa, técnica y de proce
 
 ### Scrum
 - [Product Backlog](scrum/product-backlog.md) — Todas las historias de usuario priorizadas
+- [Cómo trabajamos (Scrum)](scrum/como-trabajamos.md)
 - **Sprints:**
   - [Sprint 0 — Setup](scrum/sprint-0-setup/goal.md)
   - [Sprint 1 — Auth](scrum/sprint-1-auth/goal.md)
@@ -23,9 +24,12 @@ Esta carpeta contiene toda la documentación administrativa, técnica y de proce
   - [Sprint 5 — Reportes + IA](scrum/sprint-5-reportes-ia/goal.md)
   - [Sprint 6 — Portal Público](scrum/sprint-6-portal-publico/goal.md)
   - [Sprint 7 — Sistema Interno](scrum/sprint-7-sistema-interno/goal.md)
+  - [Sprint 8 — Segunda Aprobación, Montos, Bitácora](scrum/sprint-8-segunda-aprobacion/sprint-plan.md)
+  - [Sprint 9 — Mejoras Transversales](scrum/sprint-9-mejoras-transversales/goal.md)
 
 ### Arquitectura
 - [Decisiones arquitectónicas (ADR)](architecture/decisions.md)
+- [Principios SOLID](architecture/solid-principles.md)
 - [Contratos de API](architecture/api-contracts.md)
 - [Diagramas](architecture/diagrams.md)
 - [Schema de base de datos](architecture/database-schema.md)
@@ -41,10 +45,17 @@ Esta carpeta contiene toda la documentación administrativa, técnica y de proce
 - [Guía de setup](operations/setup-guide.md)
 - [Deployment](operations/deployment.md)
 - [Troubleshooting](operations/troubleshooting.md)
+- [Guía de inicio rápido](operations/guia-inicio-rapido.md)
+
+### Marca
+- [Manual de marca (SVG)](marca/marca.svg)
+- [Logotipo (SVG)](marca/logo.svg)
+- [Favicon (SVG)](marca/favicon.svg)
 
 ### Referencia
 - [Glosario](glossary.md)
 - [Changelog](changelog.md)
+- [Git y GitHub — conceptos básicos](git-github-basics.md)
 
 ---
 
@@ -57,4 +68,4 @@ Esta carpeta contiene toda la documentación administrativa, técnica y de proce
 | Metodología | Scrum (2 semanas/sprint) |
 | Stack | NestJS + Next.js + PostgreSQL + Prisma |
 | Repo | `github.com/<org>/Sigeb-v1.1` |
-| Última actualización | 2026-08-26 |
+| Última actualización | 2026-10-23 (Sprint 8 completo) |

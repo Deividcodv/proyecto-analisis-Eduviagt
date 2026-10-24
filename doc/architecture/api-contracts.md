@@ -104,6 +104,29 @@ Response 200:
 }
 ```
 
+### POST `/auth/eliminar-cuenta` (Sprint 8)
+**Requiere: autenticado**
+
+Exige contraseña y confirmación escrita. Anonimiza datos personales, borra documentos y archivos, conserva con seudónimo lo necesario para trazabilidad.
+
+Request:
+```json
+{
+  "password": "Password123!",
+  "confirmacion": "ELIMINAR MI CUENTA"
+}
+```
+
+Response 200:
+```json
+{
+  "message": "Cuenta eliminada correctamente"
+}
+```
+
+Response 400: Contraseña incorrecta o confirmación no coincide.
+Response 403: No autorizado.
+
 ### PATCH `/auth/perfil`
 **Requiere: autenticado**
 
@@ -244,6 +267,14 @@ Request:
 
 ### DELETE `/solicitudes/:id/documentos/:docId`
 **Permiso:** dueño
+
+### GET `/solicitudes/:id/documentos/:docId/descargar` (Sprint 8)
+**Permiso:** dueño o revisor
+
+Descarga segura de documentos. Reemplaza el acceso público por `/storage`. Verifica que quien pide es el dueño de la solicitud o alguien que participa en su revisión. Registra cada descarga en la bitácora.
+
+Response 200: Archivo (PDF/imagen) con `Content-Disposition: attachment`
+Response 403: No autorizado para descargar este documento
 
 ### GET `/solicitudes/:id/checklist`
 **Permiso:** dueño
@@ -434,6 +465,51 @@ Acciones auditadas: `login`, `refresh` (auth), `transicion`, `configurar-documen
 
 ---
 
+## Bitácora (`/bitacora`) (Sprint 8)
+
+> Permiso `permiso:editar`. Bitácora inmutable de solo consulta. Registra quién, cuándo, qué y con qué resultado se realizó cada acción relevante del sistema.
+
+### GET `/bitacora`
+**Permiso:** `auditoria:ver` (admin ve todo, otros solo sus propias entradas)
+
+Query params (todos opcionales): `modulo`, `accionClave`, `actorId`, `entidad`, `entidadId`, `desde`, `hasta` (ISO), `page` (default 1), `limit` (default 50, máx 200).
+
+Response 200:
+```json
+{
+  "data": {
+    "total": 50,
+    "page": 1,
+    "limit": 50,
+    "items": [
+      {
+        "id": "uuid",
+        "fechaHora": "2026-10-22T10:30:00.000Z",
+        "actorNombre": "Administrador SIGEB",
+        "actorRol": "ADMIN",
+        "actorCorreo": "admin@sigeb.gov.gt",
+        "modulo": "solicitudes",
+        "entidad": "solicitud",
+        "entidadId": "uuid",
+        "accionClave": "solicitud.aprobar",
+        "accionHumana": "Aprobó la solicitud",
+        "descripcionHumana": "El administrador aprobó la solicitud SOL-001",
+        "resultado": "EXITOSO",
+        "ip": "127.0.0.1",
+        "origen": "WEB"
+      }
+    ]
+  }
+}
+```
+
+### GET `/bitacora/:id`
+**Permiso:** `permiso:editar`
+
+Detalle completo de un registro de bitácora, incluyendo `datosRelevantes` y `camposClave`.
+
+---
+
 ## Asistente (`/asistente`)
 
 ### POST `/asistente/preguntar`
@@ -466,4 +542,52 @@ Diseño IA (US-37/38/39): `AsistenteIAProxy` enruta la pregunta al proveedor act
 
 ---
 
-*Última actualización: 2026-08-29*
+---
+
+## Páginas legales (públicas, sin autenticación) (Sprint 8)
+
+Las siguientes rutas son páginas del frontend (Next.js), no endpoints de la API. Se enlazan desde el pie de página.
+
+| Ruta | Descripción |
+|---|---|
+| `/privacidad` | Política de privacidad — describe el funcionamiento real del sistema |
+| `/terminos` | Términos de uso |
+| `/cookies` | Política de cookies — inventario: solo `localStorage` para tokens de sesión, sin cookies, analítica ni rastreadores opcionales |
+
+> No hay banner de consentimiento porque no se usan cookies ni rastreadores opcionales.
+
+---
+
+## Configuración de usuario (Sprint 8)
+
+### GET `/auth/configuracion`
+**Requiere: autenticado**
+
+Retorna las preferencias de notificaciones y sonido del usuario.
+
+Response 200:
+```json
+{
+  "notificacionesActivas": true,
+  "sonidoNotificaciones": true,
+  "volumenSonido": 40
+}
+```
+
+### PATCH `/auth/configuracion`
+**Requiere: autenticado**
+
+Actualiza las preferencias de notificaciones y sonido.
+
+Request:
+```json
+{
+  "notificacionesActivas": true,
+  "sonidoNotificaciones": false,
+  "volumenSonido": 60
+}
+```
+
+---
+
+*Última actualización: Sprint 8 (2026-10-23)*

@@ -92,6 +92,7 @@ Todas usan la contraseña `Admin123!`.
 | Evaluador | `evaluador@demo.gt` |
 | Coordinador de comité | `coordinador@demo.gt` |
 | Miembro de comité | `miembro@demo.gt` |
+| Jefe de becas | `jefe@demo.gt` |
 
 ## Solución de problemas
 

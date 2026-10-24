@@ -9,6 +9,7 @@ Guías de uso por rol para la plataforma EDUVIAGT (SIGEB). Cada manual describe 
 | Evaluador | [03-evaluador.md](03-evaluador.md) |
 | Coordinador de comité | [04-coordinador-comite.md](04-coordinador-comite.md) |
 | Miembro de comité | [05-miembro-comite.md](05-miembro-comite.md) |
+| Jefe de becas | [06-jefe-becas.md](06-jefe-becas.md) |
 
 ## Acceso a la plataforma
 
@@ -29,6 +30,7 @@ Contraseña común: `Admin123!`
 | Evaluador | `evaluador@demo.gt` |
 | Coordinador de comité | `coordinador@demo.gt` |
 | Miembro de comité | `miembro@demo.gt` |
+| Jefe de becas | `jefe@demo.gt` |
 
 ## Consulta pública (sin cuenta)
 

@@ -1,6 +1,6 @@
 # Schema de Base de Datos — SIGEB
 
-> Documentación completa del schema Prisma.
+> Documentación completa del schema Prisma. Última actualización: Sprint 8.
 
 ---
 
@@ -8,16 +8,18 @@
 
 | Categoría | Entidades |
 |---|---|
-| Seguridad | `Usuario`, `Rol`, `Permiso`, `RolPermiso`, `UsuarioPermiso` |
-| Catálogos | `Genero`, `NivelAcademico`, `Departamento`, `Municipio` |
-| Becas | `Beca`, `CriterioEvaluacion` |
-| Convocatorias | `Convocatoria`, `ConvocatoriaDocRequerido` |
-| Solicitudes | `Solicitud`, `SolicitudPerfilAcademico`, `SolicitudPerfilFinanciero`, `SolicitudDocumento` |
-| Evaluaciones | `Evaluacion` |
-| Comités | `Comite`, `ComiteMiembro`, `Sesion`, `Voto` |
-| Decisiones | `Decision` |
-| Auditoría | `AuditLog` |
-| IA | `AsistenteBaseConocimiento`, `AsistenteConversacion`, `AsistenteMensaje` |
+| **Seguridad** | `Usuario`, `Rol`, `Permiso`, `RolPermiso`, `UsuarioPermiso`, `ConfiguracionUsuario` |
+| **Catálogos** | `Genero`, `NivelAcademico`, `Departamento`, `Municipio`, `InstitucionEducativa` |
+| **Becas** | `Beca`, `CriterioEvaluacion` |
+| **Convocatorias** | `Convocatoria`, `ConvocatoriaDocRequerido`, `ConvocatoriaReglaMonto` |
+| **Solicitudes** | `Solicitud`, `SolicitudPerfilAcademico`, `SolicitudPerfilFinanciero`, `SolicitudDocumento`, `HistorialEstado`, `SolicitudAprobacion` |
+| **Evaluaciones** | `Evaluacion` |
+| **Comités** | `Comite`, `ComiteMiembro`, `Sesion`, `SesionAgenda`, `Voto`, `Decision` |
+| **Auditoría** | `AuditLog`, `BitacoraSistema` |
+| **IA** | `AsistenteBaseConocimiento`, `AsistenteConversacion`, `AsistenteMensaje` |
+| **Notificaciones** | `Notificacion` |
+
+**Total: 31 entidades**
 
 ---
 
@@ -35,6 +37,7 @@ enum SolicitudEstado {
   EN_REVISION
   CORRECCION
   EVALUADA
+  PENDIENTE_SEGUNDA_APROBACION
   APROBADA
   RECHAZADA
 }
@@ -58,6 +61,11 @@ enum SolicitudDocumentoEstado {
   CARGADO
   RECHAZADO
 }
+
+enum BecaCobertura {
+  PARCIAL
+  COMPLETA
+}
 ```
 
 ---
@@ -68,20 +76,39 @@ enum SolicitudDocumentoEstado {
 
 ```prisma
 model Usuario {
-  id           String    @id @default(uuid())
-  cui          String    @unique
-  nombres      String
-  email        String    @unique
-  passwordHash String
-  rolId        String
-  estado       UsuarioEstado @default(ACTIVO)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id              String        @id @default(uuid())
+  cui             String        @unique
+  nombres         String
+  email           String        @unique
+  passwordHash    String
+  telefono        String?
+  fechaNacimiento DateTime?
+  direccion       String?
+  generoId        String?
+  departamentoId  String?
+  municipioId     String?
+  rolId           String
+  estado          UsuarioEstado @default(ACTIVO)
+  eliminadoAt     DateTime?     // Sprint 8: soft-delete para anonimización
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
-  rol              Rol
-  solicitudes      Solicitud[]
-  usuarioPermisos  UsuarioPermiso[]
-  comiteMiembros   ComiteMiembro[]
+  rol                Rol
+  genero             Genero?
+  departamento       Departamento?
+  municipio          Municipio?
+  solicitudes        Solicitud[]
+  usuarioPermisos    UsuarioPermiso[]
+  comiteMiembros     ComiteMiembro[]
+  evaluaciones       Evaluacion[]
+  votos              Voto[]
+  auditLogs          AuditLog[]
+  notificaciones     Notificacion[]
+  aprobacionesHechas SolicitudAprobacion[]
+  configuracion      ConfiguracionUsuario?
+
+  @@index([eliminadoAt])
+  @@map("usuario")
 }
 ```
 
@@ -95,8 +122,10 @@ model Rol {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  usuarios       Usuario[]
-  rolPermisos    RolPermiso[]
+  usuarios    Usuario[]
+  rolPermisos RolPermiso[]
+
+  @@map("rol")
 }
 ```
 
@@ -109,10 +138,11 @@ model Permiso {
   accion    String
   createdAt DateTime @default(now())
 
-  @@unique([modulo, accion])
+  rolPermisos     RolPermiso[]
+  usuarioPermisos UsuarioPermiso[]
 
-  rolPermisos      RolPermiso[]
-  usuarioPermisos  UsuarioPermiso[]
+  @@unique([modulo, accion])
+  @@map("permiso")
 }
 ```
 
@@ -125,10 +155,11 @@ model RolPermiso {
   permisoId String
   createdAt DateTime @default(now())
 
-  rol     Rol     @relation(fields: [rolId], references: [id])
-  permiso Permiso @relation(fields: [permisoId], references: [id])
+  rol     Rol     @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  permiso Permiso @relation(fields: [permisoId], references: [id], onDelete: Cascade)
 
   @@unique([rolId, permisoId])
+  @@map("rol_permiso")
 }
 ```
 
@@ -136,65 +167,132 @@ model RolPermiso {
 
 ```prisma
 model UsuarioPermiso {
-  id         String        @id @default(uuid())
-  usuarioId  String
-  permisoId  String
-  efecto     PermisoEfecto
-  createdAt  DateTime      @default(now())
+  id        String        @id @default(uuid())
+  usuarioId String
+  permisoId String
+  efecto    PermisoEfecto
+  createdAt DateTime      @default(now())
 
-  usuario Usuario @relation(fields: [usuarioId], references: [id])
-  permiso Permiso @relation(fields: [permisoId], references: [id])
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  permiso Permiso @relation(fields: [permisoId], references: [id], onDelete: Cascade)
 
   @@unique([usuarioId, permisoId])
+  @@map("usuario_permiso")
 }
 ```
+
+### ConfiguracionUsuario (Sprint 8 - US-804)
+
+```prisma
+model ConfiguracionUsuario {
+  id                    String   @id @default(uuid())
+  usuarioId             String   @unique
+  notificacionesActivas Boolean  @default(true)
+  sonidoNotificaciones  Boolean  @default(true)
+  volumenSonido         Int      @default(40)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("configuracion_usuario")
+}
+```
+
+> Preferencias de notificaciones y sonido del usuario. El sonido deja de ser una preferencia local: se persiste en la base de datos.
 
 ---
 
 ## Catálogos
 
+### Genero
+
 ```prisma
 model Genero {
-  id     String @id @default(uuid())
-  nombre String @unique
+  id     String  @id @default(uuid())
+  nombre String  @unique
   activo Boolean @default(true)
 
   perfiles SolicitudPerfilAcademico[]
-}
+  usuarios Usuario[]
 
+  @@map("genero")
+}
+```
+
+### NivelAcademico
+
+```prisma
 model NivelAcademico {
-  id     String @id @default(uuid())
-  nombre String @unique
+  id     String  @id @default(uuid())
+  nombre String  @unique
   activo Boolean @default(true)
 
-  perfiles SolicitudPerfilAcademico[]
-}
+  perfiles      SolicitudPerfilAcademico[]
+  convocatorias Convocatoria[]
 
+  @@map("nivel_academico")
+}
+```
+
+### Departamento
+
+```prisma
 model Departamento {
-  id     String @id @default(uuid())
-  nombre String @unique
+  id     String  @id @default(uuid())
+  nombre String  @unique
   activo Boolean @default(true)
 
   municipios Municipio[]
   perfiles   SolicitudPerfilAcademico[]
-}
+  usuarios   Usuario[]
 
+  @@map("departamento")
+}
+```
+
+### Municipio
+
+```prisma
 model Municipio {
-  id             String @id @default(uuid())
+  id             String  @id @default(uuid())
   nombre         String
   departamentoId String
   activo         Boolean @default(true)
 
   departamento Departamento @relation(fields: [departamentoId], references: [id])
   perfiles     SolicitudPerfilAcademico[]
+  usuarios     Usuario[]
 
   @@unique([nombre, departamentoId])
+  @@map("municipio")
+}
+```
+
+### InstitucionEducativa
+
+```prisma
+model InstitucionEducativa {
+  id           String   @id @default(uuid())
+  nombre       String
+  nivel        String
+  sector       String?
+  departamento String?
+  municipio    String?
+  activa       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  @@index([nivel])
+  @@index([nombre])
+  @@map("institucion_educativa")
 }
 ```
 
 ---
 
 ## Becas
+
+### Beca
 
 ```prisma
 model Beca {
@@ -207,17 +305,25 @@ model Beca {
 
   convocatorias       Convocatoria[]
   criteriosEvaluacion CriterioEvaluacion[]
+
+  @@map("beca")
 }
+```
 
+### CriterioEvaluacion
+
+```prisma
 model CriterioEvaluacion {
-  id       String @id @default(uuid())
-  becaId   String
-  nombre   String
-  peso     Float
-  activo   Boolean @default(true)
+  id     String  @id @default(uuid())
+  becaId String
+  nombre String
+  peso   Float
+  activo Boolean @default(true)
 
-  beca        Beca         @relation(fields: [becaId], references: [id])
+  beca         Beca         @relation(fields: [becaId], references: [id])
   evaluaciones Evaluacion[]
+
+  @@map("criterio_evaluacion")
 }
 ```
 
@@ -225,112 +331,239 @@ model CriterioEvaluacion {
 
 ## Convocatorias
 
+### Convocatoria
+
 ```prisma
 model Convocatoria {
-  id              String              @id @default(uuid())
-  nombre          String
-  descripcion     String?
-  becaId          String
-  estado          ConvocatoriaEstado  @default(BORRADOR)
-  fechaApertura   DateTime?
-  fechaCierre     DateTime?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  id                 String             @id @default(uuid())
+  nombre             String
+  descripcion        String?
+  becaId             String
+  nivelAcademicoId   String?
+  cobertura          BecaCobertura?
+  formulario         Json?
+  estado             ConvocatoriaEstado @default(BORRADOR)
+  fechaApertura      DateTime?
+  fechaCierre        DateTime?
+  evaluadoresMinimos Int                @default(2)
+  maxCorrecciones    Int                @default(3)
+  // Montos (Sprint 8): monto base y reglas por tramo de ingreso.
+  moneda             String             @default("GTQ")
+  montoBase          Decimal?           @db.Decimal(12, 2)
+  permiteParcial     Boolean            @default(true)
+  usarReglasMonto    Boolean            @default(false)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
-  beca                  Beca
-  documentosRequeridos  ConvocatoriaDocRequerido[]
-  solicitudes           Solicitud[]
-}
+  beca                 Beca                       @relation(fields: [becaId], references: [id])
+  nivelAcademico       NivelAcademico?            @relation(fields: [nivelAcademicoId], references: [id])
+  documentosRequeridos ConvocatoriaDocRequerido[]
+  solicitudes          Solicitud[]
+  reglasMonto          ConvocatoriaReglaMonto[]
 
-model ConvocatoriaDocRequerido {
-  id              String   @id @default(uuid())
-  convocatoriaId  String
-  documentoTipoId String
-  obligatorio     Boolean  @default(true)
-
-  convocatoria   Convocatoria
-  documentoTipo  DocumentoTipo
+  @@map("convocatoria")
 }
 ```
+
+### ConvocatoriaDocRequerido
+
+```prisma
+model ConvocatoriaDocRequerido {
+  id              String  @id @default(uuid())
+  convocatoriaId  String
+  documentoTipoId String
+  obligatorio     Boolean @default(true)
+
+  convocatoria  Convocatoria  @relation(fields: [convocatoriaId], references: [id], onDelete: Cascade)
+  documentoTipo DocumentoTipo @relation(fields: [documentoTipoId], references: [id])
+
+  @@unique([convocatoriaId, documentoTipoId])
+  @@map("convocatoria_doc_requerido")
+}
+```
+
+### ConvocatoriaReglaMonto (Sprint 8 - US-801)
+
+```prisma
+model ConvocatoriaReglaMonto {
+  id             String   @id @default(uuid())
+  convocatoriaId String
+  nombre         String
+  ingresoMin     Decimal? @db.Decimal(12, 2)
+  ingresoMax     Decimal? @db.Decimal(12, 2)
+  /// FIJO | PORCENTAJE | COMPLETO
+  tipo           String
+  montoFijo      Decimal? @db.Decimal(12, 2)
+  porcentaje     Float?
+  prioridad      Int      @default(0)
+  activo         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  convocatoria Convocatoria @relation(fields: [convocatoriaId], references: [id], onDelete: Cascade)
+
+  @@index([convocatoriaId])
+  @@map("convocatoria_regla_monto")
+}
+```
+
+> Regla de cálculo del monto otorgable según el ingreso familiar del postulante. Tipos: `FIJO`, `PORCENTAJE`, `COMPLETO`.
 
 ---
 
 ## Solicitudes
 
+### Solicitud
+
 ```prisma
 model Solicitud {
-  id                String          @id @default(uuid())
-  convocatoriaId    String
-  usuarioId         String
-  estado            SolicitudEstado @default(BORRADOR)
-  correccionesCount Int             @default(0)
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  id                 String          @id @default(uuid())
+  convocatoriaId     String
+  usuarioId          String
+  estado             SolicitudEstado @default(BORRADOR)
+  correccionesCount  Int             @default(0)
+  respuestas         Json?
+  formularioSnapshot Json?
+  // Montos (Sprint 8): monto otorgable, aprobado y trazabilidad.
+  montoOtorgable     Decimal?        @db.Decimal(12, 2)
+  montoAprobado      Decimal?        @db.Decimal(12, 2)
+  montoOrigenCalculo String? // REGLA | MONTO_BASE | OVERRIDE
+  montoCalculadoAt   DateTime?
+  montoCalculadoPor  String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
-  convocatoria   Convocatoria
-  usuario        Usuario
-  perfilAcademico SolicitudPerfilAcademico?
+  convocatoria     Convocatoria               @relation(fields: [convocatoriaId], references: [id])
+  usuario          Usuario                    @relation(fields: [usuarioId], references: [id])
+  perfilAcademico  SolicitudPerfilAcademico?
   perfilFinanciero SolicitudPerfilFinanciero?
-  documentos     SolicitudDocumento[]
-  historial      HistorialEstado[]
-  evaluaciones   Evaluacion[]
-  votos          Voto[]
-  decision       Decision?
-}
+  documentos       SolicitudDocumento[]
+  historial        HistorialEstado[]
+  evaluaciones     Evaluacion[]
+  votos            Voto[]
+  decision         Decision?
+  sesionesAgenda   SesionAgenda[]
+  aprobaciones     SolicitudAprobacion[]
 
+  @@map("solicitud")
+}
+```
+
+### SolicitudAprobacion (Sprint 8 - US-802/803)
+
+```prisma
+model SolicitudAprobacion {
+  id          String   @id @default(uuid())
+  solicitudId String
+  usuarioId   String
+  rolNombre   String
+  /// 1 = primera instancia, 2 = segunda instancia
+  nivel       Int
+  /// aprobar | rechazar | aprobar_segunda | devolver_a_revision
+  accion      String
+  /// APROBADA | RECHAZADA | DEVUELTA_A_REVISION | PENDIENTE_SEGUNDA_APROBACION
+  resultado   String
+  comentario  String?
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  solicitud Solicitud @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  usuario   Usuario   @relation(fields: [usuarioId], references: [id])
+
+  @@index([solicitudId])
+  @@index([usuarioId])
+  @@index([createdAt])
+  @@map("solicitud_aprobacion")
+}
+```
+
+> Registra cada instancia de aprobación (primera y segunda). Toda postulación con monto superior a Q10,000 pasa a `PENDIENTE_SEGUNDA_APROBACION`.
+
+### SolicitudPerfilAcademico
+
+```prisma
 model SolicitudPerfilAcademico {
-  id                  String  @id @default(uuid())
-  solicitudId         String  @unique
-  nivelAcademicoId    String?
-  nivelAcademicoOtro  String?
-  institucion         String?
-  carrera             String?
-  promedio            Float?
-  departamentoId      String?
-  departamentoOtro    String?
-  municipioId         String?
-  municipioOtro       String?
+  id                 String  @id @default(uuid())
+  solicitudId        String  @unique
+  generoId           String?
+  generoOtro         String?
+  nivelAcademicoId   String?
+  nivelAcademicoOtro String?
+  institucion        String?
+  carrera            String?
+  promedio           Float?
+  departamentoId     String?
+  departamentoOtro   String?
+  municipioId        String?
+  municipioOtro      String?
 
-  solicitud        Solicitud
-  nivelAcademico   NivelAcademico?
-  departamento     Departamento?
-  municipio        Municipio?
+  solicitud      Solicitud       @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  genero         Genero?         @relation(fields: [generoId], references: [id])
+  nivelAcademico NivelAcademico? @relation(fields: [nivelAcademicoId], references: [id])
+  departamento   Departamento?   @relation(fields: [departamentoId], references: [id])
+  municipio      Municipio?      @relation(fields: [municipioId], references: [id])
+
+  @@map("solicitud_perfil_academico")
 }
+```
 
+### SolicitudPerfilFinanciero
+
+```prisma
 model SolicitudPerfilFinanciero {
-  id                  String  @id @default(uuid())
-  solicitudId         String  @unique
-  ingresoFamiliar     Float?
-  numeroDependientes  Int?
-  becasAnteriores     Boolean @default(false)
+  id                   String  @id @default(uuid())
+  solicitudId          String  @unique
+  ingresoFamiliar      Float?
+  numeroDependientes   Int?
+  becasAnteriores      Boolean @default(false)
   descripcionSituacion String?
 
-  solicitud Solicitud
-}
+  solicitud Solicitud @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
 
+  @@map("solicitud_perfil_financiero")
+}
+```
+
+### SolicitudDocumento
+
+```prisma
 model SolicitudDocumento {
-  id              String                    @id @default(uuid())
-  solicitudId     String
-  documentoTipoId String
-  archivoUrl      String
-  estado          SolicitudDocumentoEstado  @default(PENDIENTE)
-  version         Int                       @default(1)
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
+  id                String                   @id @default(uuid())
+  solicitudId       String
+  documentoTipoId   String
+  archivoUrl        String
+  estado            SolicitudDocumentoEstado @default(PENDIENTE)
+  version           Int                      @default(1)
+  comentarioRechazo String?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
 
-  solicitud      Solicitud
-  documentoTipo  DocumentoTipo
+  solicitud     Solicitud     @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  documentoTipo DocumentoTipo @relation(fields: [documentoTipoId], references: [id])
+
+  @@map("solicitud_documento")
 }
+```
 
+### HistorialEstado
+
+```prisma
 model HistorialEstado {
   id          String   @id @default(uuid())
   solicitudId String
   estado      String
   comentario  String?
   usuarioId   String
+  /// Acción realizada (Sprint 8): enviar, aprobar, devolver_a_revision...
+  accion      String?
+  /// Resultado: EXITOSO | RECHAZADO | ERROR
+  resultado   String?
+  ip          String?
   createdAt   DateTime @default(now())
 
-  solicitud Solicitud
+  solicitud Solicitud @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+
+  @@map("historial_estado")
 }
 ```
 
@@ -340,12 +573,14 @@ model HistorialEstado {
 
 ```prisma
 model DocumentoTipo {
-  id     String @id @default(uuid())
-  nombre String @unique
+  id     String  @id @default(uuid())
+  nombre String  @unique
   activo Boolean @default(true)
 
   convocatoriaDocRequeridos ConvocatoriaDocRequerido[]
   solicitudDocumentos       SolicitudDocumento[]
+
+  @@map("documento_tipo")
 }
 ```
 
@@ -355,25 +590,30 @@ model DocumentoTipo {
 
 ```prisma
 model Evaluacion {
-  id                   String  @id @default(uuid())
+  id                   String   @id @default(uuid())
   solicitudId          String
   criterioEvaluacionId String
   evaluadorId          String
   puntaje              Float?
   observaciones        String?
-  completada           Boolean @default(false)
+  completada           Boolean  @default(false)
+  confirmImparcialidad Boolean  @default(false)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  solicitud          Solicitud
-  criterioEvaluacion CriterioEvaluacion
-  evaluador          Usuario
+  solicitud          Solicitud          @relation(fields: [solicitudId], references: [id])
+  criterioEvaluacion CriterioEvaluacion @relation(fields: [criterioEvaluacionId], references: [id])
+  evaluador          Usuario            @relation(fields: [evaluadorId], references: [id])
+
+  @@map("evaluacion")
 }
 ```
 
 ---
 
 ## Comités
+
+### Comite
 
 ```prisma
 model Comite {
@@ -384,10 +624,16 @@ model Comite {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  miembros  ComiteMiembro[]
-  sesiones  Sesion[]
-}
+  miembros ComiteMiembro[]
+  sesiones Sesion[]
 
+  @@map("comite")
+}
+```
+
+### ComiteMiembro
+
+```prisma
 model ComiteMiembro {
   id        String   @id @default(uuid())
   comiteId  String
@@ -396,39 +642,71 @@ model ComiteMiembro {
   activo    Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  comite  Comite
-  usuario Usuario
-}
+  comite  Comite  @relation(fields: [comiteId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
 
+  @@unique([comiteId, usuarioId])
+  @@map("comite_miembro")
+}
+```
+
+### Sesion
+
+```prisma
 model Sesion {
-  id          String   @id @default(uuid())
-  comiteId    String
-  fecha       DateTime
-  lugar       String?
-  estado      String   @default('PROGRAMADA')
+  id           String   @id @default(uuid())
+  comiteId     String
+  fecha        DateTime
+  lugar        String?
+  estado       String   @default("PROGRAMADA")
   quorumMinimo Int?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  comite    Comite
-  votos     Voto[]
+  comite     Comite         @relation(fields: [comiteId], references: [id])
+  votos      Voto[]
   decisiones Decision[]
-}
+  agenda     SesionAgenda[]
 
-model Voto {
+  @@map("sesion")
+}
+```
+
+### SesionAgenda
+
+```prisma
+model SesionAgenda {
   id          String   @id @default(uuid())
   sesionId    String
   solicitudId String
-  usuarioId   String
-  voto        String
-  observaciones String?
   createdAt   DateTime @default(now())
 
-  sesion    Sesion
-  solicitud Solicitud
-  usuario   Usuario
+  sesion    Sesion    @relation(fields: [sesionId], references: [id], onDelete: Cascade)
+  solicitud Solicitud @relation(fields: [solicitudId], references: [id])
+
+  @@unique([sesionId, solicitudId])
+  @@map("sesion_agenda")
+}
+```
+
+### Voto
+
+```prisma
+model Voto {
+  id            String   @id @default(uuid())
+  sesionId      String
+  solicitudId   String
+  usuarioId     String
+  voto          String
+  observaciones String?
+  createdAt     DateTime @default(now())
+
+  sesion    Sesion    @relation(fields: [sesionId], references: [id], onDelete: Cascade)
+  solicitud Solicitud @relation(fields: [solicitudId], references: [id])
+  usuario   Usuario   @relation(fields: [usuarioId], references: [id])
 
   @@unique([sesionId, solicitudId, usuarioId])
+  @@map("voto")
 }
 ```
 
@@ -438,15 +716,17 @@ model Voto {
 
 ```prisma
 model Decision {
-  id          String   @id @default(uuid())
-  solicitudId String
-  sesionId    String
-  resultado   String
+  id            String   @id @default(uuid())
+  solicitudId   String   @unique
+  sesionId      String
+  resultado     String
   observaciones String?
-  fecha       DateTime @default(now())
+  fecha         DateTime @default(now())
 
-  solicitud Solicitud
-  sesion    Sesion
+  solicitud Solicitud @relation(fields: [solicitudId], references: [id])
+  sesion    Sesion    @relation(fields: [sesionId], references: [id])
+
+  @@map("decision")
 }
 ```
 
@@ -454,18 +734,84 @@ model Decision {
 
 ## Auditoría
 
+### AuditLog
+
 ```prisma
 model AuditLog {
-  id         String   @id @default(uuid())
-  usuarioId  String
-  accion     String
-  entidad    String
-  entidadId  String?
-  detalle    Json?
-  ip         String?
-  createdAt  DateTime @default(now())
+  id        String   @id @default(uuid())
+  usuarioId String
+  accion    String
+  entidad   String
+  entidadId String?
+  detalle   Json?
+  ip        String?
+  createdAt DateTime @default(now())
 
-  usuario Usuario
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+
+  @@map("audit_log")
+}
+```
+
+### BitacoraSistema (Sprint 8 - US-803)
+
+```prisma
+model BitacoraSistema {
+  id                String   @id @default(uuid())
+  fechaHora         DateTime @default(now())
+  actorId           String?
+  actorNombre       String?
+  actorRol          String?
+  actorCorreo       String?
+  modulo            String
+  entidad           String
+  entidadId         String?
+  /// Clave técnica de la acción (p. ej. "solicitud.aprobar").
+  accionClave       String
+  /// La misma acción, en lenguaje comprensible ("Aprobó la solicitud").
+  accionHumana      String
+  descripcionHumana String
+  camposClave       Json?
+  datosRelevantes   Json?
+  /// EXITOSO | RECHAZADO | ERROR
+  resultado         String
+  motivo            String?
+  ip                String?
+  userAgent         String?
+  /// WEB | API
+  origen            String   @default("API")
+  correlacionId     String?
+  sessionId         String?
+
+  @@index([fechaHora])
+  @@index([actorId])
+  @@index([entidad, entidadId])
+  @@index([accionClave])
+  @@index([modulo])
+  @@map("bitacora_sistema")
+}
+```
+
+> Bitácora inmutable y de solo consulta. Registra quién, cuándo, qué y con qué resultado se realizó cada acción relevante del sistema. Se escribe dentro de la misma transacción que la acción que audita.
+
+---
+
+## Notificaciones
+
+```prisma
+model Notificacion {
+  id        String    @id @default(uuid())
+  usuarioId String
+  tipo      String
+  titulo    String
+  cuerpo    String?
+  leidaAt   DateTime?
+  createdAt DateTime  @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@map("notificacion")
 }
 ```
 
@@ -473,37 +819,68 @@ model AuditLog {
 
 ## IA
 
+### AsistenteBaseConocimiento
+
 ```prisma
 model AsistenteBaseConocimiento {
-  id       String @id @default(uuid())
-  titulo   String
+  id        String   @id @default(uuid())
+  titulo    String
   contenido String
-  tags     String[]
-  activo   Boolean @default(true)
+  tags      String[]
+  activo    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
 
-model AsistenteConversacion {
-  id         String   @id @default(uuid())
-  usuarioId  String?
-  sesionId   String?
-  createdAt  DateTime @default(now())
-
-  mensajes AsistenteMensaje[]
-}
-
-model AsistenteMensaje {
-  id              String   @id @default(uuid())
-  conversacionId  String
-  rol             String
-  contenido       String
-  contexto        Json?
-  createdAt       DateTime @default(now())
-
-  conversacion AsistenteConversacion
+  @@index([activo])
+  @@map("asistente_base_conocimiento")
 }
 ```
+
+### AsistenteConversacion
+
+```prisma
+model AsistenteConversacion {
+  id        String   @id @default(uuid())
+  usuarioId String?
+  sesionId  String?
+  createdAt DateTime @default(now())
+
+  mensajes AsistenteMensaje[]
+
+  @@map("asistente_conversacion")
+}
+```
+
+### AsistenteMensaje
+
+```prisma
+model AsistenteMensaje {
+  id             String   @id @default(uuid())
+  conversacionId String
+  rol            String
+  contenido      String
+  contexto       Json?
+  createdAt      DateTime @default(now())
+
+  conversacion AsistenteConversacion @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
+
+  @@map("asistente_mensaje")
+}
+```
+
+---
+
+## Roles del sistema (Sprint 8)
+
+| Rol | Descripción | Permisos clave |
+|---|---|---|
+| `ADMIN` | Acceso total, incluida la matriz de seguridad | Todos |
+| `POSTULANTE` | Crea y gestiona su propia solicitud | `solicitud:crear`, `solicitud:ver` |
+| `EVALUADOR` | Evalúa solicitudes asignadas | `evaluacion:crear`, `evaluacion:ver` |
+| `COORDINADOR_COMITE` | Convoca sesiones, registra decisiones | `comite:crear`, `comite:editar`, `sesion:finalizar` |
+| `MIEMBRO_COMITE` | Vota en sesiones | `sesion:votar` |
+| `JEFE_BECAS` (Sprint 8) | Aprueba solicitudes de alto monto | `convocatoria:publicar`, `solicitud:aprobar-primera`, `solicitud:aprobar-segunda`, `solicitud:montos-override` |
+| `STAFF` | Rol base para personal administrativo | Se afina vía excepciones de usuario |
 
 ---
 
@@ -520,6 +897,12 @@ CREATE INDEX idx_voto_sesion ON voto(sesion_id);
 CREATE INDEX idx_auditlog_usuario ON audit_log(usuario_id);
 CREATE INDEX idx_auditlog_fecha ON audit_log(created_at);
 
+-- Sprint 8
+CREATE INDEX idx_bitacora_fecha ON bitacora_sistema(fecha_hora);
+CREATE INDEX idx_bitacora_actor ON bitacora_sistema(actor_id);
+CREATE INDEX idx_bitacora_entidad ON bitacora_sistema(entidad, entidad_id);
+CREATE INDEX idx_aprobacion_solicitud ON solicitud_aprobacion(solicitud_id);
+
 -- Búsqueda de texto completo (IA)
 CREATE INDEX idx_bc_titulo ON asistente_base_conocimiento USING gin(to_tsvector('spanish', titulo));
 CREATE INDEX idx_bc_contenido ON asistente_base_conocimiento USING gin(to_tsvector('spanish', contenido));
@@ -527,4 +910,4 @@ CREATE INDEX idx_bc_contenido ON asistente_base_conocimiento USING gin(to_tsvect
 
 ---
 
-*Última actualización: 2026-08-26*
+*Última actualización: Sprint 8 (2026-10-23)*

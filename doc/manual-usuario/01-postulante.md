@@ -40,6 +40,24 @@ Estados de la solicitud: `BORRADOR → ENVIADA → EN_REVISION → CORRECCION / 
 - **Mi beca (consulta)**: con el código de tu solicitud puedes consultar su estado (solo estado, convocatoria, beca e historial; no datos sensibles).
 - **Mis datos**: edita teléfono, género, fecha de nacimiento, departamento/municipio y dirección.
 - **Constancia PDF**: cuando tu solicitud esté **APROBADA**, puedes descargar tu constancia.
+- **Notificaciones**: recibes aviso en todos los cambios de estado de tu solicitud, incluyendo el código de confirmación al enviar.
+- **Preferencias de sonido**: configura el volumen y activación del sonido de notificaciones desde **Mi perfil**.
+- **Eliminación de cuenta** (Sprint 8): puedes eliminar tu cuenta desde **Mi perfil → Gestionar cuenta**. Se te pedirá tu contraseña y una confirmación escrita. Tus datos personales se anonimizan, pero las solicitudes y decisiones se conservan con seudónimo.
+
+## 6. Páginas legales (Sprint 8)
+
+- **Privacidad** (`/privacidad`): describe cómo se manejan tus datos.
+- **Términos** (`/terminos`): condiciones de uso de la plataforma.
+- **Cookies** (`/cookies`): solo se usa `localStorage` para tokens de sesión; no hay cookies, analítica ni rastreadores.
+
+## 7. Accesibilidad (Sprint 8)
+
+- La plataforma cumple WCAG 2.2 AA: foco visible, navegación por teclado, respeto a `prefers-reduced-motion`.
+- Usa el enlace "Saltar al contenido principal" para ir directo al contenido.
+
+## Camino rápido
+
+Registrarse → Buscar convocatoria → Postularme → Perfiles → Documentos → Checklist OK → Enviar → Seguimiento.
 
 ## Camino rápido
 

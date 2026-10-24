@@ -8,9 +8,9 @@
 
 | Métrica | Valor |
 |---|---|
-| Total historias | 40 |
-| Total puntos | 196 |
-| Sprints | 8 (2 semanas c/u) |
+| Total historias | 50 |
+| Total puntos | 233 |
+| Sprints | 9 (2 semanas c/u) |
 | Puntos promedio/sprint | ~24 |
 
 ---
@@ -161,6 +161,25 @@
 
 ---
 
+## Sprint 8 — Segunda Aprobación, Montos Flexibles, Bitácora y Eliminación de Cuenta (S8)
+
+| ID | Historia | Pts | Prioridad | Asignado |
+|---|---|---|---|---|
+| US-801 | Como admin, quiero configurar montos flexibles por tramos de ingreso familiar (FIJO/PORCENTAJE/COMPLETO), para calcular el monto otorgable automáticamente | 5 | Must | Backend |
+| US-802 | Como admin, quiero que las solicitudes con monto > Q10,000 requieran segunda aprobación por otra persona, para separar la autoridad | 5 | Must | Backend |
+| US-803 | Como sistema, quiero registrar cada firma de aprobación en `SolicitudAprobacion`, para trazabilidad completa | 3 | Must | Backend |
+| US-804 | Como usuario, quiero que el sonido de notificaciones sea configurable (activar/desactivar/volumen), para controlar mi experiencia | 3 | Should | Fullstack |
+| US-805 | Como admin, quiero una bitácora inmutable del sistema que registre quién, cuándo, qué y con qué resultado, para auditoría | 5 | Must | Backend |
+| US-806 | Como usuario, quiero eliminar mi cuenta con anonimización de datos personales, para ejercer mi derecho al olvido | 5 | Must | Backend |
+| US-807 | Como visitante, quiero acceder a páginas de privacidad, términos y cookies, para conocer las políticas del sistema | 2 | Should | Frontend |
+| US-808 | Como usuario, quiero que la plataforma sea accesible (WCAG 2.2 AA), para usarla con tecnologías asistivas | 5 | Must | Frontend |
+| US-809 | Como usuario, quiero que el asistente se llame Eduvi con identidad propia, para reconocerlo fácilmente | 2 | Should | Frontend |
+| US-810 | Como admin, quiero que todos los roles tengan acceso a su perfil, para gestionar sus preferencias | 2 | Should | Frontend |
+
+**Sprint 8 total: 37 puntos**
+
+---
+
 ## Backlog Futuro (Won't — esta versión)
 
 | ID | Historia | Prioridad |
@@ -190,8 +209,9 @@
 | S6 Portal público | 25 | 22 | 3 | 0 |
 | S7 Sistema interno | 47 | 37 | 10 | 3 |
 | S8 PDF + CI/CD | 8 | 5 | 0 | 0 |
-| **Total** | **234** | **202** | **29** | **3** |
+| S8 Segunda Aprobación + Bitácora | 37 | 32 | 5 | 0 |
+| **Total** | **271** | **234** | **34** | **3** |
 
 ---
 
-*Última actualización: 2026-09-01*
+*Última actualización: Sprint 8 (2026-10-23)*
