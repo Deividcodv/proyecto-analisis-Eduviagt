@@ -1,4 +1,4 @@
-# SIGEB — Informe funcional de la web (Task 4)
+﻿# EDUVIAGT — Informe funcional de la web (Task 4)
 
 Rama: `test/bug-hunt-revision` · Fecha: 2026-10-16
 Enfoque: caja negra sobre el portal en un navegador real (Chromium) — registro,
@@ -10,7 +10,7 @@ Se montó por primera vez el arnés de pruebas de navegador del portal:
 
 | Archivo | Qué es |
 |---|---|
-| `apps/web/playwright.config.ts` | Configuración: levanta API (puerto 3000) y web (3001) solos si no están corriendo; la API apunta **siempre** a `sigeb_test` |
+| `apps/web/playwright.config.ts` | Configuración: levanta API (puerto 3000) y web (3001) solos si no están corriendo; la API apunta **siempre** a `EDUVIAGT_test` |
 | `apps/web/e2e/publico.spec.ts` | 5 casos — portada, listado, consulta pública, registro |
 | `apps/web/e2e/autenticacion.spec.ts` | 8 casos — alta de cuenta, login por rol, control de acceso |
 | `apps/web/e2e/admin.spec.ts` | 4 casos — panel de administración y navegación |
@@ -29,8 +29,8 @@ npx playwright test e2e/publico.spec.ts
 npx playwright test --ui         # modo interactivo
 ```
 
-La API de pruebas se apunta a `sigeb_test`:
-`postgresql://sigeb:sigeb123@localhost:5432/sigeb_test` (configurable con
+La API de pruebas se apunta a `EDUVIAGT_test`:
+`postgresql://EDUVIAGT:EDUVIAGT123@localhost:5432/EDUVIAGT_test` (configurable con
 `E2E_DATABASE_URL`).
 
 | Métrica | Antes (Task 1) | Después |
@@ -66,7 +66,7 @@ público» falló: el detalle de la convocatoria abría bien, pero el listado no
 mostraba. Al comparar:
 
 - `GET /api/convocatorias` (directo) devolvía **3** convocatorias (las reales de
-  `sigeb_test`).
+  `EDUVIAGT_test`).
 - `GET /convocatorias` (la página) renderizaba **21** convocatorias de otra base.
 
 La causa estaba en el **Data Cache de Next.js**. `http()` llamaba a `fetch()`
@@ -111,7 +111,7 @@ pruebas de navegador quedan en verde y `npx tsc --noEmit` no reporta errores.
 | # | Observación |
 |---|---|
 | O-014 | `/admin` no es una página: redirige a `/admin/convocatorias` (`app/admin/page.tsx`). Es intencional, pero conviene saberlo al probar. |
-| O-015 | El seed de `sigeb_test` **no crea convocatorias `ABIERTA`**, así que el portal público aparece vacío hasta que alguien publica una. La suite crea y publica una por API para poder probar el flujo. |
+| O-015 | El seed de `EDUVIAGT_test` **no crea convocatorias `ABIERTA`**, así que el portal público aparece vacío hasta que alguien publica una. La suite crea y publica una por API para poder probar el flujo. |
 | O-016 | El Data Cache servía datos de **otra base de datos** (desarrollo). Es la razón por la que el hallazgo fue tan visible: una caché vieja puede mostrar datos de otro entorno. |
 | O-017 | Un `getByLabel('Contraseña')` de Playwright coincide también con «Confirmar contraseña» (subcadena). Se resolvió con `{ exact: true }`. No es un defecto de la app. |
 
@@ -122,4 +122,4 @@ pruebas de navegador quedan en verde y `npx tsc --noEmit` no reporta errores.
 | S-015 | Media | Añadir `npm run test:e2e` (web) y `npm run test:e2e` (API) a la integración continua, con una base de datos efímera por corrida. |
 | S-016 | Media | Que el seed incluya **al menos una convocatoria `ABIERTA`** de ejemplo; así el portal público no aparece vacío y los flujos son probables sin datos improvisados. |
 | S-017 | Baja | Evaluar `next: { revalidate: N }` para catálogos que casi no cambian (géneros, niveles, departamentos) si en el futuro se busca rendimiento; hoy `no-store` es lo correcto para no volver a servir datos viejos. |
-| S-018 | Baja | El E2E no reinicia `sigeb_test` (ver F-002 del baseline): los datos se acumulan entre corridas. Resolver con el S-015 (base efímera). |
+| S-018 | Baja | El E2E no reinicia `EDUVIAGT_test` (ver F-002 del baseline): los datos se acumulan entre corridas. Resolver con el S-015 (base efímera). |

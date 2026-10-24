@@ -1,4 +1,4 @@
-# SIGEB — Informe visual y de accesibilidad (Task 6)
+﻿# EDUVIAGT — Informe visual y de accesibilidad (Task 6)
 
 Rama: `test/bug-hunt-revision` · Fecha: 2026-10-16
 Enfoque: accesibilidad WCAG 2.0/2.1 nivel **A y AA** con **axe**, revisión de

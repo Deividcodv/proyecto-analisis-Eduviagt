@@ -1,4 +1,4 @@
-# SIGEB — Baseline de pruebas (2026-10-16)
+﻿# EDUVIAGT — Baseline de pruebas (2026-10-16)
 
 Rama: `test/bug-hunt-revision` — BASE `b62070b`.
 
@@ -7,7 +7,7 @@ Rama: `test/bug-hunt-revision` — BASE `b62070b`.
 | Nivel | Suites | Tests | Resultado |
 |---|---|---|---|
 | Unitario (Jest) | 18 | 155 | ✅ 100% PASS (~14 s, sin BD) |
-| E2E API (Supertest) | 4 | 55 | ✅ 100% PASS (contra `sigeb_test`) |
+| E2E API (Supertest) | 4 | 55 | ✅ 100% PASS (contra `EDUVIAGT_test`) |
 | Web (Playwright) | 0 | 0 | ⬜ no existe (Task 4) |
 
 > **Corregido:** la primera captura anotaba 31 tests E2E; era un artefacto de
@@ -49,7 +49,7 @@ Guard/filter sin specs (mencionados en análisis previo): `jwt-auth.guard.ts`,
 - **F-001 (Media).** Cobertura global por debajo de los mínimos propios del repo
   (43% vs 70% lines; 35% vs 60% branches) y sin `coverageThreshold` en Jest → la CI
   no puede detectar regresiones de cobertura. `apps/api/package.json`.
-- **F-002 (Alta).** Las E2E **no resetean** `sigeb_test` entre ejecuciones
+- **F-002 (Alta).** Las E2E **no resetean** `EDUVIAGT_test` entre ejecuciones
   (`test/setup-env.ts` solo fija env vars). Los datos se acumulan y una ejecución
   puede pasar o fallar según el histórico previo → pruebas no idempotentes.
 - **F-003 (Media).** `apps/web` declara script `test: jest --passWithNoTests` pero
@@ -66,8 +66,8 @@ Guard/filter sin specs (mencionados en análisis previo): `jwt-auth.guard.ts`,
 # Unit + cobertura (sin BD)
 cd apps/api; npx jest --coverage
 
-# E2E (BD de prueba dedicada sigeb_test)
+# E2E (BD de prueba dedicada EDUVIAGT_test)
 cd apps/api
-$env:DATABASE_URL = "postgresql://sigeb:sigeb123@localhost:5432/sigeb_test"
+$env:DATABASE_URL = "postgresql://EDUVIAGT:EDUVIAGT123@localhost:5432/EDUVIAGT_test"
 npx jest --config ./test/jest-e2e.json --runInBand --json --outputFile=e2e.json
 ```
