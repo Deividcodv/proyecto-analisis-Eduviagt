@@ -260,15 +260,35 @@ jobs:
           # ejecutan exactamente los mismos pasos.
           script: |
             set -e
-            # El script se copia desde el propio checkout del workflow: el
-            # repositorio de destino puede no tenerlo todavia (la replica
-            # de EDUVIAGT todavia no esta hecha).
-            cp ${{ github.workspace }}/scripts/deploy-pm2.sh /tmp/deploy-pm2.sh
-            DEPLOY_PATH=${{ secrets.DEPLOY_PATH }} \
-            PM2_CONFIG_PATH=${{ vars.PM2_CONFIG_PATH || '/home/davi/sigeb.pm2.config.cjs' }} \
-            DEPLOY_REPO_URL=${{ vars.DEPLOY_REPO_URL || 'https://github.com/Deividcodv/sigeb-prod.git' }} \
-            DEPLOY_REPO_URL_FALLBACK=${{ vars.DEPLOY_REPO_URL_FALLBACK || 'https://github.com/Deividcodv/sigeb-prod.git' }} \
-            bash /tmp/deploy-pm2.sh
+            # Despliegue directo (el script deploy-pm2.sh no esta en el checkout)
+            RAIZ="${DEPLOY_PATH:-/home/davi/sigeb}"
+            cd "$RAIZ"
+            RAMA="develop"
+            PM2_CONFIG="${PM2_CONFIG_PATH:-/home/davi/sigeb.pm2.config.cjs}"
+            DEPLOY_REPO_URL="${DEPLOY_REPO_URL:-https://github.com/Deividcodv/proyecto-analisis-Eduviagt.git}"
+            DEPLOY_REPO_URL_FALLBACK="${DEPLOY_REPO_URL_FALLBACK:-https://github.com/Deividcodv/sigeb-prod.git}"
+            MARCA="apps/api/src/auth/eliminar-cuenta.service.ts"
+            git stash || true
+            git remote set-url origin "$DEPLOY_REPO_URL"
+            git fetch origin --prune
+            git checkout "$RAMA"
+            git pull --ff-only origin "$RAMA"
+            npm ci
+            export DATABASE_URL="$(grep -m1 '^DATABASE_URL=' apps/api/.env | cut -d= -f2-)"
+            cd apps/api
+            npx prisma migrate deploy
+            npx prisma generate
+            cd "$RAIZ"
+            npm run build
+            DESTINO="apps/web/.next/standalone/apps/web"
+            mkdir -p "$DESTINO/.next"
+            rm -rf "$DESTINO/.next/static"
+            cp -a apps/web/.next/static "$DESTINO/.next/static"
+            rm -rf "$DESTINO/public"
+            cp -a apps/web/public "$DESTINO/public"
+            pm2 startOrRestart "$PM2_CONFIG" --only sigeb-api,sigeb-web
+            pm2 save
+            echo "==> Despliegue completado"
 
   deploy-production:
     needs: [api-tests, docker-build]
