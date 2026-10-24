@@ -6,6 +6,7 @@ export type SolicitudEstado =
   | 'EN_REVISION'
   | 'CORRECCION'
   | 'EVALUADA'
+  | 'PENDIENTE_SEGUNDA_APROBACION'
   | 'APROBADA'
   | 'RECHAZADA';
 
@@ -16,7 +17,11 @@ export type SolicitudTransicion =
   | 'corregir'
   | 'evaluar'
   | 'aprobar'
-  | 'rechazar';
+  | 'rechazar'
+  // Sprint 8 (US-802/803): segunda instancia de aprobación.
+  | 'solicitar_segunda_aprobacion'
+  | 'aprobar_segunda'
+  | 'devolver_a_revision';
 
 const TRANSITIONS: Record<
   SolicitudEstado,
@@ -26,7 +31,17 @@ const TRANSITIONS: Record<
   ENVIADA: { iniciar_revision: 'EN_REVISION' },
   EN_REVISION: { solicitar_correccion: 'CORRECCION', evaluar: 'EVALUADA' },
   CORRECCION: { corregir: 'BORRADOR' },
-  EVALUADA: { aprobar: 'APROBADA', rechazar: 'RECHAZADA' },
+  EVALUADA: {
+    aprobar: 'APROBADA',
+    rechazar: 'RECHAZADA',
+    // Se usa cuando el monto otorgable supera el umbral de control.
+    solicitar_segunda_aprobacion: 'PENDIENTE_SEGUNDA_APROBACION',
+  },
+  PENDIENTE_SEGUNDA_APROBACION: {
+    aprobar_segunda: 'APROBADA',
+    rechazar: 'RECHAZADA',
+    devolver_a_revision: 'EN_REVISION',
+  },
   APROBADA: {},
   RECHAZADA: {},
 };
@@ -37,6 +52,7 @@ export const SOLICITUD_ESTADOS: SolicitudEstado[] = [
   'EN_REVISION',
   'CORRECCION',
   'EVALUADA',
+  'PENDIENTE_SEGUNDA_APROBACION',
   'APROBADA',
   'RECHAZADA',
 ];
@@ -50,7 +66,7 @@ export class SolicitudStateMachine {
 
     if (!destino) {
       throw new BadRequestException(
-        `Transición inválida: "${accion}" no es válida desde estado "${estadoActual}"`,
+        `Transición no válida: "${accion}" no se puede realizar desde el estado "${estadoActual}"`,
       );
     }
 

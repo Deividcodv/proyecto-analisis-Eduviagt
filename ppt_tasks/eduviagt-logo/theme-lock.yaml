@@ -1,0 +1,28 @@
+version: 1
+status: ACTIVE
+user_confirmed_at: "2026-10-16"
+visual_thesis: "Institucional y cálido: azul profundo de confianza y un trazo en oro que asciende como la vía hacia la beca, sobre retícula geométrica legible a cualquier tamaño."
+audience_promise: "Que cualquier estudiante guatemalteco (niño a adulto) reconozca y confíe en EDUVIAGT como la vía oficial hacia su beca."
+style_input: "institutional public education, deep blue and gold, geometric, warm and trustworthy"
+seed: 7
+intended_tokens:
+  palette: "azul #0F3D63 / #3D8EC7, oro #D4A72C, oro-oscuro #7A5F17, tinta #18233A, papel #F5F7FA, blanco #FFFFFF, azul-texto #2E6E9E"
+  typography: "display Archivo Black (fallback Arial Black); body Instrument Sans (fallback Segoe UI)"
+  decoration: "un único acento dorado: reglas de título, marcos y el brazo ascendente; sin sombras ni degradados extra"
+  layout: "16:9, margen 0.7 in, retícula de 3 columnas (3.778 in, gap 0.3 in); isotipo sobre módulo x = lado/16"
+visual_grammar:
+  corner_treatment: "isotipo radio 116/512 (0.23x); láminas con esquinas suaves 0.06 in"
+  accent_rule: "regla dorada 1.35 x 0.055 in bajo cada título"
+  density: "media; 2-3 bloques por lámina"
+deck_rhythm:
+  cover: "oscuro (tinta) para contraste máximo"
+  body: "claro (papel) con fichas blancas"
+  close: "reglas de uso"
+forbidden_patterns:
+  - "degradados o sombras fuera del badge"
+  - "contornos finos (< 0.1x el lado)"
+  - "texto en oro sobre fondo claro"
+  - "deformar o rotar el isotipo"
+  - "tipografías distintas a la display/body definidas"
+resolved_theme_path: "out/resolved_theme.json"
+resolved_theme_fingerprint: "sha256:EAFB557FA8A8F5C3615045AFA6E4F793A5B8FCD4B9454706FA0838BEECC14D6C"

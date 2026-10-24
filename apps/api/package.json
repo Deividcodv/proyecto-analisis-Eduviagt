@@ -46,10 +46,12 @@
     "@types/multer": "^2.2.0",
     "@types/node": "^22.5.0",
     "@types/passport-jwt": "^4.0.1",
+    "@types/supertest": "^7.2.1",
     "@types/uuid": "^10.0.0",
     "jest": "^29.7.0",
     "prisma": "^5.19.0",
     "source-map-support": "^0.5.21",
+    "supertest": "^7.3.1",
     "ts-jest": "^29.2.0",
     "ts-loader": "^9.5.0",
     "ts-node": "^10.9.2",
@@ -71,6 +73,14 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
+    "coverageThreshold": {
+      "global": {
+        "statements": 49,
+        "branches": 40,
+        "functions": 48,
+        "lines": 49
+      }
+    },
     "testEnvironment": "node"
   },
   "prisma": {

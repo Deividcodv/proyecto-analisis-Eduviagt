@@ -4,6 +4,13 @@ import { useEffect, useRef, useState } from 'react';
 import { httpData } from '@/lib/api';
 import { Icon } from '@/components/ui/Icon';
 import { useAuth } from '@/context/AuthContext';
+import {
+  DESCRIPCION_ASISTENTE,
+  ETIQUETA_ASISTENTE,
+  NOMBRE_ASISTENTE,
+  mensajeEspera,
+  saludoAsistente,
+} from '@/lib/asistente';
 
 interface Mensaje {
   rol: 'usuario' | 'asistente';
@@ -45,6 +52,8 @@ export function ChatWidget() {
   const [pensando, setPensando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const finRef = useRef<HTMLDivElement | null>(null);
+  const entradaRef = useRef<HTMLInputElement | null>(null);
+  const botonRef = useRef<HTMLButtonElement | null>(null);
 
   const rol = (usuario?.rol ?? '').toUpperCase();
   const esEquipo = ROLES_EQUIPO.includes(rol);
@@ -54,14 +63,22 @@ export function ChatWidget() {
       ? SUGERENCIAS_POSTULANTE
       : SUGERENCIAS_PUBLICAS;
 
+  // Al abrir, el foco va al campo de pregunta; al cerrar, vuelve al botón
+  // que lo abrió, para no perder el hilo con el teclado.
+  useEffect(() => {
+    if (abierto) {
+      entradaRef.current?.focus();
+      return;
+    }
+    botonRef.current?.focus();
+  }, [abierto]);
+
   useEffect(() => {
     if (abierto && mensajes.length === 0) {
       setMensajes([
         {
           rol: 'asistente',
-          contenido: esEquipo
-            ? '¡Hola! Soy el asistente de EDUVIAGT. Puedo ayudarte a analizar el avance de las convocatorias, las solicitudes en revisión y el proceso de evaluación de los comités.'
-            : '¡Hola! Soy el asistente de EDUVIAGT. Puedo ayudarte con preguntas sobre convocatorias, becas y el proceso de postulación.',
+          contenido: saludoAsistente(esEquipo),
         },
       ]);
     }
@@ -99,32 +116,53 @@ export function ChatWidget() {
   return (
     <>
       <button
+        ref={botonRef}
         onClick={() => setAbierto((a) => !a)}
-        aria-label="Abrir chat con el asistente"
+        aria-label={
+          abierto
+            ? `Cerrar chat con ${NOMBRE_ASISTENTE}`
+            : `Abrir chat con ${NOMBRE_ASISTENTE}`
+        }
+        aria-expanded={abierto}
+        aria-controls="panel-asistente-eduvi"
+        title={ETIQUETA_ASISTENTE}
         className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-sigeb-blue text-white shadow-lg transition-transform hover:scale-105"
       >
-        <Icon name={abierto ? 'cerrar' : 'chat'} className="h-6 w-6" />
+        <Icon
+          name={abierto ? 'cerrar' : 'eduvi'}
+          className="h-6 w-6"
+        />
       </button>
 
       {abierto && (
-        <div className="fixed bottom-24 right-5 z-50 flex h-[28rem] w-[22rem] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+        <div
+          id="panel-asistente-eduvi"
+          role="dialog"
+          aria-label={`Chat con ${NOMBRE_ASISTENTE}`}
+          className="fixed bottom-24 right-5 z-50 flex h-[28rem] w-[22rem] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl"
+        >
           <div className="flex items-center justify-between bg-sigeb-blue px-4 py-3 text-white">
-            <div>
-              <p className="font-semibold">Asistente EDUVIAGT</p>
-              <p className="text-xs text-sigeb-white/80">
-                Respuestas acotadas a la base de conocimiento
-              </p>
+            <div className="flex items-center gap-2">
+              <Icon name="eduvi" className="h-5 w-5 shrink-0 text-brutal-gold" />
+              <div>
+                <p className="font-semibold">{NOMBRE_ASISTENTE}</p>
+                <p className="text-xs text-sigeb-white/80">{DESCRIPCION_ASISTENTE}</p>
+              </div>
             </div>
             <button
               onClick={() => setAbierto(false)}
               className="rounded p-1 hover:bg-white/20"
-              aria-label="Cerrar chat"
+              aria-label={`Cerrar chat con ${NOMBRE_ASISTENTE}`}
             >
               <Icon name="cerrar" className="h-4 w-4" />
             </button>
           </div>
 
-          <div className="flex-1 space-y-3 overflow-y-auto bg-sigeb-gray p-4">
+          <div
+            className="flex-1 space-y-3 overflow-y-auto bg-sigeb-gray p-4"
+            aria-live="polite"
+            aria-atomic="false"
+          >
             {mensajes.length === 0 && (
               <div className="space-y-2">
                 {sugerencias.map((s) => (
@@ -155,13 +193,14 @@ export function ChatWidget() {
             {pensando && (
               <div className="flex max-w-[85%] items-center gap-2 rounded-2xl bg-white px-3 py-2 text-sm text-brutal-tinta/70 shadow-sm">
                 <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-sigeb-blue" />
-                {esEquipo
-                  ? 'Analizando expediente...'
-                  : 'Analizando convocatorias...'}
+                {mensajeEspera(esEquipo)}
               </div>
             )}
             {error && (
-              <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
+              <div
+                role="alert"
+                className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700"
+              >
                 {error}
               </div>
             )}
@@ -175,10 +214,15 @@ export function ChatWidget() {
               enviar();
             }}
           >
+            <label htmlFor="pregunta-asistente" className="sr-only">
+              Escribe tu pregunta a {NOMBRE_ASISTENTE}
+            </label>
             <input
+              id="pregunta-asistente"
+              ref={entradaRef}
               value={texto}
               onChange={(e) => setTexto(e.target.value)}
-              placeholder="Escribe tu pregunta..."
+              placeholder="Escribe tu pregunta…"
               maxLength={500}
               className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-sigeb-blue focus:outline-none focus:ring-2 focus:ring-sigeb-blue/20"
             />

@@ -3,6 +3,17 @@ import { httpData } from '@/lib/api';
 const ACCESS_KEY = 'sigeb_access_token';
 const REFRESH_KEY = 'sigeb_refresh_token';
 
+// S-004: la API devuelve el rol siempre como objeto { id, nombre }
+// (login, registro y perfil). En el cliente se aplana a texto una sola vez
+// en el AuthContext, para que el resto de la app siga trabajando con strings.
+export interface UsuarioRespuesta {
+  id: string;
+  cui: string;
+  nombres: string;
+  email: string;
+  rol: { id: string; nombre: string };
+}
+
 export interface Usuario {
   id: string;
   cui: string;
@@ -14,7 +25,7 @@ export interface Usuario {
 export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
-  user: Usuario;
+  user: UsuarioRespuesta;
 }
 
 export function getAccessToken(): string | null {
@@ -35,6 +46,18 @@ export function storeTokens(accessToken: string, refreshToken: string) {
 export function clearTokens() {
   window.localStorage.removeItem(ACCESS_KEY);
   window.localStorage.removeItem(REFRESH_KEY);
+}
+
+/**
+ * Cierra la sesión en el navegador sin tocar el estado de la interfaz: se
+ * usa cuando la persona debe poder seguir viendo una pantalla (por ejemplo,
+ * el resumen de qué se borró al eliminar su cuenta).
+ *
+ * Los tokens de acceso son de corta duración y el servidor ya invalida la
+ * cuenta eliminada, así que no hace falta llamar a ningún endpoint.
+ */
+export function cerrarSesionLocal(): void {
+  clearTokens();
 }
 
 export async function login(email: string, password: string): Promise<LoginResponse> {

@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchConToken } from '@/lib/api-auth';
 import { useAuth } from '@/context/AuthContext';
+import { Icon } from '@/components/ui/Icon';
 import {
   useNotificacionesStream,
   type EventoNotificacion,
 } from '@/lib/notificaciones-stream';
+import { useNotificacionesSonido } from '@/hooks/use-notificaciones-sonido';
 import type { ListaNotificaciones, Notificacion } from '@/lib/api';
 
 function formatearMomento(fecha: string): string {
@@ -28,6 +30,10 @@ export function CampanaNotificaciones() {
   const [abierto, setAbierto] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
+  const [config, setConfig] = useState<{
+    sonidoNotificaciones: boolean;
+    volumenSonido: number;
+  }>({ sonidoNotificaciones: true, volumenSonido: 40 });
   const ref = useRef<HTMLDivElement>(null);
 
   const cargar = useCallback(async () => {
@@ -48,7 +54,17 @@ export function CampanaNotificaciones() {
   }, []);
 
   useEffect(() => {
-    if (usuario) void cargar();
+    if (usuario) {
+      void cargar();
+      fetchConToken<{ sonidoNotificaciones: boolean; volumenSonido: number }>('/usuarios/me/configuracion')
+        .then((r) => {
+          setConfig({
+            sonidoNotificaciones: r.sonidoNotificaciones ?? true,
+            volumenSonido: r.volumenSonido ?? 40,
+          });
+        })
+        .catch(() => {});
+    }
   }, [usuario, cargar]);
 
   useNotificacionesStream((evento: EventoNotificacion) => {
@@ -68,6 +84,12 @@ export function CampanaNotificaciones() {
     setTotal((t) => t + 1);
     setNoLeidas((n) => n + 1);
   }, !!usuario);
+
+  useNotificacionesSonido({
+    noLeidas,
+    habilitado: config.sonidoNotificaciones,
+    volumen: config.volumenSonido,
+  });
 
   useEffect(() => {
     if (!abierto) return;
@@ -106,6 +128,13 @@ export function CampanaNotificaciones() {
 
   if (!usuario) return null;
 
+  // El nombre accesible debe incluir el número visible del contador
+  // (regla axe `label-content-name-mismatch`).
+  const etiqueta =
+    noLeidas > 0
+      ? `Notificaciones: ${noLeidas > 99 ? '99+' : noLeidas} sin leer`
+      : 'Notificaciones';
+
   return (
     <div className="relative" ref={ref}>
       <button
@@ -113,23 +142,10 @@ export function CampanaNotificaciones() {
         onClick={() => setAbierto((v) => !v)}
         aria-expanded={abierto}
         aria-haspopup="menu"
-        aria-label="Notificaciones"
-        className="relative flex h-9 w-9 items-center justify-center rounded-brutal border-2 border-brutal-cyan bg-brutal-tinta text-brutal-cyan transition-colors hover:bg-brutal-cyan hover:text-brutal-tinta"
+        aria-label={etiqueta}
+        className="relative flex h-9 w-9 items-center justify-center rounded-brutal border-2 border-brutal-tinta bg-brutal-gold text-brutal-tinta transition-colors hover:bg-brutal-papel"
       >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-          <path d="M13.7 21a2 2 0 0 1-3.4 0" />
-        </svg>
+        <Icon name="campana" className="h-[18px] w-[18px]" />
         {noLeidas > 0 && (
           <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-brutal-tinta bg-brutal-rojo px-1 font-mono text-[10px] font-black text-brutal-papel">
             {noLeidas > 99 ? '99+' : noLeidas}

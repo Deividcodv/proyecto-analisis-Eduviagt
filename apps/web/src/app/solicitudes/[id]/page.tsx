@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { fetchConToken, descargarConstancia } from '@/lib/api-auth';
+import { fetchConToken, descargarConstancia, verDocumento as verDocumentoArchivo } from '@/lib/api-auth';
 import { traducirError } from '@/lib/mensajes-error';
 import { Container } from '@/components/ui/Container';
 import { Card } from '@/components/ui/Card';
@@ -98,8 +98,17 @@ function SolicitudDetalleContent() {
     }
   };
 
-  const enviar = async () => {
-    setEnviando(true);
+  /** Abre el archivo del documento en una pestaña nueva. */
+  const verDocumento = async (documentoId: string) => {
+    setError(null);
+    try {
+      await verDocumentoArchivo(id, documentoId);
+    } catch (e) {
+      setError(traducirError(e, 'No se pudo abrir el documento'));
+    }
+  };
+
+  const enviar = async () => {    setEnviando(true);
     setError(null);
     try {
       await fetchConToken(`/solicitudes/${id}/transicion`, {
@@ -119,14 +128,14 @@ function SolicitudDetalleContent() {
     return (
       <Container className="flex min-h-[50vh] items-center justify-center py-16">
         {error ? (
-          <div className="max-w-md rounded-xl border border-red-200 bg-red-50 p-6 text-center">
-            <p className="text-red-700">{error}</p>
+          <div className="max-w-md rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-6 text-center">
+            <p className="font-bold text-brutal-rojo">{error}</p>
             <Button
               variant="ghost"
               className="mt-4"
               onClick={() => router.replace('/dashboard')}
             >
-              Volver al dashboard
+              Volver a mi panel
             </Button>
           </div>
         ) : (
@@ -174,7 +183,7 @@ function SolicitudDetalleContent() {
             onClick={() => router.replace('/dashboard')}
             className="mb-4 inline-block rounded-brutal border-[3px] border-brutal-tinta bg-brutal-blanco px-3 py-1 font-mono text-xs font-bold text-brutal-tinta"
           >
-            ← Volver al dashboard
+            ← Volver a mi panel
           </button>
           <p className="mb-2 inline-block rounded-brutal border-[3px] border-brutal-tinta bg-brutal-gold px-3 py-1 font-brut text-xs font-bold uppercase tracking-wide text-brutal-tinta">
             Mi postulación
@@ -228,6 +237,7 @@ function SolicitudDetalleContent() {
               documentos={checklist?.documentos ?? []}
               subiendo={subiendo}
               onSubir={subir}
+              onVer={verDocumento}
               onConfirmar={(tipoId, accion, archivo) =>
                 setConfirmTipo({ tipoId, accion, archivo })
               }
@@ -391,9 +401,11 @@ function DocsSection({
   documentos,
   subiendo,
   onSubir,
+  onVer,
   onConfirmar,
 }: {
   documentos: {
+    documentoId: string | null;
     documentoTipoId: string;
     nombre: string;
     obligatorio: boolean;
@@ -405,6 +417,7 @@ function DocsSection({
   }[];
   subiendo: string | null;
   onSubir: (tipoId: string, file: File) => void;
+  onVer: (documentoId: string) => void;
   onConfirmar: (
     tipoId: string,
     accion: 'eliminar' | 'reemplazar',
@@ -454,9 +467,18 @@ function DocsSection({
                 <div className="flex items-center gap-3">
                   {doc.cargado ? (
                     <>
-                      <label className="cursor-pointer rounded-brutal border-[3px] border-brutal-tinta bg-brutal-cyan px-4 py-1.5 font-brut text-sm font-bold uppercase tracking-wide text-brutal-tinta shadow-brutal-sm transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none">
+                      {doc.documentoId && (
+                        <Button
+                          variant="ghost"
+                          onClick={() => doc.documentoId && onVer(doc.documentoId)}
+                          disabled={subiendo === doc.documentoTipoId}
+                        >
+                          Ver
+                        </Button>
+                      )}
+                      <label className="cursor-pointer rounded-brutal border-[3px] border-brutal-tinta bg-sigeb-blue-dark px-4 py-1.5 font-brut text-sm font-bold uppercase tracking-wide text-brutal-blanco shadow-brutal-sm transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none">
                         {subiendo === doc.documentoTipoId
-                          ? 'Subiendo...'
+                          ? 'Subiendo…'
                           : rechazado
                             ? 'Subir de nuevo'
                             : 'Reemplazar'}
@@ -481,8 +503,8 @@ function DocsSection({
                       </Button>
                     </>
                   ) : (
-                    <label className="cursor-pointer rounded-brutal border-[3px] border-brutal-tinta bg-brutal-cyan px-4 py-1.5 font-brut text-sm font-bold uppercase tracking-wide text-brutal-tinta shadow-brutal-sm transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none">
-                      {subiendo === doc.documentoTipoId ? 'Subiendo...' : 'Subir'}
+                    <label className="cursor-pointer rounded-brutal border-[3px] border-brutal-tinta bg-sigeb-blue-dark px-4 py-1.5 font-brut text-sm font-bold uppercase tracking-wide text-brutal-blanco shadow-brutal-sm transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none">
+                      {subiendo === doc.documentoTipoId ? 'Subiendo…' : 'Subir'}
                       <input
                         type="file"
                         accept=".pdf,.jpg,.jpeg,.png"

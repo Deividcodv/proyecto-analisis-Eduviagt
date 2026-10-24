@@ -1,0 +1,10 @@
+{
+  "task_id": "3bffe6a7-0c23-44cb-ba9d-e5341b2d444a",
+  "task_name": "eduviagt-logo",
+  "skill": "ppt-design-skill",
+  "skill_version": "1.5",
+  "template_source": "skill/templates/task-init",
+  "project_root": "C:\\dev\\Sigeb-v1.1",
+  "task_root": "C:\\dev\\Sigeb-v1.1\\ppt_tasks\\eduviagt-logo",
+  "created_at": "2026-10-16T20:44:01.410065+00:00"
+}

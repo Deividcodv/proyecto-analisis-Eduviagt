@@ -1,9 +1,8 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import * as express from 'express';
-import * as path from 'path';
 import { AppModule } from './app.module';
+import { formatearErroresValidacion } from './common/filters/mensajes-error';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -11,9 +10,10 @@ async function bootstrap() {
   // Global prefix
   app.setGlobalPrefix('api');
 
-  // Almacenamiento estático (documentos subidos)
-  const storagePath = path.resolve(process.env.STORAGE_PATH || './storage');
-  app.use('/storage', express.static(storagePath));
+  // Los documentos que suben los postulantes NO se sirven como archivos
+  // estáticos: se entregan por un endpoint autenticado que comprueba que
+  // quien los pide es el dueño de la solicitud o alguien que participa en
+  // su revisión. Ver SolicitudesService.descargarDocumento.
 
   // CORS
   app.enableCors({
@@ -27,6 +27,10 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+      // S-007: los mensajes por defecto de class-validator están en inglés;
+      // se convierten a mensajes claros en español.
+      exceptionFactory: (errores) =>
+        new BadRequestException(formatearErroresValidacion(errores)),
     }),
   );
 
@@ -41,8 +45,12 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
-  console.log(`🚀 EDUVIAGT API running on http://localhost:${port}`);
-  console.log(`📚 Swagger docs: http://localhost:${port}/api/docs`);
+  // Interfaz de escucha. En el servidor la API queda atada a 127.0.0.1 porque
+  // la web —que la consume por proxy— corre en la misma maquina: no hace
+  // falta dejarla escuchando en la red publica.
+  const host = process.env.HOST || '0.0.0.0';
+  await app.listen(port, host);
+  console.log(`🚀 EDUVIAGT API running on http://${host}:${port}`);
+  console.log(`📚 Swagger docs: http://${host}:${port}/api/docs`);
 }
 bootstrap();

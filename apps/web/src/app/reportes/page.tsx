@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import { InternalPageHeader } from '@/components/ui/InternalPageHeader';
 import { nombreRol } from '@/lib/rol';
+import { etiquetaEstado } from '@/lib/etiquetas';
 import { MarcoBrutal } from '@/components/reportes/MarcoBrutal';
 import { GraficaDona } from '@/components/reportes/GraficaDona';
 import { GraficaBarras } from '@/components/reportes/GraficaBarras';
@@ -20,7 +21,13 @@ import { EmbudoConversion } from '@/components/reportes/EmbudoConversion';
 import { TablaDetalle } from '@/components/reportes/TablaDetalle';
 import { ExportarReporte } from '@/components/reportes/ExportarReporte';
 
-const ROLES_EMPLEADOS = ['ADMIN', 'EVALUADOR', 'COORDINADOR_COMITE', 'MIEMBRO_COMITE'];
+const ROLES_EMPLEADOS = [
+  'ADMIN',
+  'EVALUADOR',
+  'COORDINADOR_COMITE',
+  'MIEMBRO_COMITE',
+  'JEFE_BECAS',
+];
 
 interface ReporteGeneral {
   solicitudes: { total: number; porEstado: { estado: string; cantidad: number }[] };
@@ -124,7 +131,7 @@ function ReportesContent() {
     <>
       <InternalPageHeader
         title="Reportes"
-        subtitle={`Panel de métricas para ${nombreRol(rol)}`}
+        subtitle={`Panel de datos para ${nombreRol(rol)}`}
       />
 
       <Container className="py-10">
@@ -144,7 +151,7 @@ function ReportesContent() {
                   <KpiCard label="Asignadas" value={misEvaluaciones.total} acento="bg-brutal-cyan" />
                   <KpiCard label="Completadas" value={misEvaluaciones.completadas} acento="bg-brutal-lima" />
                   <KpiCard label="Pendientes" value={misEvaluaciones.pendientes} acento="bg-brutal-naranja" />
-                  <KpiCard label="Score promedio" value={misEvaluaciones.scorePromedio ?? '—'} acento="bg-brutal-gold" />
+                  <KpiCard label="Puntaje promedio" value={misEvaluaciones.scorePromedio ?? '—'} acento="bg-brutal-gold" />
                 </div>
                 <div className="mt-6 grid gap-6 lg:grid-cols-2">
                   <MarcoBrutal titulo="Progreso de evaluaciones">
@@ -201,8 +208,8 @@ function ReportesContent() {
               <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                 <KpiCard label="Solicitudes" value={general.solicitudes.total} acento="bg-brutal-cyan" />
                 <KpiCard label="Convocatorias" value={general.convocatorias.total} acento="bg-brutal-gold" />
-                <KpiCard label="Evals completadas" value={general.evaluaciones.completadas} acento="bg-brutal-lima" />
-                <KpiCard label="Score global" value={general.evaluaciones.scorePromedio ?? '—'} acento="bg-brutal-rosa" />
+                <KpiCard label="Evaluaciones completadas" value={general.evaluaciones.completadas} acento="bg-brutal-lima" />
+                <KpiCard label="Puntaje global" value={general.evaluaciones.scorePromedio ?? '—'} acento="bg-brutal-rosa" />
               </div>
 
               <div className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -212,7 +219,7 @@ function ReportesContent() {
 
                 <MarcoBrutal titulo="Convocatorias por estado">
                   <GraficaBarras
-                    labels={general.convocatorias.porEstado.map((e) => e.estado)}
+                    labels={general.convocatorias.porEstado.map((e) => etiquetaEstado(e.estado))}
                     datasets={[{
                       label: 'Convocatorias',
                       data: general.convocatorias.porEstado.map((e) => e.cantidad),
@@ -237,7 +244,7 @@ function ReportesContent() {
               )}
 
               <div className="mt-6">
-                <MarcoBrutal titulo="Tendencia mensual (solicitudes vs evaluaciones)">
+                <MarcoBrutal titulo="Tendencia mensual (solicitudes frente a evaluaciones)">
                   <div className="mb-4 flex flex-wrap items-center gap-2">
                     <span className="brut-label text-[10px] font-bold uppercase text-brutal-tinta/60">
                       Rango:
@@ -264,7 +271,7 @@ function ReportesContent() {
               </div>
 
               <div className="mt-6">
-                <MarcoBrutal titulo="Embudo de conversión">
+                <MarcoBrutal titulo="Del registro a la aprobación">
                   <EmbudoConversion />
                 </MarcoBrutal>
               </div>
@@ -286,13 +293,13 @@ function ReportesContent() {
                 <p className="brut-label mb-1 text-xs font-bold text-brutal-gold">// Exportar datos</p>
                 <div className="flex flex-wrap gap-3">
                   <Button onClick={() => descargarCsv('solicitudes-por-estado')} variant="ghost">
-                    ↓ CSV Solicitudes
+                    ↓ Descargar solicitudes (CSV)
                   </Button>
                   <Button onClick={() => descargarCsv('convocatorias')} variant="ghost">
-                    ↓ CSV Convocatorias
+                    ↓ Descargar convocatorias (CSV)
                   </Button>
                   <Button onClick={() => descargarCsv('evaluaciones')} variant="ghost">
-                    ↓ CSV Evaluaciones
+                    ↓ Descargar evaluaciones (CSV)
                   </Button>
                 </div>
                 <ExportarReporte />

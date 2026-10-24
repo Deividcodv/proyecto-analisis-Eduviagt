@@ -326,10 +326,19 @@ cp -r recreacion/sprint-N/<tu-nombre>/repo/apps/api/src/auth apps/api/src/auth
 - David publica `doc/scrum/sprint-N/sprint-planning.md`: historias del sprint (del `product-backlog.md`),
   quién toma cada historia, metas M1..Mx y el orden de merge.
 
+<<<<<<< HEAD
 > En la simulación de los 3 primeros sprints, las carpetas de artefactos son
 > `doc/scrum/recreacion-sprint-1-cimientos/`, `doc/scrum/recreacion-sprint-2-portal-publico/` y
 > `doc/scrum/recreacion-sprint-3-login-dashboard/` (mismos archivos: `goal.md`, `backlog.md`,
 > `daily-log.md`, `review.md`, `retrospective.md`).
+=======
+> En la simulación, los sprints 1-3 y el 5 se archivan como
+> `doc/scrum/recreacion-sprint-1-cimientos/`, `doc/scrum/recreacion-sprint-2-portal-publico/`,
+> `doc/scrum/recreacion-sprint-3-login-dashboard/` y
+> `doc/scrum/recreacion-sprint-5-reportes-ia/` (mismos archivos: `goal.md`, `backlog.md`,
+> `daily-log.md`, `review.md`, `retrospective.md`, más `README-COLABORADORES-SN.md` con los comandos
+> de copia y verificación de cada dev).
+>>>>>>> sigeb-prod/develop
 - Cada dev pasa su historia a "En progreso".
 
 ### Cada dev, antes de empezar a trabajar

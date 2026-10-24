@@ -33,6 +33,9 @@ export function PanelComites() {
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudieron cargar los comités');
+      // Sin esto la lista queda en `null` y la vista muestra el spinner para
+      // siempre, tragándose el mensaje de error.
+      setComites([]);
     }
   }, []);
 
@@ -164,7 +167,7 @@ export function PanelComites() {
           </div>
           <div className="mt-4">
             <Button onClick={crear} disabled={enviando}>
-              {enviando ? 'Creando...' : 'Crear'}
+              {enviando ? 'Creando…' : 'Crear'}
             </Button>
           </div>
         </Card>

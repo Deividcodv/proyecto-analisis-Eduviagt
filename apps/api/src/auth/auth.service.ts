@@ -3,15 +3,22 @@ import {
   ConflictException,
   UnauthorizedException,
   NotFoundException,
+  HttpException,
+  HttpStatus,
+  Optional,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { BitacoraService } from '../bitacora/bitacora.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { UpdatePerfilDto } from './dto/update-perfil.dto';
+import {
+  LoginAttemptService,
+} from './login-attempt.service';
 
 @Injectable()
 export class AuthService {
@@ -20,9 +27,16 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private audit: AuditService,
+    private bitacora: BitacoraService,
+    @Optional()
+    private readonly intentosLogin: LoginAttemptService = new LoginAttemptService(),
   ) {}
 
   async register(dto: RegisterDto) {
+    // Los correos no distinguen mayúsculas: se guardan y se buscan en
+    // minúsculas para que "Juan@Test.com" y "juan@test.com" sean lo mismo.
+    const email = dto.email.trim().toLowerCase();
+
     const existingCui = await this.prisma.usuario.findUnique({
       where: { cui: dto.cui },
     });
@@ -31,8 +45,8 @@ export class AuthService {
       throw new ConflictException('El CUI ya está registrado');
     }
 
-    const existingEmail = await this.prisma.usuario.findUnique({
-      where: { email: dto.email },
+    const existingEmail = await this.prisma.usuario.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } },
     });
 
     if (existingEmail) {
@@ -50,15 +64,51 @@ export class AuthService {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(dto.password, salt);
 
-    const user = await this.prisma.usuario.create({
-      data: {
-        cui: dto.cui,
-        nombres: dto.nombres,
-        email: dto.email,
-        passwordHash,
-        rolId: postulanteRole.id,
+    let user;
+    try {
+      user = await this.prisma.usuario.create({
+        data: {
+          cui: dto.cui,
+          nombres: dto.nombres,
+          email,
+          passwordHash,
+          rolId: postulanteRole.id,
+        },
+        include: { rol: true },
+      });
+    } catch (error) {
+      // Dos registros a la vez pasan las comprobaciones previas y uno choca
+      // con el índice único; antes eso salía como 500.
+      if ((error as { code?: string })?.code === 'P2002') {
+        throw new ConflictException(
+          'El CUI o el correo electrónico ya están registrados',
+        );
+      }
+      throw error;
+    }
+
+    await this.audit.log({
+      usuarioId: user.id,
+      accion: 'register',
+      entidad: 'usuario',
+      entidadId: user.id,
+    });
+
+    await this.bitacora.registrar({
+      actor: {
+        id: user.id,
+        nombre: user.nombres,
+        rol: user.rol.nombre,
+        correo: user.email,
       },
-      include: { rol: true },
+      modulo: 'usuario',
+      entidad: 'usuario',
+      entidadId: user.id,
+      accionClave: 'usuario.registro',
+      accionHumana: 'Creó su cuenta en el sistema',
+      descripcionHumana: `Se registró con el correo ${user.email}.`,
+      resultado: 'EXITOSO',
+      origen: 'WEB',
     });
 
     const { passwordHash: _, ...userWithoutPassword } = user;
@@ -68,18 +118,32 @@ export class AuthService {
       cui: userWithoutPassword.cui,
       nombres: userWithoutPassword.nombres,
       email: userWithoutPassword.email,
-      rol: userWithoutPassword.rol.nombre,
+      rol: { id: userWithoutPassword.rol.id, nombre: userWithoutPassword.rol.nombre },
       createdAt: userWithoutPassword.createdAt,
     };
   }
 
   async login(dto: LoginDto, ip?: string) {
-    const user = await this.prisma.usuario.findUnique({
-      where: { email: dto.email },
+    // S-002: la clave combina la IP y el correo para limitar los intentos.
+    const clave = `${ip ?? 'sin-ip'}:${dto.email.trim().toLowerCase()}`;
+
+    const bloqueo = this.intentosLogin.estado(clave);
+    if (bloqueo.bloqueado) {
+      throw new HttpException(
+        `Demasiados intentos fallidos. Intenta de nuevo en ${bloqueo.reintentarEnSegundos} segundos.`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    const user = await this.prisma.usuario.findFirst({
+      where: {
+        email: { equals: dto.email.trim().toLowerCase(), mode: 'insensitive' },
+      },
       include: { rol: true },
     });
 
     if (!user) {
+      this.intentosLogin.registrarFallo(clave);
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
@@ -90,8 +154,11 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
 
     if (!isPasswordValid) {
+      this.intentosLogin.registrarFallo(clave);
       throw new UnauthorizedException('Credenciales inválidas');
     }
+
+    this.intentosLogin.registrarExito(clave);
 
     const tokens = await this.generateTokens(user.id, user.email);
 
@@ -103,6 +170,26 @@ export class AuthService {
       ip,
     });
 
+    // El acceso al sistema es un evento de seguridad: queda en la bitácora
+    // general para que el administrador vea quién entró y cuándo.
+    await this.bitacora.registrar({
+      actor: {
+        id: user.id,
+        nombre: user.nombres,
+        rol: user.rol.nombre,
+        correo: user.email,
+      },
+      modulo: 'usuario',
+      entidad: 'usuario',
+      entidadId: user.id,
+      accionClave: 'usuario.login',
+      accionHumana: 'Inició sesión en el sistema',
+      descripcionHumana: `Inició sesión con el correo ${user.email}.`,
+      resultado: 'EXITOSO',
+      ip,
+      origen: 'WEB',
+    });
+
     return {
       ...tokens,
       user: {
@@ -110,16 +197,17 @@ export class AuthService {
         cui: user.cui,
         nombres: user.nombres,
         email: user.email,
-        rol: user.rol.nombre,
+        rol: { id: user.rol.id, nombre: user.rol.nombre },
       },
     };
   }
 
   async refreshToken(refreshToken: string, ip?: string) {
+    const secret = this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
     try {
       const payload = this.jwtService.verify(refreshToken, {
-        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
-      });
+        secret,
+      }) as { sub: string };
 
       const user = await this.prisma.usuario.findUnique({
         where: { id: payload.sub },
@@ -202,6 +290,10 @@ export class AuthService {
       });
       if (!municipio) {
         throw new NotFoundException('Municipio no encontrado');
+      }
+      const departamentoId = dto.departamentoId ?? user.departamentoId;
+      if (departamentoId && municipio.departamentoId !== departamentoId) {
+        throw new NotFoundException('El municipio no pertenece al departamento seleccionado');
       }
     }
 

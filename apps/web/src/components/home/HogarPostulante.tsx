@@ -98,6 +98,7 @@ export function HogarPostulante() {
   const { usuario } = useAuth();
   const [solicitudes, setSolicitudes] = useState<Solicitud[] | null>(null);
   const [convocatorias, setConvocatorias] = useState<Convocatoria[] | null>(null);
+  const [cargandoSolicitudes, setCargandoSolicitudes] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -108,7 +109,15 @@ export function HogarPostulante() {
         if (activo) setSolicitudes(data);
       })
       .catch((e) => {
-        if (activo) setError(traducirError(e));
+        if (activo) {
+          setError(traducirError(e));
+          // Sin esto la sección "Mis postulaciones" mostraría el mensaje
+          // "Aún no tienes postulaciones" aunque la carga haya fallado.
+          setSolicitudes([]);
+        }
+      })
+      .finally(() => {
+        if (activo) setCargandoSolicitudes(false);
       });
 
     fetcher<ListaResponse<Convocatoria>>('/convocatorias')
@@ -134,7 +143,7 @@ export function HogarPostulante() {
     [solicitudes],
   );
 
-  const cargando = solicitudes === null && convocatorias === null;
+  const cargando = cargandoSolicitudes && convocatorias === null;
 
   return (
     <>
@@ -202,7 +211,7 @@ export function HogarPostulante() {
                 </h2>
                 <Link
                   href="/convocatorias"
-                  className="font-mono text-xs font-bold uppercase text-brutal-cyan hover:text-brutal-tinta"
+                  className="font-mono text-xs font-bold uppercase text-sigeb-blue-dark hover:text-brutal-tinta"
                 >
                   Ver becas →
                 </Link>
@@ -210,57 +219,73 @@ export function HogarPostulante() {
 
               {solicitudes && solicitudes.length > 0 ? (
                 <div className="space-y-4">
-                  {solicitudes.map((sol) => {
-                    const docsRequeridos =
-                      sol.convocatoria?._count?.documentosRequeridos ?? 0;
-                    const docsCargados = sol._count?.documentos ?? 0;
-                    const codigoConv = `CONV-${(sol.convocatoria?.id ?? '')
-                      .slice(0, 6)
-                      .toUpperCase()}`;
+                  {[...solicitudes]
+                    .sort((a, b) => {
+                      const ta = new Date(a.updatedAt).getTime();
+                      const tb = new Date(b.updatedAt).getTime();
+                      return isNaN(tb) || isNaN(ta) ? 0 : tb - ta;
+                    })
+                    .slice(0, 5)
+                    .map((sol) => {
+                      const docsRequeridos =
+                        sol.convocatoria?._count?.documentosRequeridos ?? 0;
+                      const docsCargados = sol._count?.documentos ?? 0;
+                      const codigoConv = `CONV-${(sol.convocatoria?.id ?? '')
+                        .slice(0, 6)
+                        .toUpperCase()}`;
 
-                    return (
-                      <Card
-                        key={sol.id}
-                        className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div className="flex-1">
-                          <div className="flex flex-wrap items-center gap-3">
-                            <h3 className="text-lg font-bold text-brutal-tinta">
-                              {sol.convocatoria?.beca?.nombre ?? 'Beca'}
-                            </h3>
-                            <Badge estado={sol.estado} />
-                          </div>
-                          <p className="mt-1 text-sm text-brutal-tinta/70">
-                            <span className="font-mono font-bold text-brutal-tinta">
-                              {codigoConv}
-                            </span>
-                            {' · '}
-                            {sol.convocatoria?.nombre ?? ''}
-                          </p>
-                          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-brutal-tinta/60">
-                            <span>Postulada el {formatearFecha(sol.createdAt)}</span>
-                            {docsRequeridos > 0 && (
-                              <span>
-                                Documentos:{' '}
-                                <span className="font-bold text-brutal-tinta">
-                                  {docsCargados}
-                                </span>
-                                /{docsRequeridos}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <Button
-                          href={`/solicitudes/${sol.id}`}
-                          variant="ghost"
-                          className="shrink-0 whitespace-nowrap"
+                      return (
+                        <Card
+                          key={sol.id}
+                          className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
                         >
-                          Ver detalle
-                        </Button>
-                      </Card>
-                    );
-                  })}
+                          <div className="flex-1">
+                            <div className="flex flex-wrap items-center gap-3">
+                              <h3 className="text-lg font-bold text-brutal-tinta">
+                                {sol.convocatoria?.beca?.nombre ?? 'Beca'}
+                              </h3>
+                              <Badge estado={sol.estado} />
+                            </div>
+                            <p className="mt-1 text-sm text-brutal-tinta/70">
+                              <span className="font-mono font-bold text-brutal-tinta">
+                                {codigoConv}
+                              </span>
+                              {' · '}
+                              {sol.convocatoria?.nombre ?? ''}
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-brutal-tinta/60">
+                              <span>Actualizada el {formatearFecha(sol.updatedAt)}</span>
+                              {docsRequeridos > 0 && (
+                                <span>
+                                  Documentos:{' '}
+                                  <span className="font-bold text-brutal-tinta">
+                                    {docsCargados}
+                                  </span>
+                                  /{docsRequeridos}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            href={`/solicitudes/${sol.id}`}
+                            variant="ghost"
+                            className="shrink-0 whitespace-nowrap"
+                          >
+                            Ver detalle
+                          </Button>
+                        </Card>
+                      );
+                    })}
                 </div>
+              ) : error ? (
+                <EmptyState
+                  title="No se pudieron cargar tus postulaciones"
+                  description="Revisa tu conexión e inténtalo de nuevo."
+                >
+                  <Button variant="ghost" onClick={() => window.location.reload()}>
+                    Reintentar
+                  </Button>
+                </EmptyState>
               ) : (
                 <EmptyState
                   title="Aún no tienes postulaciones"
@@ -278,7 +303,7 @@ export function HogarPostulante() {
                 </h2>
                 <Link
                   href="/convocatorias"
-                  className="font-mono text-xs font-bold uppercase text-brutal-cyan hover:text-brutal-tinta"
+                  className="font-mono text-xs font-bold uppercase text-sigeb-blue-dark hover:text-brutal-tinta"
                 >
                   Ver todas →
                 </Link>
