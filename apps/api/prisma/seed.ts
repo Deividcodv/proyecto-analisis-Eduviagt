@@ -1426,6 +1426,12 @@ async function main() {
   }
   console.log('✅ Base de conocimiento del asistente creada (US-37/US-39)');
 
+  // ==========================================
+  // ESCENARIOS COMPLETOS DE DEMOSTRACIÓN
+  // ==========================================
+  const { generarEscenarios } = await import('./semilla/escenarios');
+  await generarEscenarios();
+
   console.log('🎉 Seed completado exitosamente!');
 }
 
