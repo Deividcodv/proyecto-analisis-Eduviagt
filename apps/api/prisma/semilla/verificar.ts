@@ -3,9 +3,8 @@ import { PrismaClient, SolicitudEstado } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🔍 Verificando datos de demostración...\n');
+  console.log('🔍 Verificando datos de demostración (1000 solicitudes)...\n');
 
-  // 1. Conteos básicos
   const [
     totalSolicitudes,
     totalConvocatorias,
@@ -31,18 +30,17 @@ async function main() {
   ]);
 
   console.log('📊 CONTEOS GENERALES:');
-  console.log(`   Solicitudes: ${totalSolicitudes} (esperado: 30)`);
-  console.log(`   Convocatorias: ${totalConvocatorias} (esperado: 7)`);
-  console.log(`   Usuarios: ${totalUsuarios} (esperado: ~37+)`);
-  console.log(`   Evaluaciones: ${totalEvaluaciones} (esperado: ~90+)`);
-  console.log(`   Sesiones: ${totalSesiones} (esperado: ~4-8)`);
-  console.log(`   Votos: ${totalVotos} (esperado: ~25-40)`);
-  console.log(`   Decisiones: ${totalDecisiones} (esperado: ~13-18)`);
-  console.log(`   Aprobaciones (nivel 1/2): ${totalAprobaciones} (esperado: ~13-20)`);
-  console.log(`   Historial de estados: ${totalHistorial} (esperado: ~100+)`);
-  console.log(`   Documentos: ${totalDocumentos} (esperado: ~100+)\n`);
+  console.log(`   Solicitudes: ${totalSolicitudes} (esperado: 1000)`);
+  console.log(`   Convocatorias: ${totalConvocatorias} (esperado: 11)`);
+  console.log(`   Usuarios: ${totalUsuarios} (esperado: ~287+)`);
+  console.log(`   Evaluaciones: ${totalEvaluaciones} (esperado: ~2400)`);
+  console.log(`   Sesiones: ${totalSesiones} (esperado: ~12-20)`);
+  console.log(`   Votos: ${totalVotos} (esperado: ~3600+)`);
+  console.log(`   Decisiones: ${totalDecisiones} (esperado: ~600)`);
+  console.log(`   Aprobaciones (nivel 1/2): ${totalAprobaciones} (esperado: ~360+)`);
+  console.log(`   Historial de estados: ${totalHistorial} (esperado: ~4400+)`);
+  console.log(`   Documentos: ${totalDocumentos} (esperado: ~4200+)\n`);
 
-  // 2. Distribución por estado de solicitud
   const porEstado = await prisma.solicitud.groupBy({
     by: ['estado'],
     _count: true,
@@ -51,14 +49,14 @@ async function main() {
 
   console.log('📈 DISTRIBUCIÓN POR ESTADO (esperado vs real):');
   const esperado: Record<SolicitudEstado, number> = {
-    BORRADOR: 3,
-    ENVIADA: 2,
-    EN_REVISION: 3,
-    CORRECCION: 1,
-    EVALUADA: 3,
-    PENDIENTE_SEGUNDA_APROBACION: 2,
-    APROBADA: 11,
-    RECHAZADA: 5,
+    BORRADOR: 100,
+    ENVIADA: 70,
+    EN_REVISION: 100,
+    CORRECCION: 30,
+    EVALUADA: 100,
+    PENDIENTE_SEGUNDA_APROBACION: 70,
+    APROBADA: 360,
+    RECHAZADA: 170,
   };
 
   let todosOk = true;
@@ -69,7 +67,6 @@ async function main() {
     console.log(`   ${estado}: ${real} (esperado: ${countEsperado}) ${ok ? '✅' : '❌'}`);
   }
 
-  // Estados no esperados
   for (const e of porEstado) {
     if (!(e.estado in esperado)) {
       console.log(`   ${e.estado}: ${e._count} (inesperado) ⚠️`);
@@ -77,7 +74,6 @@ async function main() {
     }
   }
 
-  // 3. Verificar fechas futuras inesperadas
   const hoy = new Date();
   const solicitudesFuturas = await prisma.solicitud.count({
     where: { createdAt: { gt: hoy } },
@@ -91,26 +87,20 @@ async function main() {
 
   console.log('\n📅 FECHAS FUTURAS INESPERADAS:');
   console.log(`   Solicitudes con createdAt > hoy: ${solicitudesFuturas} ${solicitudesFuturas === 0 ? '✅' : '❌'}`);
-  console.log(`   Sesiones con fecha > hoy: ${sesionesFuturas} (pueden ser 2 programadas) ${sesionesFuturas <= 2 ? '✅' : '⚠️'}`);
+  console.log(`   Sesiones con fecha > hoy: ${sesionesFuturas} (pueden ser algunas programadas) ${sesionesFuturas <= 10 ? '✅' : '⚠️'}`);
   console.log(`   Evaluaciones con createdAt > hoy: ${evaluacionesFuturas} ${evaluacionesFuturas === 0 ? '✅' : '❌'}`);
 
-  // 4. Verificar montos y segunda aprobación
   const conMonto = await prisma.solicitud.count({
     where: { montoOtorgable: { not: null } },
   });
   const conMontoAprobado = await prisma.solicitud.count({
     where: { montoAprobado: { not: null } },
   });
-  const requierenSegunda = await prisma.solicitud.count({
-    where: { montoOtorgable: { gt: 10000 } },
-  });
 
   console.log('\n💰 MONTOS Y SEGUNDA APROBACIÓN:');
   console.log(`   Solicitudes con montoOtorgable: ${conMonto}`);
   console.log(`   Solicitudes con montoAprobado: ${conMontoAprobado}`);
-  console.log(`   Solicitudes > Q10,000 (requieren 2da): ${requierenSegunda}`);
 
-  // 5. Verificar usuarios por rol
   const usuariosPorRol = await prisma.usuario.groupBy({
     by: ['rolId'],
     _count: true,
@@ -123,10 +113,8 @@ async function main() {
     console.log(`   ${rolMap.get(u.rolId) || u.rolId}: ${u._count}`);
   }
 
-  // 6. Verificar integridad referencial (FKs son required en schema, así que siempre existen)
   console.log('\n🔗 INTEGRIDAD REFERENCIAL: FKs requeridas en schema ✅');
 
-  // 7. Resumen final
   console.log('\n' + '='.repeat(50));
   if (todosOk &&
       solicitudesFuturas === 0 &&

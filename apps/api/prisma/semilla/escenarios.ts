@@ -1,6 +1,4 @@
 import { PrismaClient, Prisma, SolicitudEstado } from '@prisma/client';
-import { PrismaService } from '../../src/prisma/prisma.service';
-import { MontosService } from '../../src/solicitudes/montos.service';
 
 import {
   crearPostulantes,
@@ -10,8 +8,12 @@ import {
   asegurarConvocatorias,
   elegirUno,
   barajar,
-  PerfilAcademicoGenerado,
-  PerfilFinancieroGenerado,
+  TOTAL_SOLICITUDES,
+  DISTRIBUCION_ESTADOS,
+  TOTAL_POSTULANTES,
+  TOTAL_EVALUADORES,
+  TOTAL_MIEMBROS_COMITE,
+  TOTAL_CONVOCATORIAS,
 } from './datos';
 
 import {
@@ -25,251 +27,16 @@ import {
 } from './ciclos';
 
 const prisma = new PrismaClient();
-const prismaService = new PrismaService();
-const montosService = new MontosService(prismaService);
 
-// ==========================================
-// ESTADOS OBJETIVO PARA LAS 30 SOLICITUDES
-// ==========================================
-
-const DISTRIBUCION: Record<SolicitudEstado, number> = {
-  BORRADOR: 3,
-  ENVIADA: 2,
-  EN_REVISION: 3,
-  CORRECCION: 1,
-  EVALUADA: 3,
-  PENDIENTE_SEGUNDA_APROBACION: 2,
-  APROBADA: 11,
-  RECHAZADA: 5,
+type SolicitudConCiclo = {
+  id: string;
+  estado: SolicitudEstado;
+  convocatoriaId: string;
+  postulanteId: string;
+  ciclo: CicloConvocatoria;
+  montoOtorgable: Prisma.Decimal | null;
+  requiereSegunda: boolean;
 };
-
-// ==========================================
-// FUNCIONES AUXILIARES
-// ==========================================
-
-/** Crea historial de estados para una solicitud. */
-async function crearHistorial(solicitudId: string, estados: SolicitudEstado[], usuarioId: string, fechas: Date[]) {
-  for (let i = 0; i < estados.length; i++) {
-    await prisma.historialEstado.create({
-      data: {
-        solicitudId,
-        estado: estados[i],
-        usuarioId,
-        comentario: i === 0 ? 'Estado inicial' : `Cambio a ${estados[i]}`,
-        accion: i === 0 ? 'crear' : 'cambiar_estado',
-        resultado: 'EXITOSO',
-        createdAt: fechas[i],
-      },
-    });
-  }
-}
-
-/** Crea perfil académico para una solicitud (snapshot) usando perfil generado. */
-async function crearPerfilAcademicoSnapshot(solicitudId: string, perfil: PerfilAcademicoGenerado) {
-  await prisma.solicitudPerfilAcademico.create({
-    data: {
-      solicitudId,
-      generoId: perfil.generoId,
-      generoOtro: perfil.generoOtro,
-      nivelAcademicoId: perfil.nivelAcademicoId,
-      nivelAcademicoOtro: perfil.nivelAcademicoOtro,
-      institucion: perfil.institucion,
-      carrera: perfil.carrera,
-      promedio: perfil.promedio,
-      departamentoId: perfil.departamentoId,
-      departamentoOtro: perfil.departamentoOtro,
-      municipioId: perfil.municipioId,
-      municipioOtro: perfil.municipioOtro,
-    },
-  });
-}
-
-/** Crea perfil financiero para una solicitud (snapshot) usando perfil generado. */
-async function crearPerfilFinancieroSnapshot(solicitudId: string, perfil: PerfilFinancieroGenerado) {
-  await prisma.solicitudPerfilFinanciero.create({
-    data: {
-      solicitudId,
-      ingresoFamiliar: perfil.ingresoFamiliar,
-      numeroDependientes: perfil.numeroDependientes,
-      becasAnteriores: perfil.becasAnteriores,
-      descripcionSituacion: perfil.descripcionSituacion,
-    },
-  });
-}
-
-/** Crea documentos simulados para una solicitud. */
-async function crearDocumentos(solicitudId: string, convocatoriaId: string, estado: SolicitudEstado) {
-  const docsRequeridos = await prisma.convocatoriaDocRequerido.findMany({
-    where: { convocatoriaId },
-    include: { documentoTipo: true },
-  });
-
-  const obligatorios = docsRequeridos.filter(d => d.obligatorio);
-  const opcionales = docsRequeridos.filter(d => !d.obligatorio);
-
-  const docsACrear = [...obligatorios];
-  if (estado !== 'BORRADOR') {
-    for (const opc of opcionales) {
-      if (Math.random() > 0.3) docsACrear.push(opc);
-    }
-  } else {
-    docsACrear.length = Math.min(1, docsACrear.length);
-  }
-
-  for (const docReq of docsACrear) {
-    const estadoDoc = estado === 'BORRADOR' ? 'PENDIENTE' :
-                      estado === 'ENVIADA' ? 'CARGADO' :
-                      Math.random() > 0.1 ? 'CARGADO' : 'RECHAZADO';
-
-    await prisma.solicitudDocumento.create({
-      data: {
-        solicitudId,
-        documentoTipoId: docReq.documentoTipoId,
-        estado: estadoDoc as any,
-        archivoUrl: estadoDoc === 'CARGADO' ? `https://storage.demo.gt/docs/${solicitudId}/${docReq.documentoTipoId}.pdf` : '',
-        version: 1,
-        comentarioRechazo: estadoDoc === 'RECHAZADO' ? 'Documento ilegible o incompleto' : '',
-      },
-    });
-  }
-}
-
-/** Calcula monto usando MontosService real. */
-async function calcularMonto(convocatoriaId: string, ingresoFamiliar: Prisma.Decimal | null) {
-  const ingreso = ingresoFamiliar ? Number(ingresoFamiliar.toString()) : null;
-  return montosService.calcular(convocatoriaId, ingreso);
-}
-
-// ==========================================
-// GENERADOR PRINCIPAL DE ESCENARIOS
-// ==========================================
-
-export async function generarEscenarios() {
-  console.log('🎬 Iniciando generación de escenarios completos...');
-
-  // 1. Obtener roles
-  const rolPostulante = await prisma.rol.findUniqueOrThrow({ where: { nombre: 'POSTULANTE' } });
-  const rolEvaluador = await prisma.rol.findUniqueOrThrow({ where: { nombre: 'EVALUADOR' } });
-  const rolMiembro = await prisma.rol.findUniqueOrThrow({ where: { nombre: 'MIEMBRO_COMITE' } });
-  const rolCoordinador = await prisma.rol.findUniqueOrThrow({ where: { nombre: 'COORDINADOR_COMITE' } });
-  const rolJefeBecas = await prisma.rol.findUniqueOrThrow({ where: { nombre: 'JEFE_BECAS' } });
-  const rolAdmin = await prisma.rol.findUniqueOrThrow({ where: { nombre: 'ADMIN' } });
-
-  // 2. Crear usuarios base
-  const postulantes = await crearPostulantes(20, rolPostulante);
-  const evaluadores = await crearEvaluadores(5, rolEvaluador);
-  const miembros = await crearMiembrosComite(10, rolMiembro);
-  const { coord, jefe, dir } = await crearRolesEspeciales(rolCoordinador, rolJefeBecas, rolAdmin);
-
-  // 3. Asegurar 7 convocatorias
-  const { convocatorias, nuevasIds } = await asegurarConvocatorias(7);
-
-  // 4. Generar 4 ciclos y sincronizar SOLO las nuevas convocatorias con ciclos
-  // (las 3 base mantienen sus fechas y estados originales, incluyendo ABIERTA con "Excelencia")
-  const ciclos = generarCiclos(nuevasIds);
-  for (let i = 0; i < ciclos.length; i++) {
-    await sincronizarConvocatoriaConCiclo(ciclos[i].convocatoriaId, ciclos[i]);
-  }
-  console.log('✅ 4 ciclos generados y convocatorias nuevas sincronizadas');
-
-  // 5. Distribuir 30 solicitudes en los 4 ciclos
-  const distribucionCiclos = distribuirEnCiclos(30, ciclos);
-  console.log('📊 Distribución por ciclo:', distribucionCiclos);
-
-  // 6. Crear lista de estados objetivo (30 elementos)
-  const estadosObjetivo: SolicitudEstado[] = [];
-  for (const [estado, count] of Object.entries(DISTRIBUCION)) {
-    for (let i = 0; i < count; i++) {
-      estadosObjetivo.push(estado as SolicitudEstado);
-    }
-  }
-  barajar(estadosObjetivo);
-
-  // 7. Crear solicitudes
-  let idxEstado = 0;
-  const solicitudesCreadas: Array<{
-    id: string;
-    estado: SolicitudEstado;
-    convocatoriaId: string;
-    postulanteId: string;
-    ciclo: CicloConvocatoria;
-    montoOtorgable: Prisma.Decimal | null;
-    requiereSegunda: boolean;
-  }> = [];
-
-  for (let c = 0; c < ciclos.length; c++) {
-    const ciclo = ciclos[c];
-    const numSolicitudes = distribucionCiclos[c];
-    const convocatoria = await prisma.convocatoria.findUniqueOrThrow({ where: { id: ciclo.convocatoriaId } });
-
-    const postulantesCiclo = barajar(postulantes).slice(0, numSolicitudes);
-
-    for (let s = 0; s < numSolicitudes; s++) {
-      const postulanteData = postulantesCiclo[s];
-      const postulante = postulanteData.usuario;
-      const estadoObjetivo = estadosObjetivo[idxEstado++];
-
-      const fechaCreacion = fechaAntesCierre(ciclo);
-      const fechaEnvio = estadoObjetivo !== 'BORRADOR'
-        ? new Date(fechaCreacion.getTime() + (Math.floor(Math.random() * 5) + 1) * 24 * 60 * 60 * 1000)
-        : null;
-
-      const resultadoMonto = await calcularMonto(convocatoria.id, new Prisma.Decimal(postulanteData.perfilFinanciero.ingresoFamiliar));
-      const requiereSegunda = resultadoMonto.monto !== null && montosService.requiereSegundaAprobacion(resultadoMonto.monto);
-
-      const solicitud = await prisma.solicitud.create({
-        data: {
-          convocatoriaId: convocatoria.id,
-          usuarioId: postulante.id,
-          estado: estadoObjetivo,
-          respuestas: { demo: true, ciclo: ciclo.indice },
-          formularioSnapshot: JSON.stringify([]),
-          montoOtorgable: resultadoMonto.monto,
-          montoOrigenCalculo: resultadoMonto.origen,
-          montoCalculadoAt: new Date(),
-          montoCalculadoPor: 'SEED',
-          createdAt: fechaCreacion,
-          updatedAt: fechaEnvio || fechaCreacion,
-        },
-      });
-
-      await crearPerfilAcademicoSnapshot(solicitud.id, postulanteData.perfilAcademico);
-      await crearPerfilFinancieroSnapshot(solicitud.id, postulanteData.perfilFinanciero);
-      await crearDocumentos(solicitud.id, convocatoria.id, estadoObjetivo);
-
-      const historialEstados = construirHistorial(estadoObjetivo);
-      const fechasHistorial = generarFechasHistorial(ciclo, estadoObjetivo, fechaCreacion, fechaEnvio);
-      await crearHistorial(solicitud.id, historialEstados, postulante.id, fechasHistorial);
-
-      solicitudesCreadas.push({
-        id: solicitud.id,
-        estado: estadoObjetivo,
-        convocatoriaId: convocatoria.id,
-        postulanteId: postulante.id,
-        ciclo,
-        montoOtorgable: resultadoMonto.monto,
-        requiereSegunda,
-      });
-
-      console.log(`  ✅ Solicitud ${solicitud.id.slice(0, 8)} - ${estadoObjetivo} (ciclo ${ciclo.indice + 1}, ${requiereSegunda ? '2da aprobación' : '1ra aprobación'})`);
-    }
-  }
-
-  // 8. Crear evaluaciones para solicitudes EN_REVISION, EVALUADA, PENDIENTE_SEGUNDA_APROBACION, APROBADA, RECHAZADA
-  await crearEvaluaciones(solicitudesCreadas, evaluadores, ciclos);
-
-  // 9. Crear sesiones de comité para solicitudes EVALUADA+
-  await crearSesionesComite(solicitudesCreadas, coord, miembros, ciclos);
-
-  // 10. Crear votos y decisiones para APROBADA, RECHAZADA, PENDIENTE_SEGUNDA_APROBACION
-  await crearVotosYDecisiones(solicitudesCreadas, miembros, coord, ciclos);
-
-  // 11. Crear aprobaciones (SolicitudAprobacion) para APROBADA, PENDIENTE_SEGUNDA_APROBACION
-  await crearAprobaciones(solicitudesCreadas, jefe, dir, ciclos);
-
-  console.log('🎉 Generación de escenarios completada');
-  return { solicitudesCreadas, ciclos, convocatorias };
-}
 
 // ==========================================
 // HISTORIAL DE ESTADOS POR ESTADO OBJETIVO
@@ -328,22 +95,276 @@ function generarFechasHistorial(
 }
 
 // ==========================================
+// GENERADOR PRINCIPAL DE ESCENARIOS
+// ==========================================
+
+export async function generarEscenarios() {
+  console.log('🎬 Iniciando generación de escenarios completos (1000 solicitudes)...');
+
+  // 1. Obtener roles
+  const rolPostulante = await prisma.rol.findUniqueOrThrow({ where: { nombre: 'POSTULANTE' } });
+  const rolEvaluador = await prisma.rol.findUniqueOrThrow({ where: { nombre: 'EVALUADOR' } });
+  const rolMiembro = await prisma.rol.findUniqueOrThrow({ where: { nombre: 'MIEMBRO_COMITE' } });
+  const rolCoordinador = await prisma.rol.findUniqueOrThrow({ where: { nombre: 'COORDINADOR_COMITE' } });
+  const rolJefeBecas = await prisma.rol.findUniqueOrThrow({ where: { nombre: 'JEFE_BECAS' } });
+  const rolAdmin = await prisma.rol.findUniqueOrThrow({ where: { nombre: 'ADMIN' } });
+
+  // 2. Crear usuarios base
+  const postulantes = await crearPostulantes(TOTAL_POSTULANTES, rolPostulante);
+  const evaluadores = await crearEvaluadores(TOTAL_EVALUADORES, rolEvaluador);
+  const miembros = await crearMiembrosComite(TOTAL_MIEMBROS_COMITE, rolMiembro);
+  const { coord, jefe, dir } = await crearRolesEspeciales(rolCoordinador, rolJefeBecas, rolAdmin);
+
+  // 3. Asegurar 11 convocatorias
+  const { convocatorias, nuevasIds } = await asegurarConvocatorias(TOTAL_CONVOCATORIAS);
+
+  // 4. Generar 4 ciclos y sincronizar SOLO las nuevas convocatorias
+  const ciclos = generarCiclos(nuevasIds);
+  for (let i = 0; i < ciclos.length; i++) {
+    await sincronizarConvocatoriaConCiclo(ciclos[i].convocatoriaId, ciclos[i]);
+  }
+  console.log('✅ 4 ciclos generados y convocatorias nuevas sincronizadas');
+
+  // 5. Distribuir 1000 solicitudes en los 4 ciclos
+  const distribucionCiclos = distribuirEnCiclos(TOTAL_SOLICITUDES, ciclos);
+  console.log('📊 Distribución por ciclo:', distribucionCiclos);
+
+  // 6. Crear lista de estados objetivo (1000 elementos)
+  const estadosObjetivo: SolicitudEstado[] = [];
+  for (const [estado, count] of Object.entries(DISTRIBUCION_ESTADOS)) {
+    for (let i = 0; i < count; i++) {
+      estadosObjetivo.push(estado as SolicitudEstado);
+    }
+  }
+  const estadosShuffled = barajar(estadosObjetivo);
+  estadosObjetivo.length = 0;
+  estadosObjetivo.push(...estadosShuffled);
+
+  // 7. Crear solicitudes (en lotes para rendimiento)
+  let idxEstado = 0;
+  const solicitudesCreadas: SolicitudConCiclo[] = [];
+
+  const generos = await prisma.genero.findMany();
+  const niveles = await prisma.nivelAcademico.findMany();
+  const departamentos = await prisma.departamento.findMany();
+  const municipios = await prisma.municipio.findMany();
+  const instituciones = await prisma.institucionEducativa.findMany({ where: { activa: true } });
+
+  // Pre-calcular perfiles para postulantes
+  const perfilesPostulantes = new Map<string, {
+    perfilAcademico: any;
+    perfilFinanciero: any;
+    esUniv: boolean;
+  }>();
+
+  // Crear una sola instancia de MontosService para todo el proceso
+  const { PrismaService } = await import('../../src/prisma/prisma.service');
+  const { MontosService } = await import('../../src/solicitudes/montos.service');
+  const prismaService = new PrismaService();
+  const montosService = new MontosService(prismaService);
+
+  for (const p of postulantes) {
+    const esUniv = p.esUniv;
+    const genero = Math.random() > 0.5 ? 'M' : 'F';
+    const generoObj = generos.find(g => g.nombre === (genero === 'F' ? 'Femenino' : 'Masculino'));
+    const nivelNombre = esUniv ? 'Universitario' : (Math.random() > 0.5 ? 'Diversificado' : 'Secundaria');
+    const nivelAcademico = niveles.find(n => n.nombre === nivelNombre);
+    const instFiltradas = instituciones.filter(inst =>
+      (esUniv && inst.nivel === 'UNIVERSIDAD') ||
+      (!esUniv && inst.nivel === 'DIVERSIFICADO') ||
+      (nivelNombre === 'Secundaria' && inst.nivel === 'SECUNDARIA')
+    );
+    const institucion = instFiltradas[Math.floor(Math.random() * instFiltradas.length)] || instituciones[0];
+    const carreras = esUniv ? ['Medicina', 'Ingeniería Civil', 'Ingeniería de Sistemas', 'Derecho', 'Arquitectura', 'Administración de Empresas'] :
+      nivelNombre === 'Diversificado' ? ['Bachillerato en Ciencias y Letras', 'Bachillerato en Computación', 'Bachillerato en Contabilidad'] :
+      ['Bachillerato en Ciencias y Letras', 'Bachillerato en Computación'];
+    const promedio = Math.round((Math.random() * 25 + 70) * 100) / 100;
+    const ingresoFamiliar = Math.round((esUniv ? 4000 : 2500 + Math.random() * 12000) * 100) / 100;
+    const numeroDependientes = Math.floor(Math.random() * 5) + 1;
+
+    perfilesPostulantes.set(p.usuario.id, {
+      perfilAcademico: {
+        generoId: generoObj?.id || null,
+        generoOtro: null,
+        nivelAcademicoId: nivelAcademico?.id || null,
+        nivelAcademicoOtro: null,
+        institucion: institucion?.nombre || 'Institución Demo',
+        carrera: carreras[Math.floor(Math.random() * carreras.length)],
+        promedio,
+        departamentoId: institucion?.departamento ? departamentos.find(d => d.nombre === institucion.departamento)?.id : null,
+        departamentoOtro: null,
+        municipioId: institucion?.municipio ? municipios.find(m => m.nombre === institucion.municipio)?.id : null,
+        municipioOtro: null,
+      },
+      perfilFinanciero: {
+        ingresoFamiliar,
+        numeroDependientes,
+        becasAnteriores: Math.random() > 0.7,
+        descripcionSituacion: Math.random() > 0.5 ? 'Situación económica familiar difícil.' : null,
+      },
+      esUniv,
+    });
+  }
+
+  console.log('✅ Perfiles pre-calculados para postulantes');
+
+  for (let c = 0; c < ciclos.length; c++) {
+    const ciclo = ciclos[c];
+    const numSolicitudes = distribucionCiclos[c];
+
+    // Seleccionar convocatoria para este ciclo (rotar entre las 11)
+    const convocatoriaIdx = c % convocatorias.length;
+    const convocatoria = convocatorias[convocatoriaIdx];
+
+    // Seleccionar postulantes para este ciclo
+    const postulantesCiclo = barajar(postulantes).slice(0, numSolicitudes);
+
+    // Crear solicitudes en lotes de 50
+    const batchSize = 50;
+    for (let b = 0; b < postulantesCiclo.length; b += batchSize) {
+      const batch = postulantesCiclo.slice(b, b + batchSize);
+
+      for (const postulanteData of batch) {
+        const postulante = postulanteData.usuario;
+        const perfil = perfilesPostulantes.get(postulante.id)!;
+        const estadoObjetivo = estadosObjetivo[idxEstado++];
+
+        const fechaCreacion = fechaAntesCierre(ciclo);
+        const fechaEnvio = estadoObjetivo !== 'BORRADOR'
+          ? new Date(fechaCreacion.getTime() + (Math.floor(Math.random() * 5) + 1) * 24 * 60 * 60 * 1000)
+          : null;
+
+        // Calcular monto
+        const resultadoMonto = await montosService.calcular(convocatoria.id, perfil.perfilFinanciero.ingresoFamiliar);
+        const requiereSegunda = resultadoMonto.monto !== null && montosService.requiereSegundaAprobacion(resultadoMonto.monto);
+
+        // Crear solicitud
+        const solicitud = await prisma.solicitud.create({
+          data: {
+            convocatoriaId: convocatoria.id,
+            usuarioId: postulante.id,
+            estado: estadoObjetivo,
+            respuestas: { demo: true, ciclo: ciclo.indice },
+            formularioSnapshot: JSON.stringify([]),
+            montoOtorgable: resultadoMonto.monto,
+            montoOrigenCalculo: resultadoMonto.origen,
+            montoCalculadoAt: new Date(),
+            montoCalculadoPor: 'SEED',
+            createdAt: fechaCreacion,
+            updatedAt: fechaEnvio || fechaCreacion,
+          },
+        });
+
+        // Perfiles snapshot
+        await prisma.solicitudPerfilAcademico.create({
+          data: {
+            solicitudId: solicitud.id,
+            ...perfil.perfilAcademico,
+          },
+        });
+
+        await prisma.solicitudPerfilFinanciero.create({
+          data: {
+            solicitudId: solicitud.id,
+            ingresoFamiliar: perfil.perfilFinanciero.ingresoFamiliar,
+            numeroDependientes: perfil.perfilFinanciero.numeroDependientes,
+            becasAnteriores: perfil.perfilFinanciero.becasAnteriores,
+            descripcionSituacion: perfil.perfilFinanciero.descripcionSituacion,
+          },
+        });
+
+        // Documentos
+        const docsRequeridos = await prisma.convocatoriaDocRequerido.findMany({
+          where: { convocatoriaId: convocatoria.id },
+          include: { documentoTipo: true },
+        });
+        const obligatorios = docsRequeridos.filter(d => d.obligatorio);
+        const opcionales = docsRequeridos.filter(d => !d.obligatorio);
+        const docsACrear = [...obligatorios];
+        if (estadoObjetivo !== 'BORRADOR') {
+          for (const opc of opcionales) {
+            if (Math.random() > 0.3) docsACrear.push(opc);
+          }
+        } else {
+          docsACrear.length = Math.min(1, docsACrear.length);
+        }
+
+        for (const docReq of docsACrear) {
+          const estadoDoc = estadoObjetivo === 'BORRADOR' ? 'PENDIENTE' :
+                            estadoObjetivo === 'ENVIADA' ? 'CARGADO' :
+                            Math.random() > 0.1 ? 'CARGADO' : 'RECHAZADO';
+
+          await prisma.solicitudDocumento.create({
+            data: {
+              solicitudId: solicitud.id,
+              documentoTipoId: docReq.documentoTipoId,
+              estado: estadoDoc as any,
+              archivoUrl: estadoDoc === 'CARGADO' ? `https://storage.demo.gt/docs/${solicitud.id}/${docReq.documentoTipoId}.pdf` : '',
+              version: 1,
+              comentarioRechazo: estadoDoc === 'RECHAZADO' ? 'Documento ilegible o incompleto' : '',
+            },
+          });
+        }
+
+        // Historial
+        const historialEstados = construirHistorial(estadoObjetivo);
+        const fechasHistorial = generarFechasHistorial(ciclo, estadoObjetivo, fechaCreacion, fechaEnvio);
+        for (let i = 0; i < historialEstados.length; i++) {
+          await prisma.historialEstado.create({
+            data: {
+              solicitudId: solicitud.id,
+              estado: historialEstados[i],
+              usuarioId: postulante.id,
+              comentario: i === 0 ? 'Estado inicial' : `Cambio a ${historialEstados[i]}`,
+              accion: i === 0 ? 'crear' : 'cambiar_estado',
+              resultado: 'EXITOSO',
+              createdAt: fechasHistorial[i],
+            },
+          });
+        }
+
+        solicitudesCreadas.push({
+          id: solicitud.id,
+          estado: estadoObjetivo,
+          convocatoriaId: convocatoria.id,
+          postulanteId: postulante.id,
+          ciclo,
+          montoOtorgable: resultadoMonto.monto,
+          requiereSegunda,
+        });
+      }
+
+      if ((b / batchSize) % 2 === 0) {
+        console.log(`  ✅ Procesadas ${Math.min(b + batchSize, postulantesCiclo.length)} de ${postulantesCiclo.length} solicitudes (ciclo ${ciclo.indice + 1})`);
+      }
+    }
+  }
+
+  console.log(`🎉 ${solicitudesCreadas.length} solicitudes creadas`);
+
+  // 8. Crear evaluaciones para solicitudes que pasan a evaluación
+  await crearEvaluaciones(solicitudesCreadas, evaluadores, ciclos);
+
+  // 9. Crear sesiones de comité
+  await crearSesionesComite(solicitudesCreadas, coord, miembros, ciclos);
+
+  // 10. Crear votos y decisiones
+  await crearVotosYDecisiones(solicitudesCreadas, miembros, coord, ciclos);
+
+  // 11. Crear aprobaciones
+  await crearAprobaciones(solicitudesCreadas, jefe, dir, ciclos);
+
+  console.log('🎉 Generación de escenarios completada');
+  return { solicitudesCreadas, ciclos, convocatorias };
+}
+
+// ==========================================
 // EVALUACIONES
 // ==========================================
 
-type SolicitudConCiclo = {
-  id: string;
-  estado: SolicitudEstado;
-  convocatoriaId: string;
-  postulanteId: string;
-  ciclo: CicloConvocatoria;
-  montoOtorgable: Prisma.Decimal | null;
-  requiereSegunda: boolean;
-};
-
 async function crearEvaluaciones(
   solicitudes: SolicitudConCiclo[],
-  evaluadores: Awaited<ReturnType<typeof crearEvaluadores>>,
+  evaluadores: any[],
   _ciclos: CicloConvocatoria[]
 ) {
   const criterios = await prisma.criterioEvaluacion.findMany({ where: { activo: true } });
@@ -355,28 +376,33 @@ async function crearEvaluaciones(
 
   console.log(`📝 Creando evaluaciones para ${paraEvaluar.length} solicitudes...`);
 
-  for (const sol of paraEvaluar) {
-    const ciclo = sol.ciclo;
-    const evalsSeleccionados = barajar(evaluadores).slice(0, 3);
+  const batchSize = 100;
+  for (let i = 0; i < paraEvaluar.length; i += batchSize) {
+    const batch = paraEvaluar.slice(i, i + batchSize);
+    for (const sol of batch) {
+      const ciclo = sol.ciclo;
+      const evalsSeleccionados = barajar(evaluadores).slice(0, 3);
 
-    for (let i = 0; i < evalsSeleccionados.length; i++) {
-      const evaluador = evalsSeleccionados[i];
-      const fechaEval = fechaEnEvaluacion(ciclo);
+      for (let j = 0; j < evalsSeleccionados.length; j++) {
+        const evaluador = evalsSeleccionados[j];
+        const fechaEval = fechaEnEvaluacion(ciclo);
 
-      await prisma.evaluacion.create({
-        data: {
-          solicitudId: sol.id,
-          evaluadorId: evaluador.id,
-          criterioEvaluacionId: elegirUno(criterios).id,
-          puntaje: Math.round((Math.random() * 40 + 60) * 100) / 100,
-          observaciones: i === 0 ? 'Evaluación principal' : `Evaluación de respaldo #${i}`,
-          completada: true,
-          confirmImparcialidad: true,
-          createdAt: fechaEval,
-          updatedAt: fechaEval,
-        },
-      });
+        await prisma.evaluacion.create({
+          data: {
+            solicitudId: sol.id,
+            evaluadorId: evaluador.id,
+            criterioEvaluacionId: elegirUno(criterios).id,
+            puntaje: Math.round((Math.random() * 40 + 60) * 100) / 100,
+            observaciones: j === 0 ? 'Evaluación principal' : `Evaluación de respaldo #${j}`,
+            completada: true,
+            confirmImparcialidad: true,
+            createdAt: fechaEval,
+            updatedAt: fechaEval,
+          },
+        });
+      }
     }
+    console.log(`  ✅ Evaluaciones para ${Math.min(i + batchSize, paraEvaluar.length)} de ${paraEvaluar.length} solicitudes`);
   }
 
   console.log('✅ Evaluaciones creadas');
@@ -388,8 +414,8 @@ async function crearEvaluaciones(
 
 async function crearSesionesComite(
   solicitudes: SolicitudConCiclo[],
-  _coordinador: Awaited<ReturnType<typeof crearRolesEspeciales>>['coord'],
-  miembros: Awaited<ReturnType<typeof crearMiembrosComite>>,
+  _coordinador: any,
+  miembros: any[],
   ciclos: CicloConvocatoria[]
 ) {
   const paraSesion = solicitudes.filter(s =>
@@ -412,7 +438,7 @@ async function crearSesionesComite(
     });
     if (!comite) continue;
 
-    const numSesiones = sols.length > 5 ? 2 : 1;
+    const numSesiones = sols.length > 50 ? 4 : 2;
 
     for (let s = 0; s < numSesiones; s++) {
       const fechaSesion = fechaPostResultados(ciclo, s === 0 ? 5 : 15);
@@ -456,8 +482,8 @@ async function crearSesionesComite(
 
 async function crearVotosYDecisiones(
   solicitudes: SolicitudConCiclo[],
-  miembros: Awaited<ReturnType<typeof crearMiembrosComite>>,
-  _coordinador: Awaited<ReturnType<typeof crearRolesEspeciales>>['coord'],
+  miembros: any[],
+  _coordinador: any,
   _ciclos: CicloConvocatoria[]
 ) {
   const paraDecision = solicitudes.filter(s =>
@@ -466,49 +492,54 @@ async function crearVotosYDecisiones(
 
   console.log(`🗳️ Creando votos y decisiones para ${paraDecision.length} solicitudes...`);
 
-  for (const sol of paraDecision) {
-    const ciclo = sol.ciclo;
-    const esAprobada = sol.estado === 'APROBADA' || sol.estado === 'PENDIENTE_SEGUNDA_APROBACION';
+  const batchSize = 50;
+  for (let i = 0; i < paraDecision.length; i += batchSize) {
+    const batch = paraDecision.slice(i, i + batchSize);
+    for (const sol of batch) {
+      const ciclo = sol.ciclo;
+      const esAprobada = sol.estado === 'APROBADA' || sol.estado === 'PENDIENTE_SEGUNDA_APROBACION';
 
-    const sesion = await prisma.sesion.findFirst({
-      where: { comite: { nombre: { contains: 'Excelencia' } }, estado: 'FINALIZADA' },
-      orderBy: { fecha: 'desc' },
-    });
-    if (!sesion) continue;
+      const sesion = await prisma.sesion.findFirst({
+        where: { comite: { nombre: { contains: 'Excelencia' } }, estado: 'FINALIZADA' },
+        orderBy: { fecha: 'desc' },
+      });
+      if (!sesion) continue;
 
-    const votantes = barajar(miembros).slice(0, 5 + Math.floor(Math.random() * 3));
-    let votosFavor = 0;
+      const votantes = barajar(miembros).slice(0, 5 + Math.floor(Math.random() * 3));
+      let votosFavor = 0;
 
-    for (const miembro of votantes) {
-      const voto = esAprobada ? (Math.random() > 0.15 ? 'A_FAVOR' : 'EN_CONTRA') :
-                               (Math.random() > 0.3 ? 'EN_CONTRA' : 'A_FAVOR');
-      if (voto === 'A_FAVOR') votosFavor++;
+      for (const miembro of votantes) {
+        const voto = esAprobada ? (Math.random() > 0.15 ? 'A_FAVOR' : 'EN_CONTRA') :
+                                   (Math.random() > 0.3 ? 'EN_CONTRA' : 'A_FAVOR');
+        if (voto === 'A_FAVOR') votosFavor++;
 
-      await prisma.voto.create({
+        await prisma.voto.create({
+          data: {
+            sesionId: sesion.id,
+            solicitudId: sol.id,
+            usuarioId: miembro.id,
+            voto,
+            observaciones: voto === 'A_FAVOR' ? 'Cumple con los criterios' : 'No cumple umbral mínimo',
+          },
+        });
+      }
+
+      const resultado = esAprobada ? 'APROBADA' : 'RECHAZADA';
+      const fechaDecision = fechaPostResultados(ciclo, 7);
+
+      await prisma.decision.create({
         data: {
-          sesionId: sesion.id,
           solicitudId: sol.id,
-          usuarioId: miembro.id,
-          voto,
-          observaciones: voto === 'A_FAVOR' ? 'Cumple con los criterios' : 'No cumple umbral mínimo',
+          sesionId: sesion.id,
+          resultado,
+          observaciones: esAprobada
+            ? 'La mayoría del comité consideró que la solicitud cumple con los requisitos establecidos en la convocatoria.'
+            : 'La solicitud no alcanzó el puntaje mínimo requerido ni la mayoría de votos favorables.',
+          fecha: fechaDecision,
         },
       });
     }
-
-    const resultado = esAprobada ? 'APROBADA' : 'RECHAZADA';
-    const fechaDecision = fechaPostResultados(ciclo, 7);
-
-    await prisma.decision.create({
-      data: {
-        solicitudId: sol.id,
-        sesionId: sesion.id,
-        resultado,
-        observaciones: esAprobada
-          ? 'La mayoría del comité consideró que la solicitud cumple con los requisitos establecidos en la convocatoria.'
-          : 'La solicitud no alcanzó el puntaje mínimo requerido ni la mayoría de votos favorables.',
-        fecha: fechaDecision,
-      },
-    });
+    console.log(`  ✅ Votos y decisiones para ${Math.min(i + batchSize, paraDecision.length)} de ${paraDecision.length} solicitudes`);
   }
 
   console.log('✅ Votos y decisiones creados');
@@ -520,8 +551,8 @@ async function crearVotosYDecisiones(
 
 async function crearAprobaciones(
   solicitudes: SolicitudConCiclo[],
-  jefeBecas: Awaited<ReturnType<typeof crearRolesEspeciales>>['jefe'],
-  director: Awaited<ReturnType<typeof crearRolesEspeciales>>['dir'],
+  jefeBecas: any,
+  director: any,
   _ciclos: CicloConvocatoria[]
 ) {
   const paraAprobar = solicitudes.filter(s =>
@@ -534,22 +565,26 @@ async function crearAprobaciones(
 
   const procesadas = new Set<string>();
 
-  for (const sol of todasAprobadas) {
-    if (procesadas.has(sol.id)) continue;
-    const ciclo = sol.ciclo;
-    await prisma.solicitudAprobacion.create({
-      data: {
-        solicitudId: sol.id,
-        usuarioId: jefeBecas.id,
-        rolNombre: 'JEFE_BECAS',
-        nivel: 1,
-        accion: 'aprobar',
-        resultado: 'APROBADA',
-        comentario: 'Primera aprobación: solicitud cumple requisitos',
-        createdAt: fechaPostResultados(ciclo, 10),
-      },
-    });
-    procesadas.add(sol.id);
+  const batchSize = 100;
+  for (let i = 0; i < todasAprobadas.length; i += batchSize) {
+    const batch = todasAprobadas.slice(i, i + batchSize);
+    for (const sol of batch) {
+      if (procesadas.has(sol.id)) continue;
+      const ciclo = sol.ciclo;
+      await prisma.solicitudAprobacion.create({
+        data: {
+          solicitudId: sol.id,
+          usuarioId: jefeBecas.id,
+          rolNombre: 'JEFE_BECAS',
+          nivel: 1,
+          accion: 'aprobar',
+          resultado: 'APROBADA',
+          comentario: 'Primera aprobación: solicitud cumple requisitos',
+          createdAt: fechaPostResultados(ciclo, 10),
+        },
+      });
+      procesadas.add(sol.id);
+    }
   }
 
   for (const sol of paraAprobar) {

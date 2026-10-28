@@ -6,35 +6,193 @@ const prisma = new PrismaClient();
 // CONSTANTES DE DISTRIBUCIÓN
 // ==========================================
 
-/** 30 solicitudes repartidas en 8 estados (según especificación del resumen). */
+/** 1000 solicitudes repartidas en 8 estados. */
+export const TOTAL_SOLICITUDES = 1000;
+
 export const DISTRIBUCION_ESTADOS: Record<SolicitudEstado, number> = {
-  BORRADOR: 3,
-  ENVIADA: 2,
-  EN_REVISION: 3,
-  CORRECCION: 1,
-  EVALUADA: 3,
-  PENDIENTE_SEGUNDA_APROBACION: 2,
-  APROBADA: 11,
-  RECHAZADA: 5,
+  BORRADOR: 100,
+  ENVIADA: 70,
+  EN_REVISION: 100,
+  CORRECCION: 30,
+  EVALUADA: 100,
+  PENDIENTE_SEGUNDA_APROBACION: 70,
+  APROBADA: 360,
+  RECHAZADA: 170,
 };
 
-/** 7 convocatorias: 3 existentes + 4 nuevas/clonadas + 1 archivada. */
-export const TOTAL_CONVOCATORIAS = 7;
+/** 11 convocatorias para distintos niveles académicos. */
+export const TOTAL_CONVOCATORIAS = 11;
 
-/** 20 postulantes únicos. */
-export const TOTAL_POSTULANTES = 20;
+/** 250 postulantes únicos. */
+export const TOTAL_POSTULANTES = 250;
 
-/** 5 evaluadores. */
-export const TOTAL_EVALUADORES = 5;
+/** 30 evaluadores. */
+export const TOTAL_EVALUADORES = 30;
 
-/** 10 miembros de comité. */
-export const TOTAL_MIEMBROS_COMITE = 10;
+/** 50 miembros de comité. */
+export const TOTAL_MIEMBROS_COMITE = 50;
 
 /** 4 ciclos a lo largo de ~12 meses. */
 export const CICLOS = 4;
 
 // ==========================================
-// DATOS BASE: POSTULANTES, EVALUADORES, MIEMBROS
+// BECAS POR NIVEL ACADÉMICO
+// ==========================================
+
+export const BECAS_POR_NIVEL: Array<{
+  id: string;
+  nombre: string;
+  descripcion: string;
+  nivel: string;
+  cobertura: 'COMPLETA' | 'PARCIAL';
+  montoBase: number;
+  criterios: { nombre: string; peso: number }[];
+}> = [
+  // ===== PRIMARIA =====
+  {
+    id: '00000000-0000-4000-8000-000000000011',
+    nombre: 'Beca de Apoyo a Estudios Primarios',
+    descripcion: 'Apoyo económico para estudiantes de primaria con alto rendimiento académico y necesidad socioeconómica.',
+    nivel: 'PRIMARIA',
+    cobertura: 'PARCIAL',
+    montoBase: 2000,
+    criterios: [
+      { nombre: 'Rendimiento académico', peso: 0.6 },
+      { nombre: 'Situación socioeconómica', peso: 0.4 },
+    ],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000012',
+    nombre: 'Beca de Excelencia en Matemáticas',
+    descripcion: 'Beca para estudiantes de primaria destacados en matemáticas.',
+    nivel: 'PRIMARIA',
+    cobertura: 'COMPLETA',
+    montoBase: 3000,
+    criterios: [
+      { nombre: 'Rendimiento en matemáticas', peso: 0.7 },
+      { nombre: 'Situación socioeconómica', peso: 0.3 },
+    ],
+  },
+  // ===== SECUNDARIA =====
+  {
+    id: '00000000-0000-4000-8000-000000000013',
+    nombre: 'Beca de Permanencia Secundaria',
+    descripcion: 'Apoyo para estudiantes de secundaria en riesgo de deserción.',
+    nivel: 'SECUNDARIA',
+    cobertura: 'PARCIAL',
+    montoBase: 4000,
+    criterios: [
+      { nombre: 'Desempeño académico', peso: 0.5 },
+      { nombre: 'Necesidad socioeconómica', peso: 0.5 },
+    ],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000014',
+    nombre: 'Beca de Ciencias Secundaria',
+    descripcion: 'Beca para estudiantes destacados en ciencias en nivel secundario.',
+    nivel: 'SECUNDARIA',
+    cobertura: 'COMPLETA',
+    montoBase: 5000,
+    criterios: [
+      { nombre: 'Rendimiento en ciencias', peso: 0.6 },
+      { nombre: 'Situación socioeconómica', peso: 0.4 },
+    ],
+  },
+  // ===== DIVERSIFICADO =====
+  {
+    id: '00000000-0000-4000-8000-000000000015',
+    nombre: 'Beca de Excelencia en Diversificado',
+    descripcion: 'Apoyo integral para estudiantes de diversificado con alto promedio.',
+    nivel: 'DIVERSIFICADO',
+    cobertura: 'COMPLETA',
+    montoBase: 6000,
+    criterios: [
+      { nombre: 'Rendimiento académico', peso: 0.55 },
+      { nombre: 'Situación socioeconómica', peso: 0.45 },
+    ],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000016',
+    nombre: 'Beca de Continuidad de Estudios',
+    descripcion: 'Beca para estudiantes que interrumpieron sus estudios y buscan reincorporarse.',
+    nivel: 'DIVERSIFICADO',
+    cobertura: 'PARCIAL',
+    montoBase: 4500,
+    criterios: [
+      { nombre: 'Desempeño académico', peso: 0.45 },
+      { nombre: 'Necesidad socioeconómica', peso: 0.35 },
+      { nombre: 'Participación comunitaria', peso: 0.2 },
+    ],
+  },
+  // ===== TÉCNICO =====
+  {
+    id: '00000000-0000-4000-8000-000000000017',
+    nombre: 'Beca Técnica Industrial',
+    descripcion: 'Apoyo para estudiantes de carreras técnicas industriales.',
+    nivel: 'TECNICO',
+    cobertura: 'PARCIAL',
+    montoBase: 5000,
+    criterios: [
+      { nombre: 'Desempeño técnico', peso: 0.5 },
+      { nombre: 'Situación socioeconómica', peso: 0.5 },
+    ],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000018',
+    nombre: 'Beca de Apoyo a Estudios Técnicos',
+    descripcion: 'Beca parcial para estudiantes de institutos técnicos.',
+    nivel: 'TECNICO',
+    cobertura: 'COMPLETA',
+    montoBase: 7000,
+    criterios: [
+      { nombre: 'Rendimiento técnico', peso: 0.6 },
+      { nombre: 'Situación socioeconómica', peso: 0.4 },
+    ],
+  },
+  // ===== UNIVERSIDAD (ya existentes + nuevas) =====
+  {
+    id: '00000000-0000-4000-8000-000000000001',
+    nombre: 'Beca de Excelencia Académica',
+    descripcion: 'Apoyo económico integral para estudiantes universitarios con alto rendimiento académico.',
+    nivel: 'UNIVERSIDAD',
+    cobertura: 'COMPLETA',
+    montoBase: 12000,
+    criterios: [
+      { nombre: 'Rendimiento académico', peso: 0.5 },
+      { nombre: 'Situación socioeconómica', peso: 0.3 },
+      { nombre: 'Actividades extracurriculares y comunitarias', peso: 0.2 },
+    ],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000002',
+    nombre: 'Beca de Permanencia Universitaria',
+    descripcion: 'Beca de apoyo para estudiantes universitarios en riesgo de deserción.',
+    nivel: 'UNIVERSIDAD',
+    cobertura: 'PARCIAL',
+    montoBase: 6000,
+    criterios: [
+      { nombre: 'Desempeño académico', peso: 0.45 },
+      { nombre: 'Necesidad socioeconómica', peso: 0.35 },
+      { nombre: 'Participación comunitaria', peso: 0.2 },
+    ],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000019',
+    nombre: 'Beca de Investigación Universitaria',
+    descripcion: 'Apoyo para estudiantes universitarios que desarrollan proyectos de investigación.',
+    nivel: 'UNIVERSIDAD',
+    cobertura: 'COMPLETA',
+    montoBase: 15000,
+    criterios: [
+      { nombre: 'Calidad del proyecto', peso: 0.4 },
+      { nombre: 'Rendimiento académico', peso: 0.3 },
+      { nombre: 'Situación socioeconómica', peso: 0.3 },
+    ],
+  },
+];
+
+// ==========================================
+// DATOS BASE: NOMBRES, APELLIDOS, ETC.
 // ==========================================
 
 const APELLIDOS = [
@@ -42,6 +200,9 @@ const APELLIDOS = [
   'Ramírez', 'Torres', 'Flores', 'Rivera', 'Gómez', 'Díaz', 'Reyes', 'Morales',
   'Jiménez', 'Herrera', 'Medina', 'Castro', 'Ortiz', 'Rojas', 'Guzmán', 'Ruiz',
   'Álvarez', 'Méndez', 'Castillo', 'Suárez', 'Gutiérrez', 'Romero', 'Vargas',
+  'Ramos', 'Molina', 'Vega', 'Cruz', 'Silva', 'Moreno', 'Gallardo', 'Pineda',
+  'Cabrera', 'Fuentes', 'Aguilar', 'Estrada', 'León', 'Mendoza', 'Peña',
+  'Cortés', 'Carrillo', 'Salazar', 'Cano', 'Cervantes',
 ];
 
 const NOMBRES_MASC = [
@@ -49,6 +210,9 @@ const NOMBRES_MASC = [
   'Francisco', 'Antonio', 'Alejandro', 'Daniel', 'Pablo', 'Adrián', 'Raúl',
   'Óscar', 'Andrés', 'Fernando', 'Sergio', 'Diego', 'Javier', 'Roberto',
   'Alberto', 'Enrique', 'Vicente', 'Iván', 'Rubén', 'Gabriel', 'Eduardo',
+  'Ricardo', 'Federico', 'Esteban', 'Gustavo', 'Héctor', 'Ignacio', 'Julio',
+  'Kevin', 'Leonardo', 'Marco', 'Nicolás', 'Omar', 'Pablo', 'Ramón', 'Saúl',
+  'Tomás', 'Ulises', 'Valentín', 'Walter', 'Xavier', 'Yahir', 'Zacarías',
 ];
 
 const NOMBRES_FEM = [
@@ -56,47 +220,17 @@ const NOMBRES_FEM = [
   'Elena', 'Claudia', 'Patricia', 'Verónica', 'Andrea', 'Natalia', 'Mariana',
   'Gabriela', 'Valeria', 'Daniela', 'Alejandra', 'Camila', 'Fernanda', 'Ximena',
   'Jimena', 'Renata', 'Regina', 'Montserrat', 'Xóchitl', 'Itzel', 'Yaretzi',
+  'Abril', 'Beatriz', 'Carolina', 'Diana', 'Estefanía', 'Fabiola', 'Gloria',
+  'Hilda', 'Irene', 'Juana', 'Karla', 'Leticia', 'Mónica', 'Nadia', 'Olga',
+  'Priscila', 'Rosa', 'Sara', 'Teresa', 'Úrsula', 'Verónica', 'Wendy', 'Yolanda',
+  'Zulema',
 ];
 
-const CARRERAS_UNIV = [
-  'Medicina', 'Ingeniería Civil', 'Ingeniería de Sistemas', 'Derecho',
-  'Arquitectura', 'Administración de Empresas', 'Contaduría Pública',
-  'Psicología', 'Enfermería', 'Odontología', 'Ingeniería Industrial',
-  'Ingeniería Mecánica', 'Ingeniería Química', 'Comunicación Social',
-  'Diseño Gráfico', 'Economía', 'Relaciones Internacionales', 'Biología',
-  'Química', 'Física', 'Matemáticas', 'Pedagogía', 'Trabajo Social',
-];
+// Constantes de carreras e instituciones se usan inline en crearPostulantes
 
-const CARRERAS_DIV = [
-  'Bachillerato en Ciencias y Letras', 'Bachillerato en Computación',
-  'Bachillerato en Contabilidad', 'Bachillerato en Secretariado',
-  'Bachillerato en Dibujo Arquitectónico', 'Bachillerato en Electrónica',
-  'Bachillerato en Mecánica Automotriz', 'Bachillerato en Turismo',
-  'Bachillerato en Agropecuaria', 'Bachillerato en Enfermería',
-];
-
-/** Perfil académico generado para un postulante (se usa al crear su solicitud). */
-export interface PerfilAcademicoGenerado {
-  generoId: string | null;
-  generoOtro: string | null;
-  nivelAcademicoId: string | null;
-  nivelAcademicoOtro: string | null;
-  institucion: string;
-  carrera: string;
-  promedio: number;
-  departamentoId: string | null;
-  departamentoOtro: string | null;
-  municipioId: string | null;
-  municipioOtro: string | null;
-}
-
-/** Perfil financiero generado para un postulante (se usa al crear su solicitud). */
-export interface PerfilFinancieroGenerado {
-  ingresoFamiliar: number;
-  numeroDependientes: number;
-  becasAnteriores: boolean;
-  descripcionSituacion: string | null;
-}
+// ==========================================
+// FUNCIONES AUXILIARES
+// ==========================================
 
 function nombreAleatorio(genero?: 'M' | 'F'): string {
   const esMujer = genero === 'F' || (genero === undefined && Math.random() > 0.5);
@@ -112,9 +246,9 @@ function cuiAleatorio(): string {
   return Array.from({ length: 13 }, () => Math.floor(Math.random() * 10)).join('');
 }
 
-function emailAleatorio(nombre: string, idx: number): string {
+function emailAleatorio(nombre: string, idx: number, dominio = 'seed.demo.gt'): string {
   const base = nombre.toLowerCase().replace(/\s+/g, '.').replace(/[^a-z.]/g, '');
-  return `${base}${idx}@demo.gt`;
+  return `${base}${idx}@${dominio}`;
 }
 
 function telefonoAleatorio(): string {
@@ -130,77 +264,6 @@ function fechaNacimientoAleatoria(edadMin = 17, edadMax = 55): Date {
   return new Date(año, mes, dia);
 }
 
-/**
- * Genera un perfil académico aleatorio para un postulante.
- */
-export function generarPerfilAcademico(
-  generos: { id: string; nombre: string }[],
-  niveles: { id: string; nombre: string }[],
-  departamentos: { id: string; nombre: string }[],
-  municipios: { id: string; nombre: string; departamentoId: string }[],
-  instituciones: { id: string; nombre: string; nivel: string; departamento: string | null; municipio: string | null }[]
-): PerfilAcademicoGenerado {
-  const esUniv = Math.random() > 0.3;
-  const institucionesFiltradas = instituciones.filter(
-    inst => (esUniv && inst.nivel === 'UNIVERSIDAD') || (!esUniv && inst.nivel === 'DIVERSIFICADO')
-  );
-  const institucion = institucionesFiltradas[Math.floor(Math.random() * institucionesFiltradas.length)] || instituciones[0];
-  const carreras = esUniv ? CARRERAS_UNIV : CARRERAS_DIV;
-
-  const generoFemenino = generos.find(g => g.nombre === 'Femenino');
-  const generoMasculino = generos.find(g => g.nombre === 'Masculino');
-  const generoAleatorio = Math.random() > 0.5 ? generoFemenino : generoMasculino;
-
-  const nivelNombre = esUniv ? 'Universitario' : 'Diversificado';
-  const nivelAcademico = niveles.find(n => n.nombre === nivelNombre);
-
-  let departamentoId: string | null = null;
-  let municipioId: string | null = null;
-  if (institucion?.departamento) {
-    const dep = departamentos.find(d => d.nombre === institucion.departamento);
-    if (dep) departamentoId = dep.id;
-  }
-  if (institucion?.municipio) {
-    const mun = municipios.find(m => m.nombre === institucion.municipio && m.departamentoId === departamentoId);
-    if (mun) municipioId = mun.id;
-  }
-
-  return {
-    generoId: generoAleatorio?.id || null,
-    generoOtro: null,
-    nivelAcademicoId: nivelAcademico?.id || null,
-    nivelAcademicoOtro: null,
-    institucion: institucion?.nombre || 'Institución Demo',
-    carrera: carreras[Math.floor(Math.random() * carreras.length)],
-    promedio: Math.round((Math.random() * 20 + 70) * 100) / 100,
-    departamentoId,
-    departamentoOtro: null,
-    municipioId,
-    municipioOtro: null,
-  };
-}
-
-/**
- * Genera un perfil financiero aleatorio para un postulante.
- */
-export function generarPerfilFinanciero(esUniv: boolean): PerfilFinancieroGenerado {
-  const ingresoBase = esUniv ? 4000 : 2500;
-  const ingresoFamiliar = Math.round((ingresoBase + Math.random() * 12000) * 100) / 100;
-  const numeroDependientes = Math.floor(Math.random() * 5) + 1;
-  const becasAnteriores = Math.random() > 0.7;
-  const descripcionSituacion = Math.random() > 0.5
-    ? 'Situación económica familiar difícil, ingresos irregulares.'
-    : null;
-
-  return {
-    ingresoFamiliar,
-    numeroDependientes,
-    becasAnteriores,
-    descripcionSituacion,
-  };
-}
-
-/** Genera fecha relativa a hoy (días negativos = pasado, positivos = futuro). */
 export function fechaRelativa(dias: number, horas = 0, minutos = 0): Date {
   const f = new Date();
   f.setDate(f.getDate() + dias);
@@ -211,12 +274,10 @@ export function fechaRelativa(dias: number, horas = 0, minutos = 0): Date {
   return f;
 }
 
-/** Elige un elemento aleatorio de un array. */
 export function elegirUno<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-/** Baraja un array (Fisher-Yates). */
 export function barajar<T>(arr: T[]): T[] {
   const copia = [...arr];
   for (let i = copia.length - 1; i > 0; i--) {
@@ -226,34 +287,27 @@ export function barajar<T>(arr: T[]): T[] {
   return copia;
 }
 
-/**
- * Crea usuarios postulantes con perfiles realistas.
- * Retorna array de { usuario, perfilAcademico, perfilFinanciero, esUniv }.
- */
-export async function crearPostulantes(cantidad: number, rolPostulante: Rol) {
-  const postulantes: Array<{
-    usuario: { id: string; cui: string };
-    perfilAcademico: PerfilAcademicoGenerado;
-    perfilFinanciero: PerfilFinancieroGenerado;
-    esUniv: boolean;
-  }> = [];
+// ==========================================
+// FUNCIONES DE CREACIÓN DE USUARIOS
+// ==========================================
 
+export async function crearPostulantes(cantidad: number, rolPostulante: Rol) {
+  const postulantes = [];
+  const hashedPassword = await import('bcrypt').then(b => b.hash('Admin123!', 10));
   const generos = await prisma.genero.findMany();
-  const niveles = await prisma.nivelAcademico.findMany();
   const departamentos = await prisma.departamento.findMany();
   const municipios = await prisma.municipio.findMany();
-  const instituciones = await prisma.institucionEducativa.findMany({ where: { activa: true } });
 
   for (let i = 0; i < cantidad; i++) {
     const genero = Math.random() > 0.5 ? 'M' : 'F';
     const nombre = nombreAleatorio(genero);
     const cui = cuiAleatorio();
     const email = emailAleatorio(nombre, i);
-    const hashedPassword = await import('bcrypt').then(b => b.hash('Postulante123!', 10));
+    const esUniv = Math.random() > 0.5;
 
     const usuario = await prisma.usuario.upsert({
-      where: { cui },
-      update: { nombres: nombre, email },
+      where: { email },
+      update: { nombres: nombre },
       create: {
         cui,
         nombres: nombre,
@@ -269,21 +323,13 @@ export async function crearPostulantes(cantidad: number, rolPostulante: Rol) {
       },
     });
 
-    const esUniv = Math.random() > 0.3;
-    const perfilAcademico = generarPerfilAcademico(generos, niveles, departamentos, municipios, instituciones);
-    const perfilFinanciero = generarPerfilFinanciero(esUniv);
-
-    postulantes.push({ usuario, perfilAcademico, perfilFinanciero, esUniv });
+    postulantes.push({ usuario, esUniv });
   }
 
   console.log(`✅ ${postulantes.length} postulantes creados`);
   return postulantes;
 }
 
-/**
- * Crea usuarios evaluadores.
- * Usa dominio @seed.demo.gt para evitar conflictos con usuarios base.
- */
 export async function crearEvaluadores(cantidad: number, rolEvaluador: Rol) {
   const evaluadores = [];
   const hashedPassword = await import('bcrypt').then(b => b.hash('Admin123!', 10));
@@ -293,7 +339,6 @@ export async function crearEvaluadores(cantidad: number, rolEvaluador: Rol) {
     const cui = cuiAleatorio();
     const email = `eval${i + 1}@seed.demo.gt`;
 
-    // Usar email como clave única para upsert (evita conflicto por email duplicado con CUI distinto)
     const usuario = await prisma.usuario.upsert({
       where: { email },
       update: { nombres: nombre },
@@ -314,10 +359,6 @@ export async function crearEvaluadores(cantidad: number, rolEvaluador: Rol) {
   return evaluadores;
 }
 
-/**
- * Crea usuarios miembros de comité.
- * Usa dominio @seed.demo.gt para evitar conflictos con usuarios base.
- */
 export async function crearMiembrosComite(cantidad: number, rolMiembro: Rol) {
   const miembros = [];
   const hashedPassword = await import('bcrypt').then(b => b.hash('Admin123!', 10));
@@ -327,7 +368,6 @@ export async function crearMiembrosComite(cantidad: number, rolMiembro: Rol) {
     const cui = cuiAleatorio();
     const email = `miembro${i + 10}@seed.demo.gt`;
 
-    // Usar email como clave única para upsert
     const usuario = await prisma.usuario.upsert({
       where: { email },
       update: { nombres: nombre },
@@ -348,9 +388,6 @@ export async function crearMiembrosComite(cantidad: number, rolMiembro: Rol) {
   return miembros;
 }
 
-/**
- * Crea usuarios coordinadores de comité y jefe de becas.
- */
 export async function crearRolesEspeciales(
   rolCoordinador: Rol,
   rolJefeBecas: Rol,
@@ -359,12 +396,12 @@ export async function crearRolesEspeciales(
   const hashedPassword = await import('bcrypt').then(b => b.hash('Admin123!', 10));
 
   const coord = await prisma.usuario.upsert({
-    where: { cui: '7777777777777' },
+    where: { email: 'coordinador@seed.demo.gt' },
     update: {},
     create: {
-      cui: '7777777777777',
+      cui: cuiAleatorio(),
       nombres: 'Coordinador Principal Demo',
-      email: 'coordinador@demo.gt',
+      email: 'coordinador@seed.demo.gt',
       passwordHash: hashedPassword,
       rolId: rolCoordinador.id,
       estado: 'ACTIVO',
@@ -372,12 +409,12 @@ export async function crearRolesEspeciales(
   });
 
   const jefe = await prisma.usuario.upsert({
-    where: { cui: '5555555555555' },
+    where: { email: 'jefebecas@seed.demo.gt' },
     update: {},
     create: {
-      cui: '5555555555555',
+      cui: cuiAleatorio(),
       nombres: 'Jefa de Becas Principal',
-      email: 'jefebecas@demo.gt',
+      email: 'jefebecas@seed.demo.gt',
       passwordHash: hashedPassword,
       rolId: rolJefeBecas.id,
       estado: 'ACTIVO',
@@ -385,12 +422,12 @@ export async function crearRolesEspeciales(
   });
 
   const dir = await prisma.usuario.upsert({
-    where: { cui: '4444444444444' },
+    where: { email: 'director@seed.demo.gt' },
     update: {},
     create: {
-      cui: '4444444444444',
+      cui: cuiAleatorio(),
       nombres: 'Director de Becas Principal',
-      email: 'director@demo.gt',
+      email: 'director@seed.demo.gt',
       passwordHash: hashedPassword,
       rolId: rolAdmin.id,
       estado: 'ACTIVO',
@@ -401,17 +438,48 @@ export async function crearRolesEspeciales(
   return { coord, jefe, dir };
 }
 
-/**
- * Obtiene las convocatorias existentes y crea las adicionales para llegar a 7.
- * Retorna { convocatorias: todas, nuevasIds: IDs de las recién creadas }.
- */
+// ==========================================
+// CONVOCATORIAS POR NIVEL
+// ==========================================
+
 export async function asegurarConvocatorias(total: number) {
   const existentes = await prisma.convocatoria.findMany({ orderBy: { createdAt: 'asc' } });
   const convocatorias = [...existentes];
   const nuevasIds: string[] = [];
 
   const becas = await prisma.beca.findMany({ where: { activa: true } });
-  if (becas.length === 0) throw new Error('No hay becas activas');
+
+  // Crear becas que falten (de cualquier nivel)
+  for (const beca of BECAS_POR_NIVEL) {
+    const existe = await prisma.beca.findUnique({ where: { id: beca.id } });
+    if (!existe) {
+      await prisma.beca.upsert({
+        where: { id: beca.id },
+        update: { nombre: beca.nombre, descripcion: beca.descripcion, activa: true },
+        create: {
+          id: beca.id,
+          nombre: beca.nombre,
+          descripcion: beca.descripcion,
+          activa: true,
+        },
+      });
+
+      await prisma.criterioEvaluacion.deleteMany({ where: { becaId: beca.id } });
+      for (const criterio of beca.criterios) {
+        await prisma.criterioEvaluacion.create({
+          data: {
+            becaId: beca.id,
+            nombre: criterio.nombre,
+            peso: criterio.peso,
+            activo: true,
+          },
+        });
+      }
+    }
+  }
+
+  const becasActualizadas = await prisma.beca.findMany({ where: { activa: true } });
+  console.log(`✅ ${becasActualizadas.length} becas activas (${becasActualizadas.length - becas.length} nuevas)`);
 
   const hoy = new Date();
   const ciclos = 4;
@@ -427,21 +495,24 @@ export async function asegurarConvocatorias(total: number) {
     fechaInicio.setDate(fechaInicio.getDate() - 30);
     const fechaCierre = new Date(fechaInicio);
     fechaCierre.setDate(fechaCierre.getDate() + 45);
-    const fechaEvaluacion = new Date(fechaCierre);
-    fechaEvaluacion.setDate(fechaEvaluacion.getDate() + 15);
-    const fechaResultado = new Date(fechaEvaluacion);
-    fechaResultado.setDate(fechaResultado.getDate() + 20);
 
-    const beca = becas[c % becas.length];
-    const esUniv = beca.nombre.includes('Excelencia') || beca.nombre.includes('Permanencia');
-    const montoBase = esUniv ? 12000 : 6000;
+    const becaIdx = c % becasActualizadas.length;
+    const beca = becasActualizadas[becaIdx];
+    const esUniv = beca.nombre.includes('Excelencia') || beca.nombre.includes('Permanencia') || beca.nombre.includes('Investigación');
+    const montoBase = esUniv ? 12000 : (beca.nombre.includes('Primaria') ? 2000 : beca.nombre.includes('Técnica') || beca.nombre.includes('Tecnico') ? 5000 : 6000);
+
+    // Determinar estado según ciclo
+    let estado = 'EN_EVALUACION';
+    if (c === total - 1) estado = 'ARCHIVADA';
+    else if (c < 3) estado = 'RESUELTA';
+    else if (c === 3) estado = 'ABIERTA'; // Una ABIERTA con Excelencia para E2E
 
     const convocatoria = await prisma.convocatoria.create({
       data: {
         nombre: `${beca.nombre} - Ciclo ${cicloIdx + 1} 202${cicloIdx === 3 ? '5' : '6'}`,
         descripcion: `Convocatoria del ciclo ${cicloIdx + 1} para ${beca.nombre.toLowerCase()}.`,
         becaId: beca.id,
-        estado: c === total - 1 ? 'ARCHIVADA' : (c < 3 ? 'RESUELTA' : 'EN_EVALUACION'),
+        estado: estado as any,
         fechaApertura: fechaInicio,
         fechaCierre,
         montoBase,
@@ -470,16 +541,16 @@ export async function asegurarConvocatorias(total: number) {
               activo: true,
             },
             {
-              nombre: 'Regla tramo alto (monto fijo Q8000)',
+              nombre: 'Regla tramo alto',
               tipo: 'FIJO',
-              montoFijo: 8000,
+              montoFijo: Math.round(montoBase * 0.6),
               prioridad: 3,
               ingresoMin: 10000,
               ingresoMax: 15000,
               activo: true,
             },
             {
-              nombre: 'Regla monto completo (ingresos muy bajos)',
+              nombre: 'Regla monto completo',
               tipo: 'COMPLETO',
               prioridad: 0,
               ingresoMin: 0,
@@ -510,4 +581,55 @@ export async function asegurarConvocatorias(total: number) {
 
   console.log(`✅ ${convocatorias.length} convocatorias aseguradas (${nuevasIds.length} nuevas)`);
   return { convocatorias, nuevasIds };
+}
+
+// ==========================================
+// FUNCIONES AUXILIARES PARA ESCENARIOS
+// ==========================================
+
+export function fechaAleatoriaEnRango(inicio: Date, fin: Date): Date {
+  const inicioMs = inicio.getTime();
+  const finMs = fin.getTime();
+  const randomMs = inicioMs + Math.random() * (finMs - inicioMs);
+  const fecha = new Date(randomMs);
+  fecha.setSeconds(0);
+  fecha.setMilliseconds(0);
+  return fecha;
+}
+
+export function fechaEnEvaluacion(ciclo: { evalInicio: Date; evalFin: Date }): Date {
+  return fechaAleatoriaEnRango(ciclo.evalInicio, ciclo.evalFin);
+}
+
+export function fechaPostResultados(ciclo: { resultados: Date }, diasMax = 30): Date {
+  const inicio = new Date(ciclo.resultados);
+  inicio.setDate(inicio.getDate() + 1);
+  const fin = new Date(inicio);
+  fin.setDate(fin.getDate() + diasMax);
+  return fechaAleatoriaEnRango(inicio, fin);
+}
+
+export function fechaAntesCierre(ciclo: { apertura: Date; cierre: Date }): Date {
+  const inicio = new Date(ciclo.apertura);
+  inicio.setDate(inicio.getDate() + 1);
+  const fin = new Date(ciclo.cierre);
+  fin.setDate(fin.getDate() - 1);
+  if (fin <= inicio) return new Date(inicio.getTime() + 24 * 60 * 60 * 1000);
+  return fechaAleatoriaEnRango(inicio, fin);
+}
+
+export function distribuirEnCiclos(total: number, ciclos: any[]): number[] {
+  const pesos = ciclos.map(c => c.finalizado ? 1.2 : 0.6);
+  const sumaPesos = pesos.reduce((a, b) => a + b, 0);
+  const base = total / sumaPesos;
+
+  const distribucion = pesos.map(p => Math.floor(p * base));
+  let asignados = distribucion.reduce((a, b) => a + b, 0);
+  let idx = 0;
+  while (asignados < total) {
+    distribucion[idx % ciclos.length]++;
+    asignados++;
+    idx++;
+  }
+  return distribucion;
 }
