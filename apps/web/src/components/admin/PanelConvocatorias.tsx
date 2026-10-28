@@ -10,11 +10,24 @@ import { Spinner } from '@/components/ui/Spinner';
 import { formatearFecha, type Convocatoria } from '@/lib/api';
 
 const accionesPorEstado: Record<string, { value: string; label: string }[]> = {
-  BORRADOR: [{ value: 'publicar', label: 'Publicar' }],
-  ABIERTA: [{ value: 'cerrar', label: 'Cerrar' }],
-  CERRADA: [{ value: 'iniciar_evaluacion', label: 'Iniciar evaluación' }],
-  EN_EVALUACION: [{ value: 'resolver', label: 'Resolver' }],
+  BORRADOR: [
+    { value: 'publicar', label: 'Publicar' },
+    { value: 'archivar', label: 'Archivar' },
+  ],
+  ABIERTA: [
+    { value: 'cerrar', label: 'Cerrar' },
+    { value: 'archivar', label: 'Archivar' },
+  ],
+  CERRADA: [
+    { value: 'iniciar_evaluacion', label: 'Iniciar evaluación' },
+    { value: 'reabrir', label: 'Reabrir' },
+  ],
+  EN_EVALUACION: [
+    { value: 'resolver', label: 'Resolver' },
+    { value: 'archivar', label: 'Archivar' },
+  ],
   RESUELTA: [{ value: 'archivar', label: 'Archivar' }],
+  ARCHIVADA: [{ value: 'reabrir', label: 'Reabrir' }],
 };
 
 export function PanelConvocatorias() {
