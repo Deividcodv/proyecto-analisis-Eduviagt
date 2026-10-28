@@ -12,6 +12,7 @@ import {
   convocatoriaAbierta,
   ETIQUETA_COBERTURA,
   type ConvocatoriaDetalle,
+  type CampoFormulario,
 } from '@/lib/api';
 
 interface Props {
@@ -51,10 +52,13 @@ export default async function ConvocatoriaDetallePage({ params }: Props) {
   }
 
   const abierta = convocatoriaAbierta(convocatoria);
+  const estadoMostrado = abierta ? convocatoria.estado : 'CERRADA';
   const codigo = codigoConvocatoria(convocatoria);
   const docs = convocatoria.documentosRequeridos ?? [];
   const criterios = convocatoria.beca?.criteriosEvaluacion ?? [];
-  const campos = convocatoria.formulario ?? [];
+  const campos = Array.isArray(convocatoria.formulario)
+    ? (convocatoria.formulario as CampoFormulario[])
+    : [];
 
   return (
     <main>
@@ -70,7 +74,7 @@ export default async function ConvocatoriaDetallePage({ params }: Props) {
             <span className="tabular font-mono text-xs font-bold uppercase tracking-[0.15em] text-brutal-gold">
               {codigo}
             </span>
-            <Badge estado={convocatoria.estado} />
+            <Badge estado={estadoMostrado} />
             <span className="brut-label font-mono text-xs font-bold uppercase text-brutal-gold">
               {convocatoria.beca.nombre}
             </span>

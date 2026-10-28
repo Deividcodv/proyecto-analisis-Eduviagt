@@ -32,6 +32,31 @@ Las categorías son:
 - Convenciones de código, git, testing y seguridad
 - Equipo asignado: David (SM), Marcos (Auth), Héctor (Convocatorias), José (Solicitudes), Yemerson (Portal), Hamilton (Sistema)
 
+### Added (2026-10-27)
+- Capa de datos de demostración en `apps/api/prisma/semilla/` (datos.ts, escenarios.ts, ciclos.ts, verificar.ts) + `verificar-counts.ts`
+- 51 convocatorias: 35 abiertas (5 por cada uno de los 7 niveles), 15 cerradas/históricas, 1 borrador base
+- 8 becas nuevas por nivel académico (Básico, Posgrado) + 3 base canónicas; becas legacy desactivadas
+- 1000 solicitudes demo repartidas en 8 estados (BORRADOR 100, ENVIADA 70, EN_REVISION 100, CORRECCION 30, EVALUADA 100, PENDIENTE_SEGUNDA_APROBACION 70, APROBADA 360, RECHAZADA 170)
+- 4 ciclos históricos sincronizados con convocatorias RESUELTA
+- 250 postulantes, 30 evaluadores, 50 miembros de comité
+- Filtro `estado=ABIERTA|CERRADA` en `GET /convocatorias` (público) con orden "abiertas primero"
+- Helper `convocatoriaAbierta()` en web (badge "Cerrada" cuando ABIERTA vencida)
+- E2E: filtro CERRADAS y por nivel académico
+- Documentación: 5 docs maestros nuevos (ARQUITECTURA-REAL, asistente-ia, frontend, api-web-contrato, datos-demostracion) + 4 ADRs (019-022)
+
+### Changed (2026-10-27)
+- `GET /convocatorias` ahora devuelve abiertas + cerradas por defecto (antes solo ABIERTAS)
+- `ConvocatoriaDetalle.formulario` ahora acepta `CampoFormulario[] | string | null`
+- `setup-guide.md` actualizado con la capa `semilla/` y cifras reales
+
+### Fixed (2026-10-27)
+- Permisos documentados corregidos: `catalogo:gestionar`, `permiso:editar`, `voto:crear`, `evaluacion:crear/editar`
+- Endpoints públicos documentados como públicos: `GET /convocatorias`, `GET /convocatorias/:id`, `GET /solicitudes/consulta/:codigo`, `GET /catalogos/*`, `GET /notificaciones/stream`
+- `docs/00-indice.md`: marcadores de conflicto Git resueltos
+- `docs/architecture/ARQUITECTURA_TECNICA_DETALLADA_SIGEB_v1.1.md`: despliegue real es PM2 (no Docker Compose)
+
+---
+
 ---
 
 ## [Sprint 0] — 2026-XX-XX

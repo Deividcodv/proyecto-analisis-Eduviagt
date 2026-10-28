@@ -1,7 +1,12 @@
 'use client';
 
 import useSWR from 'swr';
-import { fetcher, type Convocatoria, type ListaResponse } from '@/lib/api';
+import {
+  fetcher,
+  convocatoriaAbierta,
+  type Convocatoria,
+  type ListaResponse,
+} from '@/lib/api';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 
@@ -19,7 +24,7 @@ function formatearFecha(fecha: string) {
 
 export function Convocatorias() {
   const { data, error, isLoading, mutate } = useSWR<ListaResponse<Convocatoria>>(
-    '/convocatorias',
+    '/convocatorias?estado=ABIERTA',
     fetcher,
   );
 
@@ -53,7 +58,7 @@ export function Convocatorias() {
     );
   }
 
-  const activas = (data?.data ?? []).filter((c) => c.estado === 'ABIERTA');
+  const activas = (data?.data ?? []).filter((c) => convocatoriaAbierta(c));
 
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

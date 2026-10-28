@@ -54,6 +54,65 @@ test.describe('Convocatorias y postulación', () => {
     await expect(page.getByText(nombre)).toBeVisible();
   });
 
+  test('el filtro CERRADAS muestra las convocatorias cerradas', async ({
+    page,
+    request,
+  }) => {
+    const res = await request.get(`${API}/convocatorias?estado=CERRADA`);
+    expect(res.ok()).toBeTruthy();
+    const { data } = (await res.json()) as {
+      data: Array<{ id: string; nombre: string }>;
+    };
+    expect(data.length).toBeGreaterThan(0);
+
+    await page.goto('/convocatorias?estado=CERRADA');
+
+    await expect(page.getByText(data[0].nombre)).toBeVisible();
+    await expect(
+      page.getByText('Cerrada', { exact: true }).first(),
+    ).toBeVisible();
+    // El chip del filtro confirma que la vista está en CERRADAS.
+    await expect(page.getByText('Filtro: Cerradas')).toBeVisible();
+  });
+
+  test('el filtro por nivel académico devuelve convocatorias de ese nivel', async ({
+    page,
+    request,
+  }) => {
+    const nivelesRes = await request.get(`${API}/catalogos/niveles-academicos`);
+    expect(nivelesRes.ok()).toBeTruthy();
+    const niveles = (await nivelesRes.json()).data as Array<{
+      id: string;
+      nombre: string;
+    }>;
+    expect(niveles.length).toBeGreaterThanOrEqual(2);
+
+    const nivel = niveles.find((n) => n.nombre === 'Primaria') ?? niveles[0];
+    const otroNivel = niveles.find((n) => n.id !== nivel.id)!;
+
+    const propiasRes = await request.get(
+      `${API}/convocatorias?nivelAcademicoId=${nivel.id}`,
+    );
+    const propias = (await propiasRes.json()).data as Array<{
+      nombre: string;
+    }>;
+    expect(propias.length).toBeGreaterThan(0);
+
+    const ajenasRes = await request.get(
+      `${API}/convocatorias?nivelAcademicoId=${otroNivel.id}`,
+    );
+    const ajenas = (await ajenasRes.json()).data as Array<{
+      nombre: string;
+    }>;
+    expect(ajenas.length).toBeGreaterThan(0);
+
+    await page.goto(`/convocatorias?nivel=${nivel.id}`);
+
+    await expect(page.getByText(propias[0].nombre)).toBeVisible();
+    await expect(page.getByText(`Nivel: ${nivel.nombre}`)).toBeVisible();
+    await expect(page.getByText(ajenas[0].nombre)).toHaveCount(0);
+  });
+
   test('un visitante sin sesión es invitado a crear cuenta', async ({
     page,
     request,

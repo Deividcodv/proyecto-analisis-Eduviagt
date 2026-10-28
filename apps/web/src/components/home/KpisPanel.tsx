@@ -3,7 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchConToken } from '@/lib/api-auth';
-import { fetcher, type Convocatoria, type ListaResponse, type Solicitud } from '@/lib/api';
+import {
+  fetcher,
+  convocatoriaAbierta,
+  type Convocatoria,
+  type ListaResponse,
+  type Solicitud,
+} from '@/lib/api';
 import { Icon, type IconName } from '@/components/ui/Icon';
 
 interface Kpi {
@@ -40,10 +46,10 @@ export function KpisPanel() {
     const cargar = async () => {
       try {
         const abiertasRes = await fetcher<ListaResponse<Convocatoria>>(
-          '/convocatorias',
+          '/convocatorias?estado=ABIERTA',
         );
-        const abiertas = (abiertasRes.data ?? []).filter(
-          (c) => c.estado === 'ABIERTA',
+        const abiertas = (abiertasRes.data ?? []).filter((c) =>
+          convocatoriaAbierta(c),
         ).length;
 
         if (rol === 'ADMIN') {

@@ -30,20 +30,28 @@ export class ConvocatoriasController {
 
   @Get()
   @Public()
-  @ApiOperation({ summary: 'Listar convocatorias abiertas (público)' })
-  @ApiResponse({ status: 200, description: 'Lista de convocatorias ABIERTA' })
+  @ApiOperation({ summary: 'Listar convocatorias públicas (abiertas y cerradas)' })
+  @ApiResponse({ status: 200, description: 'Lista de convocatorias públicas' })
   @ApiQuery({ name: 'busqueda', required: false, description: 'Buscar por nombre de convocatoria o beca' })
   @ApiQuery({ name: 'nivelAcademicoId', required: false, description: 'Filtrar por nivel académico' })
   @ApiQuery({ name: 'cobertura', required: false, enum: BecaCobertura, description: 'Filtrar por cobertura' })
+  @ApiQuery({
+    name: 'estado',
+    required: false,
+    enum: ['ABIERTA', 'CERRADA'],
+    description: 'Filtrar por estado público (abiertas o cerradas)',
+  })
   findAllPublic(
     @Query('busqueda') busqueda?: string,
     @Query('nivelAcademicoId') nivelAcademicoId?: string,
     @Query('cobertura') cobertura?: BecaCobertura,
+    @Query('estado') estado?: string,
   ) {
     return this.convocatoriasService.findAllPublic({
       busqueda,
       nivelAcademicoId,
       cobertura,
+      estado: estado === 'ABIERTA' || estado === 'CERRADA' ? estado : undefined,
     });
   }
 

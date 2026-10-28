@@ -145,16 +145,49 @@ export class ConvocatoriasService {
     busqueda?: string;
     nivelAcademicoId?: string;
     cobertura?: BecaCobertura;
+    estado?: 'ABIERTA' | 'CERRADA';
   }) {
-    const where: Prisma.ConvocatoriaWhereInput = { estado: CONVOCATORIA_ESTADO.ABIERTA };
-
     // El estado ABIERTA no caducaba solo: una convocatoria seguía apareciendo
     // en el portal (y aceptando postulaciones) después de su fecha de cierre.
     const ahora = new Date();
-    where.AND = [
-      { OR: [{ fechaApertura: null }, { fechaApertura: { lte: ahora } }] },
-      { OR: [{ fechaCierre: null }, { fechaCierre: { gte: ahora } }] },
-    ];
+
+    const abierta: Prisma.ConvocatoriaWhereInput = {
+      estado: CONVOCATORIA_ESTADO.ABIERTA,
+      AND: [
+        { OR: [{ fechaApertura: null }, { fechaApertura: { lte: ahora } }] },
+        { OR: [{ fechaCierre: null }, { fechaCierre: { gte: ahora } }] },
+      ],
+    };
+
+    // El portal público también muestra el histórico. Una convocatoria ABIERTA
+    // cuya fecha de cierre ya pasó se considera cerrada aunque nadie haya
+    // ejecutado la transición de estado.
+    const cerrada: Prisma.ConvocatoriaWhereInput = {
+      OR: [
+        {
+          estado: {
+            in: [
+              CONVOCATORIA_ESTADO.CERRADA,
+              CONVOCATORIA_ESTADO.EN_EVALUACION,
+              CONVOCATORIA_ESTADO.RESUELTA,
+              CONVOCATORIA_ESTADO.ARCHIVADA,
+            ],
+          },
+        },
+        { estado: CONVOCATORIA_ESTADO.ABIERTA, fechaCierre: { lt: ahora } },
+      ],
+    };
+
+    const where: Prisma.ConvocatoriaWhereInput = {};
+    if (filtros?.estado === 'ABIERTA') {
+      Object.assign(where, abierta);
+    } else if (filtros?.estado === 'CERRADA') {
+      where.AND = [cerrada];
+    } else {
+      // Sin filtro: todo lo público (abiertas + cerradas). Los BORRADOR y las
+      // convocatorias que todavía no abren quedan fuera.
+      where.AND = [{ OR: [abierta, cerrada] }];
+    }
 
     if (filtros?.busqueda) {
       where.OR = [
@@ -170,11 +203,22 @@ export class ConvocatoriasService {
       where.cobertura = filtros.cobertura;
     }
 
-    return this.prisma.convocatoria.findMany({
+    const convocatorias = await this.prisma.convocatoria.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       include: { beca: true, nivelAcademico: true },
     });
+
+    const estaAbierta = (c: (typeof convocatorias)[number]) =>
+      c.estado === CONVOCATORIA_ESTADO.ABIERTA &&
+      (!c.fechaApertura || c.fechaApertura <= ahora) &&
+      (!c.fechaCierre || c.fechaCierre >= ahora);
+
+    // Las abiertas primero; dentro de cada grupo se conserva el orden de la
+    // consulta (más recientes primero).
+    return convocatorias.sort(
+      (a, b) => Number(estaAbierta(b)) - Number(estaAbierta(a)),
+    );
   }
 
   async findAll() {

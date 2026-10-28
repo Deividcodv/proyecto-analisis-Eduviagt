@@ -38,11 +38,12 @@ describe('ConvocatoriasService', () => {
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   describe('findAllPublic (portal público)', () => {
-    it('no lista convocatorias cuyo cierre ya pasó ni las que aún no abren', async () => {
-      await service.findAllPublic();
+    it('con estado ABIERTA solo lista convocatorias dentro de su ventana de fechas', async () => {
+      await service.findAllPublic({ estado: 'ABIERTA' });
 
       const { where } = prisma.convocatoria.findMany.mock.calls[0][0];
 
+      expect(where.estado).toBe('ABIERTA');
       expect(where.AND).toEqual([
         {
           OR: [
@@ -59,8 +60,46 @@ describe('ConvocatoriasService', () => {
       ]);
     });
 
-    it('mantiene el filtro de estado ABIERTA y la búsqueda por texto', async () => {
-      await service.findAllPublic({ busqueda: 'excelencia' });
+    it('con estado CERRADA incluye los estados cerrados y las ABIERTA vencidas', async () => {
+      await service.findAllPublic({ estado: 'CERRADA' });
+
+      const { where } = prisma.convocatoria.findMany.mock.calls[0][0];
+
+      expect(where.AND).toEqual([
+        {
+          OR: [
+            {
+              estado: {
+                in: ['CERRADA', 'EN_EVALUACION', 'RESUELTA', 'ARCHIVADA'],
+              },
+            },
+            { estado: 'ABIERTA', fechaCierre: { lt: expect.any(Date) } },
+          ],
+        },
+      ]);
+    });
+
+    it('sin estado devuelve abiertas y cerradas, sin borradores ni abiertas futuras', async () => {
+      await service.findAllPublic();
+
+      const { where } = prisma.convocatoria.findMany.mock.calls[0][0];
+
+      expect(where.AND).toHaveLength(1);
+      const filtro = where.AND[0];
+      expect(filtro.OR).toHaveLength(2);
+      expect(filtro.OR[0]).toEqual(
+        expect.objectContaining({ estado: 'ABIERTA' }),
+      );
+      expect(filtro.OR[1]).toEqual(
+        expect.objectContaining({ OR: expect.any(Array) }),
+      );
+    });
+
+    it('mantiene la búsqueda por texto', async () => {
+      await service.findAllPublic({
+        estado: 'ABIERTA',
+        busqueda: 'excelencia',
+      });
 
       const { where } = prisma.convocatoria.findMany.mock.calls[0][0];
 
