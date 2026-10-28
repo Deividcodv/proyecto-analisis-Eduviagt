@@ -118,12 +118,15 @@ export async function generarEscenarios() {
   // 3. Asegurar 11 convocatorias
   const { convocatorias, nuevasIds } = await asegurarConvocatorias(TOTAL_CONVOCATORIAS);
 
-  // 4. Generar 4 ciclos y sincronizar SOLO las nuevas convocatorias
+  // 4. Generar 4 ciclos y sincronizar SOLO las nuevas convocatorias NO ABIERTAS
   const ciclos = generarCiclos(nuevasIds);
   for (let i = 0; i < ciclos.length; i++) {
-    await sincronizarConvocatoriaConCiclo(ciclos[i].convocatoriaId, ciclos[i]);
+    const conv = convocatorias.find(c => c.id === ciclos[i].convocatoriaId);
+    if (conv && conv.estado !== 'ABIERTA') {
+      await sincronizarConvocatoriaConCiclo(ciclos[i].convocatoriaId, ciclos[i]);
+    }
   }
-  console.log('✅ 4 ciclos generados y convocatorias nuevas sincronizadas');
+  console.log('✅ 4 ciclos generados y convocatorias nuevas sincronizadas (ABIERTAS mantienen fechas actuales)');
 
   // 5. Distribuir 1000 solicitudes en los 4 ciclos
   const distribucionCiclos = distribuirEnCiclos(TOTAL_SOLICITUDES, ciclos);

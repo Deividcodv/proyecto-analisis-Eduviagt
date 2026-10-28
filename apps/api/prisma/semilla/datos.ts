@@ -501,11 +501,24 @@ export async function asegurarConvocatorias(total: number) {
     const esUniv = beca.nombre.includes('Excelencia') || beca.nombre.includes('Permanencia') || beca.nombre.includes('Investigación');
     const montoBase = esUniv ? 12000 : (beca.nombre.includes('Primaria') ? 2000 : beca.nombre.includes('Técnica') || beca.nombre.includes('Tecnico') ? 5000 : 6000);
 
-    // Determinar estado según ciclo
+    // Determinar estado: 5 convocatorias ABIERTAS con fechas actuales
     let estado = 'EN_EVALUACION';
     if (c === total - 1) estado = 'ARCHIVADA';
-    else if (c < 3) estado = 'RESUELTA';
-    else if (c === 3) estado = 'ABIERTA'; // Una ABIERTA con Excelencia para E2E
+    else if (c < 2) estado = 'RESUELTA';
+    else if (c >= 2 && c <= 6) estado = 'ABIERTA';
+
+    // Para las ABIERTAS, usar fechas actuales (abierta hace 10 días, cierra en 30)
+    let fechaAperturaFinal = fechaInicio;
+    let fechaCierreFinal = fechaCierre;
+    if (estado === 'ABIERTA') {
+      const hoy = new Date();
+      fechaAperturaFinal = new Date(hoy);
+      fechaAperturaFinal.setDate(hoy.getDate() - 10);
+      fechaAperturaFinal.setHours(0, 0, 0, 0);
+      fechaCierreFinal = new Date(hoy);
+      fechaCierreFinal.setDate(hoy.getDate() + 30);
+      fechaCierreFinal.setHours(0, 0, 0, 0);
+    }
 
     const convocatoria = await prisma.convocatoria.create({
       data: {
@@ -513,8 +526,8 @@ export async function asegurarConvocatorias(total: number) {
         descripcion: `Convocatoria del ciclo ${cicloIdx + 1} para ${beca.nombre.toLowerCase()}.`,
         becaId: beca.id,
         estado: estado as any,
-        fechaApertura: fechaInicio,
-        fechaCierre,
+        fechaApertura: fechaAperturaFinal,
+        fechaCierre: fechaCierreFinal,
         montoBase,
         moneda: 'GTQ',
         permiteParcial: true,
