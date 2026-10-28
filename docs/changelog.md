@@ -43,6 +43,7 @@ Las categorías son:
 - Helper `convocatoriaAbierta()` en web (badge "Cerrada" cuando ABIERTA vencida)
 - E2E: filtro CERRADAS y por nivel académico
 - Documentación: 5 docs maestros nuevos (ARQUITECTURA-REAL, asistente-ia, frontend, api-web-contrato, datos-demostracion) + 4 ADRs (019-022)
+- Operations: workflow seed-demo.yml (workflow_dispatch) + sección "Datos de demostración en la VM" en deployment.md
 
 ### Changed (2026-10-27)
 - `GET /convocatorias` ahora devuelve abiertas + cerradas por defecto (antes solo ABIERTAS)

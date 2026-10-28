@@ -275,6 +275,44 @@ Qué hace, en orden:
 
 ---
 
+## Datos de demostración en la VM
+
+El pipeline (`deploy-staging` / `deploy-pm2.sh`) ejecuta `prisma migrate deploy` y `prisma generate`, pero **NUNCA `prisma db seed`**: el seed es destructivo (`deleteMany` de solicitudes, convocatorias, comités, notificaciones, documentos) y no debe correr en cada deploy.
+
+**Consecuencia:** si la BD de la VM queda vacía (o con datos viejos del seed del 13-oct), el portal no muestra convocatorias. La capa nueva (`prisma/semilla/`, 51 convocatorias + 1000 solicitudes + 26 becas + 4 ciclos) no se aplica automáticamente.
+
+**Para sembrar manualmente (auditable):**
+
+```bash
+# Desde GitHub Actions:
+gh workflow run seed-demo.yml -f confirmar=SIEMPRE
+# (workflow_dispatch, requiere el secreto DEPLOY_* en el entorno staging)
+```
+
+O directamente por SSH a la VM:
+
+```bash
+ssh <user>@<VM>
+cd /home/davi/sigeb
+git checkout develop && git pull --ff-only origin develop
+npm ci
+cd apps/api
+npx prisma migrate deploy
+npx prisma generate
+npx prisma db seed
+npx ts-node prisma/semilla/verificar.ts   # gate: exit 1 si algo falla
+cd /home/davi/sigeb
+npm run build
+# copiar .next/static y public al standalone, reiniciar PM2
+```
+
+**Advertencia:** `prisma db seed` borra y recrea los datos de demostración. Solo ejecutarlo en staging/prototipo, nunca en una BD con datos reales.
+
+**Verificación posterior:**
+- `GET /api/convocatorias` → 50 públicas (35 abiertas + 15 cerradas)
+- `GET /api/catalogos/becas` → 26 activas
+- `GET /api/catalogos/niveles-academicos` → 7
+
 ## Monitoreo
 
 | Herramienta | Propósito |
