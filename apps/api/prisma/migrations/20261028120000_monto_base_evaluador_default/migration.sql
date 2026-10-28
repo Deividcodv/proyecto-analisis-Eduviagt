@@ -1,4 +1,4 @@
-﻿-- AlterTable: Beca.montoBase (monto de referencia, informativo)
+-- AlterTable: Beca.montoBase (monto de referencia, informativo)
 ALTER TABLE "beca" ADD COLUMN "montoBase" DECIMAL(12,2);
 
 -- AlterTable: Convocatoria.evaluadorPorDefectoId (FK opcional a usuario)
