@@ -585,7 +585,9 @@ async function crearAprobaciones(
     ['PENDIENTE_SEGUNDA_APROBACION', 'APROBADA'].includes(s.estado) && s.requiereSegunda
   );
 
-  const todasAprobadas = solicitudes.filter(s => s.estado === 'APROBADA');
+  // Las APROBADA que requieren segunda firma se manejan en `paraAprobar`
+  // (nivel 1 + nivel 2). Aquí solo las que NO requieren segunda firma.
+  const todasAprobadas = solicitudes.filter(s => s.estado === 'APROBADA' && !s.requiereSegunda);
 
   console.log(`✍️ Creando aprobaciones para ${paraAprobar.length + todasAprobadas.length} solicitudes...`);
 

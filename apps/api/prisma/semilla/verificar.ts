@@ -53,8 +53,8 @@ async function main() {
     ENVIADA: 70,
     EN_REVISION: 100,
     CORRECCION: 30,
-    EVALUADA: 100,
-    PENDIENTE_SEGUNDA_APROBACION: 70,
+    EVALUADA: 100, // base; puede subir si hay menos PENDIENTE_SEGUNDA (derivado del monto)
+    PENDIENTE_SEGUNDA_APROBACION: 70, // tope; real = solicitudes con monto > Q10,000
     APROBADA: 360,
     RECHAZADA: 170,
   };
@@ -62,7 +62,18 @@ async function main() {
   let todosOk = true;
   for (const [estado, countEsperado] of Object.entries(esperado)) {
     const real = porEstado.find(e => e.estado === estado)?._count || 0;
-    const ok = real === countEsperado;
+    let ok = real === countEsperado;
+    // La segunda aprobación se deriva del monto: solo las solicitudes con
+    // montoOtorgable > Q10,000 deben estar en PENDIENTE_SEGUNDA_APROBACION.
+    // Las 70 asignadas a ciegas se degradan a EVALUADA si no superan el umbral,
+    // y las EVALUADA que sí lo superan se promueven a PENDIENTE_SEGUNDA.
+    // Invariante: EVALUADA + PENDIENTE_SEGUNDA_APROBACION == 170.
+    if (estado === 'PENDIENTE_SEGUNDA_APROBACION') {
+      ok = real >= 1 && real <= 170;
+    } else if (estado === 'EVALUADA') {
+      const pendientes = porEstado.find(e => e.estado === 'PENDIENTE_SEGUNDA_APROBACION')?._count || 0;
+      ok = (real + pendientes) === 170;
+    }
     if (!ok) todosOk = false;
     console.log(`   ${estado}: ${real} (esperado: ${countEsperado}) ${ok ? '✅' : '❌'}`);
   }
