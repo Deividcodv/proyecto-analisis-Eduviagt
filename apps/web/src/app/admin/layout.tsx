@@ -2,25 +2,28 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Container } from '@/components/ui/Container';
 import { InternalPageHeader } from '@/components/ui/InternalPageHeader';
 import { Icon, type IconName } from '@/components/ui/Icon';
 
-const pestanas: { href: string; label: string; icono: IconName }[] = [
-  { href: '/admin/convocatorias', label: 'Convocatorias', icono: 'becas' },
-  { href: '/admin/solicitudes', label: 'Solicitudes', icono: 'documento' },
-  { href: '/admin/comites', label: 'Comités', icono: 'grupos' },
-  { href: '/admin/sesiones', label: 'Sesiones', icono: 'calendario' },
-  { href: '/admin/auditoria', label: 'Auditoría', icono: 'buscar' },
-  { href: '/admin/seguridad', label: 'Seguridad', icono: 'escudo' },
-];
-
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { usuario } = useAuth();
+  const esAdmin = (usuario?.rol ?? '').toUpperCase() === 'ADMIN';
+
+  const pestanas: { href: string; label: string; icono: IconName }[] = [
+    { href: '/admin/convocatorias', label: 'Convocatorias', icono: 'becas' },
+    { href: '/admin/solicitudes', label: 'Solicitudes', icono: 'documento' },
+    { href: '/admin/comites', label: 'Comités', icono: 'grupos' },
+    { href: '/admin/sesiones', label: 'Sesiones', icono: 'calendario' },
+    { href: '/admin/auditoria', label: 'Auditoría', icono: 'buscar' },
+    ...(esAdmin ? [{ href: '/admin/seguridad', label: 'Seguridad', icono: 'escudo' as IconName }] : []),
+  ];
 
   return (
-    <ProtectedRoute roles={['ADMIN']}>
+    <ProtectedRoute roles={['ADMIN', 'JEFE_BECAS']}>
       <InternalPageHeader
         etiqueta="Administración"
         title="Panel de administración"

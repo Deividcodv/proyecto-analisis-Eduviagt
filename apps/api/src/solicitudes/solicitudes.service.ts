@@ -17,6 +17,7 @@ import { SolicitudDocumentoService } from './solicitud-documento.service';
 import { SolicitudChecklistService } from './solicitud-checklist.service';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
 import { MontosService } from './montos.service';
+import { EvaluacionesService } from '../evaluaciones/evaluaciones.service';
 import { BitacoraService } from '../bitacora/bitacora.service';
 import {
   SOLICITUD_ESTADO,
@@ -36,6 +37,7 @@ export class SolicitudesService {
     private readonly notificaciones: NotificacionesService,
     private readonly montos: MontosService,
     private readonly bitacora: BitacoraService,
+  private readonly evaluaciones: EvaluacionesService,
   ) {}
 
   async create(usuarioId: string, dto: CreateSolicitudDto) {
@@ -115,7 +117,7 @@ export class SolicitudesService {
   }
 
   async findAll(usuario: AuthenticatedUser) {
-    const where = this.authz.esAdmin(usuario) ? {} : { usuarioId: usuario.id };
+    const where = this.authz.esPersonal(usuario) ? {} : { usuarioId: usuario.id };
 
     return this.prisma.solicitud.findMany({
       where,
@@ -148,7 +150,7 @@ export class SolicitudesService {
       throw new NotFoundException(`Solicitud con id ${id} no encontrada`);
     }
 
-    this.authz.assertAcceso(solicitud, usuario);
+    this.authz.assertAccesoPersonal(solicitud, usuario);
     return solicitud;
   }
 
@@ -365,6 +367,30 @@ export class SolicitudesService {
       return upd;
     });
 
+    // Evaluador por defecto de la convocatoria (Sprint 9): al pasar a
+    // EN_REVISION se asigna automáticamente, si hay uno y no se asignó
+    // antes. Siempre es editable/quitable desde la UI.
+    if (
+      siguienteEstado === SOLICITUD_ESTADO.EN_REVISION &&
+      solicitud.convocatoria?.evaluadorPorDefectoId
+    ) {
+      const yaAsignados = await this.prisma.evaluacion.count({
+        where: { solicitudId: id },
+      });
+      if (yaAsignados === 0) {
+        try {
+          await this.evaluaciones.asignarEvaluadores(
+            id,
+            { evaluadorIds: [solicitud.convocatoria.evaluadorPorDefectoId] },
+            usuario,
+          );
+        } catch {
+          // No bloquear la transición si la asignación falla (p. ej. el
+          // evaluador quedó inactivo): la asignación se puede hacer a mano.
+        }
+      }
+    }
+
     await this.notificarTransicion(
       { ...dto, accion },
       {
@@ -562,7 +588,7 @@ export class SolicitudesService {
     },
   ) {
     const beca = solicitud.convocatoria?.beca?.nombre ?? 'la beca';
-    const staff = [ROL.ADMIN, ROL.COORDINADOR_COMITE];
+    const staff = [ROL.ADMIN, ROL.COORDINADOR_COMITE, ROL.JEFE_BECAS];
 
     switch (dto.accion) {
       case 'enviar':

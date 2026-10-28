@@ -297,6 +297,7 @@ const BECAS = [
     descripcion:
       'Apoyo económico integral para estudiantes universitarios con alto rendimiento académico, para distinguirse por su desempeño y compromiso con su comunidad de estudio.',
     cobertura: 'COMPLETA' as const,
+    montoBase: 12000,
     criterios: [
       { nombre: 'Rendimiento académico', peso: 0.5 },
       { nombre: 'Situación socioeconómica', peso: 0.3 },
@@ -309,6 +310,7 @@ const BECAS = [
     descripcion:
       'Beca de apoyo para estudiantes universitarios que se encuentran en riesgo de deserción por razones económicas o académicas, orientada a garantizar su continuidad en la university.',
     cobertura: 'PARCIAL' as const,
+    montoBase: 6000,
     criterios: [
       { nombre: 'Desempeño académico', peso: 0.45 },
       { nombre: 'Necesidad socioeconómica', peso: 0.35 },
@@ -321,6 +323,7 @@ const BECAS = [
     descripcion:
       'Beca parcial para estudiantes de educación diversificada que requieren asegurar la continuidad de sus estudios y la reincorporación de quienes interrumpieron su bachillerato.',
     cobertura: 'PARCIAL' as const,
+    montoBase: 3000,
     criterios: [
       { nombre: 'Rendimiento en diversificado', peso: 0.55 },
       { nombre: 'Condición socioeconómica del hogar', peso: 0.45 },
@@ -601,6 +604,9 @@ async function main() {
     { modulo: 'permiso', accion: 'editar' },
     // Catálogos (S-013: permiso propio en lugar de reutilizar `permiso:editar`)
     { modulo: 'catalogo', accion: 'gestionar' },
+    // Personal: listar usuarios con un rol (para asignar evaluadores/miembros
+    // de comité) sin exponer la gestión de roles/permisos.
+    { modulo: 'personal', accion: 'ver' },
   ];
 
   const permisos: Permiso[] = [];
@@ -635,7 +641,7 @@ async function main() {
     [
       'COORDINADOR_COMITE',
       (p) =>
-        ['comite', 'sesion', 'decision', 'evaluacion', 'solicitud', 'documento', 'reporte'].includes(
+        ['comite', 'sesion', 'decision', 'evaluacion', 'solicitud', 'documento', 'reporte', 'personal'].includes(
           p.modulo,
         ),
     ],
@@ -659,11 +665,18 @@ async function main() {
           ['ver', 'editar', 'aprobar-primera', 'aprobar-segunda', 'montos-override'].includes(
             p.accion,
           )) ||
-        (p.modulo === 'decision' && p.accion === 'ver') ||
+        (p.modulo === 'decision' && ['crear', 'ver'].includes(p.accion)) ||
         (p.modulo === 'reporte' && p.accion === 'ver') ||
-        (p.modulo === 'comite' && p.accion === 'ver') ||
-        (p.modulo === 'sesion' && p.accion === 'ver') ||
-        (p.modulo === 'evaluacion' && p.accion === 'ver') ||
+        (p.modulo === 'comite' &&
+          ['crear', 'editar', 'ver'].includes(p.accion)) ||
+        (p.modulo === 'sesion' &&
+          ['crear', 'editar', 'ver'].includes(p.accion)) ||
+        (p.modulo === 'evaluacion' &&
+          ['crear', 'editar', 'ver'].includes(p.accion)) ||
+        (p.modulo === 'documento' &&
+          ['crear', 'ver', 'editar', 'eliminar'].includes(p.accion)) ||
+        (p.modulo === 'catalogo' && p.accion === 'gestionar') ||
+        (p.modulo === 'personal' && p.accion === 'ver') ||
         (p.modulo === 'auditoria' && p.accion === 'ver'),
     ],
   ];
@@ -877,12 +890,14 @@ async function main() {
         nombre: beca.nombre,
         descripcion: beca.descripcion,
         activa: true,
+        montoBase: beca.montoBase != null ? new Prisma.Decimal(beca.montoBase) : null,
       },
       create: {
         id: beca.id,
         nombre: beca.nombre,
         descripcion: beca.descripcion,
         activa: true,
+        montoBase: beca.montoBase != null ? new Prisma.Decimal(beca.montoBase) : null,
       },
     });
 
@@ -1176,6 +1191,10 @@ async function main() {
     },
   ];
 
+  // Evaluador por defecto para las postulaciones de estas convocatorias.
+  const evaluadorPorDefecto = await prisma.usuario.findUnique({ where: { email: 'evaluador@demo.gt' } });
+  const evaluadorPorDefectoId = evaluadorPorDefecto?.id ?? null;
+
   for (const conv of definicionesConvocatorias) {
     const nivel = await nivelAcademicoPorNombre(conv.nivel);
 
@@ -1193,6 +1212,7 @@ async function main() {
         cobertura: conv.cobertura,
         formulario: conv.formulario as unknown as Prisma.InputJsonValue,
         nivelAcademicoId: nivel?.id ?? null,
+        evaluadorPorDefectoId,
         // Montos (Sprint 8 - US-801)
         moneda: 'GTQ',
         montoBase: conv.montoBase != null ? new Prisma.Decimal(conv.montoBase) : null,

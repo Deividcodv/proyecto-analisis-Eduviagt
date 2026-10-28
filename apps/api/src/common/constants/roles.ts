@@ -22,7 +22,9 @@ export const ROLES_REVISORES: string[] = [
 ];
 
 /**
- * Umbral de control (Sprint 8 - REQ-01): a partir de este monto, la
- * aprobación requiere una segunda firma de una persona distinta.
+ * Umbral de control (Sprint 8 - REQ-01): las solicitudes cuyo monto
+ * **supera** este valor requieren una segunda firma de una persona
+ * distinta. La comparación es estricta: exactamente Q10,000 no la exige
+ * (ver montos.service.ts:requiereSegundaAprobacion y sus tests).
  */
 export const UMBRAL_SEGUNDA_APROBACION_GTQ = 10000;

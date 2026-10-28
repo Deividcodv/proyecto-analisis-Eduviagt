@@ -240,16 +240,26 @@ export async function generarEscenarios() {
       for (const postulanteData of batch) {
         const postulante = postulanteData.usuario;
         const perfil = perfilesPostulantes.get(postulante.id)!;
-        const estadoObjetivo = estadosObjetivo[idxEstado++];
+        const estadoObjetivoRaw = estadosObjetivo[idxEstado++];
 
         const fechaCreacion = fechaAntesCierre(ciclo);
-        const fechaEnvio = estadoObjetivo !== 'BORRADOR'
+        const fechaEnvio = estadoObjetivoRaw !== 'BORRADOR'
           ? new Date(fechaCreacion.getTime() + (Math.floor(Math.random() * 5) + 1) * 24 * 60 * 60 * 1000)
           : null;
 
         // Calcular monto
         const resultadoMonto = await montosService.calcular(convocatoria.id, perfil.perfilFinanciero.ingresoFamiliar);
         const requiereSegunda = resultadoMonto.monto !== null && montosService.requiereSegundaAprobacion(resultadoMonto.monto);
+
+        // Coherencia: PENDIENTE_SEGUNDA_APROBACION solo si el monto supera el
+        // umbral. Si no, se degrada a EVALUADA (y si requiere segunda pero el
+        // estado asignado no es ese, se promueve a PENDIENTE_SEGUNDA_APROBACION).
+        let estadoObjetivo = estadoObjetivoRaw;
+        if (estadoObjetivo === 'PENDIENTE_SEGUNDA_APROBACION' && !requiereSegunda) {
+          estadoObjetivo = 'EVALUADA';
+        } else if (requiereSegunda && estadoObjetivo === 'EVALUADA') {
+          estadoObjetivo = 'PENDIENTE_SEGUNDA_APROBACION';
+        }
 
         // Crear solicitud
         const solicitud = await prisma.solicitud.create({

@@ -19,6 +19,7 @@ import type {
   NivelAcademico,
   SeccionCampoFormulario,
   TipoCampoFormulario,
+  UsuarioSimplificado,
 } from '@/lib/api';
 
 const SECCIONES: { value: SeccionCampoFormulario; label: string }[] = [
@@ -87,6 +88,7 @@ interface FormState {
   fechaCierre: string;
   evaluadoresMinimos: number;
   maxCorrecciones: number;
+  evaluadorPorDefectoId: string | null;
   // Montos (Sprint 8 - US-801)
   montoBase: string;
   permiteParcial: boolean;
@@ -103,6 +105,7 @@ const FORM_INICIAL: FormState = {
   fechaCierre: '',
   evaluadoresMinimos: 2,
   maxCorrecciones: 3,
+  evaluadorPorDefectoId: null,
   montoBase: '',
   permiteParcial: true,
   usarReglasMonto: false,
@@ -141,6 +144,7 @@ export function FormularioConvocatoria({
   const [becas, setBecas] = useState<Beca[]>([]);
   const [niveles, setNiveles] = useState<NivelAcademico[]>([]);
   const [documentosTipo, setDocumentosTipo] = useState<DocumentoTipo[]>([]);
+  const [evaluadores, setEvaluadores] = useState<UsuarioSimplificado[]>([]);
 
   const [form, setForm] = useState<FormState>(FORM_INICIAL);
   const [campos, setCampos] = useState<CampoFormulario[]>([]);
@@ -153,14 +157,31 @@ export function FormularioConvocatoria({
   const cargar = useCallback(async () => {
     setCargando(true);
     try {
-      const [catBecas, catNiveles, catDocs] = await Promise.all([
+      const [catBecas, catNiveles, catDocs, catEvaluadores] = await Promise.all([
         fetchConToken<Beca[]>('/catalogos/becas'),
         fetchConToken<NivelAcademico[]>('/catalogos/niveles-academicos'),
         fetchConToken<DocumentoTipo[]>('/catalogos/documentos-tipo'),
+        fetchConToken<UsuarioSimplificado[]>('/seguridad/usuarios?rol=EVALUADOR'),
       ]);
       setBecas(catBecas);
       setNiveles(catNiveles);
       setDocumentosTipo(catDocs);
+      setEvaluadores(catEvaluadores);
+
+      // Evaluador por defecto sugerido: evaluador@demo.gt si existe, si no
+      // el primer evaluador del catálogo. Siempre editable y quitable.
+      if (!convocatoriaId) {
+        const demo = catEvaluadores.find(
+          (e) => e.email === 'evaluador@demo.gt',
+        );
+        const sugerido = demo ?? catEvaluadores[0] ?? null;
+        if (sugerido) {
+          setForm((f) => ({
+            ...f,
+            evaluadorPorDefectoId: sugerido.id,
+          }));
+        }
+      }
 
       if (convocatoriaId) {
         const conv = await fetchConToken<ConvocatoriaDetalle>(
@@ -176,6 +197,7 @@ export function FormularioConvocatoria({
           fechaCierre: aInputLocal(conv.fechaCierre),
           evaluadoresMinimos: conv.evaluadoresMinimos ?? 2,
           maxCorrecciones: conv.maxCorrecciones ?? 3,
+          evaluadorPorDefectoId: conv.evaluadorPorDefectoId ?? null,
           montoBase: conv.montoBase ?? '',
           permiteParcial: conv.permiteParcial ?? true,
           usarReglasMonto: conv.usarReglasMonto ?? false,
@@ -288,6 +310,7 @@ export function FormularioConvocatoria({
         : null,
       evaluadoresMinimos: form.evaluadoresMinimos,
       maxCorrecciones: form.maxCorrecciones,
+      evaluadorPorDefectoId: form.evaluadorPorDefectoId,
       // Montos (Sprint 8 - US-801)
       montoBase: form.montoBase.trim() ? Number(form.montoBase) : null,
       permiteParcial: form.permiteParcial,
@@ -388,6 +411,18 @@ export function FormularioConvocatoria({
             onChange={(e) => setForm((f) => ({ ...f, becaId: e.target.value }))}
             options={becas.map((b) => ({ value: b.id, label: b.nombre }))}
           />
+          {form.becaId && (() => {
+            const b = becas.find((x) => x.id === form.becaId);
+            if (!b?.montoBase) return null;
+            return (
+              <p className="md:col-span-2 font-mono text-xs text-brutal-tinta/70">
+                Monto de referencia de la beca: Q{Number(b.montoBase).toLocaleString('es-GT', { minimumFractionDigits: 2 })}.
+                {Number(b.montoBase) > 10000
+                  ? ' Esta beca supera Q10,000: las solicitudes exigirán una segunda aprobación.'
+                  : ''}
+              </p>
+            );
+          })()}
           <div className="md:col-span-2">
             <Textarea
               label="Descripción"
@@ -448,6 +483,22 @@ export function FormularioConvocatoria({
               }))
             }
           />
+          <Select
+            label="Evaluador por defecto"
+            value={form.evaluadorPorDefectoId ?? ''}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                evaluadorPorDefectoId: e.target.value || null,
+              }))
+            }
+            options={evaluadores.map((e) => ({ value: e.id, label: e.nombres }))}
+            placeholder="Sin evaluador por defecto"
+          />
+          <p className="md:col-span-2 font-mono text-xs text-brutal-tinta/60">
+            Se preselecciona al asignar evaluadores a las postulaciones de esta
+            convocatoria. Siempre se puede quitar o cambiar.
+          </p>
           <Input
             label="Máximo de correcciones"
             type="number"
@@ -484,6 +535,12 @@ export function FormularioConvocatoria({
             }
             placeholder="12000.00"
           />
+          {form.montoBase && Number(form.montoBase) > 10000 && (
+            <p className="mt-2 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-gold px-3 py-2 font-mono text-xs font-bold text-brutal-tinta">
+              ⚠ Este monto supera Q10,000: las postulaciones exigirán una
+              segunda aprobación firmada por una persona distinta.
+            </p>
+          )}
           <div className="flex flex-col justify-end gap-2">
             <label className="flex items-center gap-2 font-mono text-sm text-brutal-tinta">
               <input

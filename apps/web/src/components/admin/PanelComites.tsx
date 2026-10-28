@@ -73,7 +73,7 @@ export function PanelComites() {
     try {
       const [det, catUsuarios] = await Promise.all([
         fetchConToken<ComiteDetalle>(`/comites/${id}`),
-        fetchConToken<UsuarioSimplificado[]>('/seguridad/usuarios'),
+        fetchConToken<UsuarioSimplificado[]>('/seguridad/personal'),
       ]);
       setDetalle(det);
       setUsuarios(catUsuarios);

@@ -112,6 +112,15 @@ export class UsersController {
     return this.usersService.findAllUsuarios(rol);
   }
 
+  @Get('personal')
+  @Permisos('personal:ver')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Listar personal con un rol (para asignar evaluadores/miembros de comité)' })
+  @ApiResponse({ status: 200, description: 'Lista de personal' })
+  findPersonal(@Query('rol') rol?: string) {
+    return this.usersService.findAllUsuarios(rol);
+  }
+
   @Get('usuarios/:id')
   @Permisos('permiso:editar')
   @ApiBearerAuth()

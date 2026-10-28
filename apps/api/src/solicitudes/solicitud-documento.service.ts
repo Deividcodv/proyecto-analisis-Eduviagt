@@ -193,10 +193,11 @@ export class SolicitudDocumentoService {
   ) {
     const esRevisor =
       this.authz.esAdmin(usuario) ||
+      this.authz.esPersonal(usuario) ||
       usuario.rol?.nombre === ROL.COORDINADOR_COMITE;
     if (!esRevisor) {
       throw new ForbiddenException(
-        'Solo administradores o el coordinador del comité pueden rechazar documentos',
+        'Solo el personal autorizado o el coordinador del comité pueden rechazar documentos',
       );
     }
 

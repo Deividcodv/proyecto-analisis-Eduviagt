@@ -204,6 +204,13 @@ export class CreateConvocatoriaDto {
   @Max(20)
   maxCorrecciones?: number;
 
+  @ApiPropertyOptional({
+    description: 'Evaluador sugerido por defecto para las postulaciones de esta convocatoria (siempre editable)',
+  })
+  @IsOptional()
+  @IsUUID()
+  evaluadorPorDefectoId?: string | null;
+
   // Montos (Sprint 8 - US-801)
   @ApiPropertyOptional({ description: 'Moneda del monto base', default: 'GTQ' })
   @IsOptional()
@@ -331,6 +338,13 @@ export class UpdateConvocatoriaDto {
   @Min(0)
   @Max(20)
   maxCorrecciones?: number;
+
+  @ApiPropertyOptional({
+    description: 'Evaluador sugerido por defecto para las postulaciones de esta convocatoria (siempre editable)',
+  })
+  @IsOptional()
+  @IsUUID()
+  evaluadorPorDefectoId?: string | null;
 
   // Montos (Sprint 8 - US-801)
   @ApiPropertyOptional({ description: 'Moneda del monto base' })

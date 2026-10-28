@@ -53,7 +53,7 @@ export class ConstanciasService {
       throw new NotFoundException(`Solicitud con id ${id} no encontrada`);
     }
 
-    this.authz.assertAcceso(solicitud, usuario);
+    this.authz.assertAccesoPersonal(solicitud, usuario);
 
     if (solicitud.estado !== SOLICITUD_ESTADO.APROBADA) {
       throw new BadRequestException(

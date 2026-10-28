@@ -47,7 +47,7 @@ export function PanelSolicitudes() {
     try {
       const [lista, catEvaluadores] = await Promise.all([
         fetchConToken<Solicitud[]>('/solicitudes'),
-        fetchConToken<UsuarioSimplificado[]>('/seguridad/usuarios?rol=EVALUADOR'),
+        fetchConToken<UsuarioSimplificado[]>('/seguridad/personal?rol=EVALUADOR'),
       ]);
       setSolicitudes(lista);
       setEvaluadores(catEvaluadores);
@@ -84,7 +84,10 @@ export function PanelSolicitudes() {
 
   const abrirAsignacion = (solicitud: Solicitud) => {
     setAsignando(solicitud);
-    setSeleccionados([]);
+    // Preseleccionar el evaluador por defecto de la convocatoria (si existe).
+    // Siempre se puede quitar o cambiar: no es obligatorio.
+    const sugerido = solicitud.convocatoria?.evaluadorPorDefectoId;
+    setSeleccionados(sugerido ? [sugerido] : []);
     setError(null);
     setExito(null);
   };
@@ -311,6 +314,7 @@ export function PanelSolicitudes() {
       setEnviando(false);
     }
   };
+
   if (!solicitudes) {
     return <div className="flex justify-center py-20"><Spinner /></div>;
   }
@@ -431,6 +435,11 @@ export function PanelSolicitudes() {
                     <Button variant="ghost" onClick={() => verScore(solicitud.id)}>
                       {score ? 'Actualizar puntaje' : 'Ver puntaje'}
                     </Button>
+                    {solicitud.estado === 'ENVIADA' && (
+                      <Button onClick={() => iniciarRevision(solicitud)} disabled={enviando}>
+                        Iniciar revisión
+                      </Button>
+                    )}
                     {solicitud.estado === 'ENVIADA' && (
                       <Button onClick={() => iniciarRevision(solicitud)} disabled={enviando}>
                         Iniciar revisión

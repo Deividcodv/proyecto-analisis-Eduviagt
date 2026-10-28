@@ -22,8 +22,9 @@ export function rutaPorRol(rol: string): string {
   if (r === 'COORDINADOR_COMITE') return '/coordinador';
   if (r === 'MIEMBRO_COMITE') return '/comite';
   if (r === 'POSTULANTE') return '/dashboard';
-  // El jefe de becas no administra el panel: su panel son los reportes.
-  if (r === 'JEFE_BECAS') return '/reportes';
+  // El jefe de becas gestiona solicitudes y segunda aprobación: su panel
+  // es el de solicitudes (no el de reportes).
+  if (r === 'JEFE_BECAS') return '/admin/solicitudes';
   return '/admin';
 }
 

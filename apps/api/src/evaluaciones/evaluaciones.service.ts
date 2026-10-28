@@ -125,10 +125,11 @@ export class EvaluacionesService {
     dto: AsignarEvaluadoresDto,
     usuario: AuthenticatedUser,
   ) {
-    this.authz.assertAdmin(
-      usuario,
-      'Solo los administradores pueden asignar evaluadores',
-    );
+    if (!this.authz.esPersonal(usuario)) {
+      throw new ForbiddenException(
+        'Solo el personal autorizado puede asignar evaluadores',
+      );
+    }
 
     const solicitud = await this.prisma.solicitud.findUnique({
       where: { id: solicitudId },
@@ -347,10 +348,11 @@ export class EvaluacionesService {
     evaluadorId: string,
     usuario: AuthenticatedUser,
   ) {
-    this.authz.assertAdmin(
-      usuario,
-      'Solo los administradores pueden quitar evaluadores',
-    );
+    if (!this.authz.esPersonal(usuario)) {
+      throw new ForbiddenException(
+        'Solo el personal autorizado puede quitar evaluadores',
+      );
+    }
 
     const solicitud = await this.prisma.solicitud.findUnique({
       where: { id: solicitudId },

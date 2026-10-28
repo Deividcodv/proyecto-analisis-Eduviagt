@@ -11,9 +11,10 @@ import { PuppeteerPdfRenderer } from './pdf/puppeteer-pdf-renderer';
 import { PrismaModule } from '../prisma/prisma.module';
 import { NotificacionesModule } from '../notificaciones/notificaciones.module';
 import { BitacoraModule } from '../bitacora/bitacora.module';
+import { EvaluacionesModule } from '../evaluaciones/evaluaciones.module';
 
 @Module({
-  imports: [PrismaModule, NotificacionesModule, BitacoraModule],
+  imports: [PrismaModule, NotificacionesModule, BitacoraModule, EvaluacionesModule],
   controllers: [SolicitudesController],
   providers: [
     SolicitudesService,
