@@ -1,0 +1,94 @@
+name: Seed demo
+
+# Workflow manual: siembra la capa de datos de demostración en la VM de staging.
+# NUNCA se dispara automáticamente: el seed es destructivo (borra y recrea
+# solicitudes, convocatorias, comités, notificaciones, documentos) y solo
+# tiene sentido en un entorno de prototipo/staging con datos de demostración.
+#
+# Uso:
+#   - Desde la UI de GitHub: Actions -> "Seed demo" -> Run workflow -> escribir SIEMPRE
+#   - Desde la CLI: gh workflow run seed-demo.yml -f confirmar=SIEMPRE
+on:
+  workflow_dispatch:
+    inputs:
+      confirmar:
+        description: "Escribe SIEMPRE para confirmar (borra y recrea los datos de demostración)"
+        required: true
+        type: string
+
+jobs:
+  seed:
+    name: Seed demo (destructivo)
+    runs-on: ubuntu-latest
+    environment: staging
+    if: github.event.inputs.confirmar == 'SIEMPRE'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verificar secretos de deploy
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          [ -n "${DEPLOY_HOST}" ] || { echo "Falta el secreto DEPLOY_HOST en el entorno ${{ github.environment }}"; exit 1; }
+          [ -n "${DEPLOY_USER}" ] || { echo "Falta el secreto DEPLOY_USER en el entorno ${{ github.environment }}"; exit 1; }
+          [ -n "${DEPLOY_KEY}" ] || { echo "Falta el secreto DEPLOY_KEY en el entorno ${{ github.environment }}"; exit 1; }
+          [ -n "${DEPLOY_PATH}" ] || { echo "Falta el secreto DEPLOY_PATH en el entorno ${{ github.environment }}"; exit 1; }
+
+      - name: Seed demo en la VM (destructivo)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script: |
+            set -e
+            RAIZ="${DEPLOY_PATH:-/home/davi/sigeb}"
+            cd "$RAIZ"
+            RAMA="develop"
+            PM2_CONFIG="${PM2_CONFIG_PATH:-/home/davi/sigeb.pm2.config.cjs}"
+
+            # Siempre desde EDUVIAGT (repo de trabajo).
+            git stash || true
+            git remote set-url origin "https://github.com/Deividcodv/proyecto-analisis-Eduviagt.git"
+            git fetch origin --prune
+            git checkout "$RAMA"
+            git reset --hard origin/"$RAMA"
+
+            npm ci
+
+            export DATABASE_URL="$(grep -m1 '^DATABASE_URL=' apps/api/.env | cut -d= -f2-)"
+            cd apps/api
+            npx prisma migrate deploy
+            npx prisma generate
+            cd "$RAIZ"
+
+            echo "==> Sembrando datos de demostración (destructivo)"
+            cd apps/api
+            npx prisma db seed
+
+            echo "==> Verificando integridad de los datos"
+            npx ts-node prisma/semilla/verificar.ts
+
+            echo "==> Conteo por tabla"
+            npx ts-node prisma/verificar-counts.ts
+
+            cd "$RAIZ"
+            npm run build
+
+            DESTINO="apps/web/.next/standalone/apps/web"
+            mkdir -p "$DESTINO/.next"
+            rm -rf "$DESTINO/.next/static"
+            cp -a apps/web/.next/static "$DESTINO/.next/static"
+            rm -rf "$DESTINO/public"
+            cp -a apps/web/public "$DESTINO/public"
+
+            echo "==> Reiniciando PM2"
+            pm2 startOrRestart "$PM2_CONFIG" --only sigeb-api,sigeb-web
+            pm2 save
+
+            echo "==> Seed demo completado"
