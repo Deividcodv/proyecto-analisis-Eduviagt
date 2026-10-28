@@ -43,4 +43,12 @@ export const accionesPorRol: Record<string, Accion[]> = {
     { titulo: 'Reportes',            descripcion: 'Indicadores, tendencia y exportación CSV',     href: '/reportes',            icono: 'grafica',    acento: 'bg-brutal-teal' },
     { titulo: 'Auditoría',           descripcion: 'Historial de cambios por usuario/entidad',     href: '/auditoria',           icono: 'libro',      acento: 'bg-brutal-naranja' },
   ],
+  JEFE_BECAS: [
+    { titulo: 'Convocatorias',       descripcion: 'Crea, publica y actualiza convocatorias',      href: '/admin/convocatorias', icono: 'becas',      acento: 'bg-brutal-cyan' },
+    { titulo: 'Solicitudes',         descripcion: 'Revisa, aprueba y ajusta montos',              href: '/admin/solicitudes',   icono: 'documento',  acento: 'bg-brutal-gold' },
+    { titulo: 'Comités',             descripcion: 'Organiza comités evaluadores',                 href: '/admin/comites',       icono: 'grupos',     acento: 'bg-brutal-lima' },
+    { titulo: 'Sesiones',            descripcion: 'Agenda y resuelve sesiones',                   href: '/admin/sesiones',      icono: 'calendario', acento: 'bg-brutal-rosa' },
+    { titulo: 'Reportes',            descripcion: 'Indicadores, tendencia y exportación CSV',     href: '/reportes',            icono: 'grafica',    acento: 'bg-brutal-teal' },
+    { titulo: 'Auditoría',           descripcion: 'Historial de tus acciones',                    href: '/auditoria',           icono: 'libro',      acento: 'bg-brutal-naranja' },
+  ],
 };

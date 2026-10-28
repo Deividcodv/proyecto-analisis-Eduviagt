@@ -7,6 +7,9 @@ export const API_URL = esServidor
 export interface Beca {
   id: string;
   nombre: string;
+  descripcion?: string | null;
+  activa?: boolean;
+  montoBase?: string | null;
 }
 
 export type BecaCobertura = 'PARCIAL' | 'COMPLETA';
@@ -57,6 +60,7 @@ export interface Convocatoria {
   fechaCierre: string;
   evaluadoresMinimos?: number;
   maxCorrecciones?: number;
+  evaluadorPorDefectoId?: string | null;
   cobertura?: BecaCobertura | null;
   nivelAcademico?: NivelAcademicoResumen | null;
   beca: Beca;
@@ -132,6 +136,7 @@ export interface Solicitud {
     beca: Beca;
     evaluadoresMinimos?: number;
     maxCorrecciones?: number;
+    evaluadorPorDefectoId?: string | null;
     _count?: { documentosRequeridos?: number };
   };
   _count?: { documentos?: number };

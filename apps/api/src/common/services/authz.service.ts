@@ -50,6 +50,24 @@ export class AuthzService {
     }
   }
 
+  /**
+   * Como `assertAcceso`, pero también permite al personal (ADMIN o
+   * JEFE_BECAS) acceder a las solicitudes que gestiona. Evita la
+   * asimetría: antes JEFE_BECAS podía aprobar lo que no podía ver.
+   */
+  assertAccesoPersonal(
+    entidad: { usuarioId: string },
+    usuario: AuthenticatedUser,
+    mensaje = 'No tienes acceso a este recurso',
+  ): void {
+    if (
+      !this.esPersonal(usuario) &&
+      entidad.usuarioId !== usuario.id
+    ) {
+      throw new ForbiddenException(mensaje);
+    }
+  }
+
   assertPropietario(
     entidad: { usuarioId: string },
     usuario: AuthenticatedUser,

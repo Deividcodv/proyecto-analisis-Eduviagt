@@ -24,7 +24,7 @@ export function PanelSolicitudes() {
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
-  const [filtroEstado, setFiltroEstado] = useState('EN_REVISION');
+  const [filtroEstado, setFiltroEstado] = useState('ENVIADA');
   const [asignando, setAsignando] = useState<Solicitud | null>(null);
   const [seleccionados, setSeleccionados] = useState<string[]>([]);
   const [scores, setScores] = useState<Record<string, ScoreSolicitud>>({});
@@ -47,7 +47,7 @@ export function PanelSolicitudes() {
     try {
       const [lista, catEvaluadores] = await Promise.all([
         fetchConToken<Solicitud[]>('/solicitudes'),
-        fetchConToken<UsuarioSimplificado[]>('/seguridad/usuarios?rol=EVALUADOR'),
+        fetchConToken<UsuarioSimplificado[]>('/seguridad/personal?rol=EVALUADOR'),
       ]);
       setSolicitudes(lista);
       setEvaluadores(catEvaluadores);
@@ -84,7 +84,10 @@ export function PanelSolicitudes() {
 
   const abrirAsignacion = (solicitud: Solicitud) => {
     setAsignando(solicitud);
-    setSeleccionados([]);
+    // Preseleccionar el evaluador por defecto de la convocatoria (si existe).
+    // Siempre se puede quitar o cambiar: no es obligatorio.
+    const sugerido = solicitud.convocatoria?.evaluadorPorDefectoId;
+    setSeleccionados(sugerido ? [sugerido] : []);
     setError(null);
     setExito(null);
   };
@@ -272,7 +275,8 @@ export function PanelSolicitudes() {
     }
   };
 
-  const marcarEvaluada = async (solicitud: Solicitud) => {    setEnviando(true);
+  const marcarEvaluada = async (solicitud: Solicitud) => {
+    setEnviando(true);
     setError(null);
     setExito(null);
     try {
@@ -285,6 +289,26 @@ export function PanelSolicitudes() {
     } catch (e) {
       setError(
         e instanceof Error ? e.message : 'No se pudo marcar la solicitud como evaluada',
+      );
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const iniciarRevision = async (solicitud: Solicitud) => {
+    setEnviando(true);
+    setError(null);
+    setExito(null);
+    try {
+      await fetchConToken(`/solicitudes/${solicitud.id}/transicion`, {
+        method: 'POST',
+        body: { accion: 'iniciar_revision' },
+      });
+      setExito('Revisión iniciada. Ya se le pueden asignar evaluadores.');
+      cargar();
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : 'No se pudo iniciar la revisión',
       );
     } finally {
       setEnviando(false);
@@ -318,15 +342,18 @@ export function PanelSolicitudes() {
         <Select
           value={filtroEstado}
           onChange={(e) => setFiltroEstado(e.target.value)}
-          // "Todas" va como placeholder: si se pone en `options` queda un
-          // <option value=""> duplicado y el navegador muestra el primero.
+          // "Todas" se renderiza como <option value=""> por el propio
+          // componente Select (Select.tsx:47), por lo que se ofrece como
+          // placeholder y no se duplica en `options`.
           placeholder="Todas"
           options={[
+            { value: 'ENVIADA', label: 'Enviadas' },
             { value: 'EN_REVISION', label: 'En revisión' },
             { value: 'EVALUADA', label: 'Evaluadas' },
             { value: 'PENDIENTE_SEGUNDA_APROBACION', label: '2ª aprobación' },
             { value: 'APROBADA', label: 'Aprobadas' },
             { value: 'RECHAZADA', label: 'Rechazadas' },
+            { value: 'BORRADOR', label: 'Borradores' },
           ]}
           aria-label="Filtrar por estado"
           className="w-56"
@@ -408,6 +435,16 @@ export function PanelSolicitudes() {
                     <Button variant="ghost" onClick={() => verScore(solicitud.id)}>
                       {score ? 'Actualizar puntaje' : 'Ver puntaje'}
                     </Button>
+                    {solicitud.estado === 'ENVIADA' && (
+                      <Button onClick={() => iniciarRevision(solicitud)} disabled={enviando}>
+                        Iniciar revisión
+                      </Button>
+                    )}
+                    {solicitud.estado === 'ENVIADA' && (
+                      <Button onClick={() => iniciarRevision(solicitud)} disabled={enviando}>
+                        Iniciar revisión
+                      </Button>
+                    )}
                     {solicitud.estado === 'EN_REVISION' && (
                       <Button onClick={() => abrirAsignacion(solicitud)}>
                         Asignar evaluadores
@@ -475,6 +512,16 @@ export function PanelSolicitudes() {
                           disabled={enviando}
                         >
                           Aprobar (2ª instancia)
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            setComentarioCorreccion('');
+                            setPidiendoRechazo(solicitud);
+                          }}
+                          disabled={enviando}
+                        >
+                          Rechazar
                         </Button>
                         <Button
                           variant="ghost"

@@ -30,7 +30,7 @@ export class SolicitudChecklistService {
       throw new NotFoundException(`Solicitud con id ${id} no encontrada`);
     }
 
-    this.authz.assertAcceso(solicitud, usuario);
+    this.authz.assertAccesoPersonal(solicitud, usuario);
 
     const perfilAcademicoOk =
       Boolean(

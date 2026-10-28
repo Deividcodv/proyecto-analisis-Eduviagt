@@ -223,7 +223,7 @@ CRUD (permiso `catalogo:gestionar`): `POST/PATCH/DELETE` de `/generos`, `/nivele
 
 ## 5. Modelo de datos (36 entidades)
 
-**Datos de demostración sembrados:** 51 convocatorias (35 abiertas = 5×7 niveles, 15 cerradas, 1 borrador), 1000 solicitudes, 26 becas canónicas activas, 33 documentos de KB del asistente, 250 postulantes, 30 evaluadores, 50 miembros de comité, 4 ciclos. Detalle en `docs/architecture/datos-demostracion.md`.
+**Datos de demostración sembrados:** 51 convocatorias (35 abiertas = 5×7 niveles, 15 cerradas, 1 borrador), 1000 solicitudes, 24 becas canónicas activas, 33 documentos de KB del asistente, 250 postulantes, 30 evaluadores, 50 miembros de comité, 4 ciclos. Detalle en `docs/architecture/datos-demostracion.md`.
 
 Ver `docs/architecture/database-schema.md` para el detalle completo. Resumen por dominio:
 

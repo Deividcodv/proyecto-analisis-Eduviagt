@@ -651,7 +651,7 @@ Los `tags` se seleccionan en la query FTS pero **no se usan para filtrar** (deud
 
 ## Datos de demostración — capa `prisma/semilla/`
 
-La semilla de datos de demostración (51 convocatorias, 1000 solicitudes, 26 becas canónicas, 4 ciclos, 250 postulantes, 30 evaluadores, 50 miembros de comité) vive en `apps/api/prisma/semilla/` (`datos.ts`, `escenarios.ts`, `ciclos.ts`, `verificar.ts`) + `verificar-counts.ts`. Documentación completa en `docs/architecture/datos-demostracion.md`.
+La semilla de datos de demostración (51 convocatorias, 1000 solicitudes, 24 becas canónicas, 4 ciclos, 250 postulantes, 30 evaluadores, 50 miembros de comité) vive en `apps/api/prisma/semilla/` (`datos.ts`, `escenarios.ts`, `ciclos.ts`, `verificar.ts`) + `verificar-counts.ts`. Documentación completa en `docs/architecture/datos-demostracion.md`.
 
 ## Roles del sistema
 

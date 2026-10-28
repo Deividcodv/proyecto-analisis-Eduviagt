@@ -90,8 +90,9 @@ model Usuario {
   votos              Voto[]
   auditLogs          AuditLog[]
   notificaciones     Notificacion[]
-  aprobacionesHechas SolicitudAprobacion[]
-  configuracion      ConfiguracionUsuario?
+  aprobacionesHechas            SolicitudAprobacion[]
+  configuracion                ConfiguracionUsuario?
+  convocatoriasEvaluadorDefault Convocatoria[] @relation("ConvocatoriaEvaluadorPorDefecto")
 
   @@index([eliminadoAt])
   @@map("usuario")
@@ -226,6 +227,9 @@ model Beca {
   nombre      String
   descripcion String?
   activa      Boolean  @default(true)
+  // Monto de referencia (informativo). El monto que se otorga lo define la
+  // Convocatoria (montoBase + reglasMonto), porque depende del ciclo.
+  montoBase   Decimal? @db.Decimal(12, 2)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -270,11 +274,15 @@ model Convocatoria {
   montoBase          Decimal?           @db.Decimal(12, 2)
   permiteParcial     Boolean            @default(true)
   usarReglasMonto    Boolean            @default(false)
+  // Sprint 9: evaluador por defecto sugerido al asignar evaluadores a las
+  // postulaciones de esta convocatoria. Siempre editable y quitable.
+  evaluadorPorDefectoId String?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
   beca                 Beca                       @relation(fields: [becaId], references: [id])
   nivelAcademico       NivelAcademico?            @relation(fields: [nivelAcademicoId], references: [id])
+  evaluadorPorDefecto  Usuario?                   @relation("ConvocatoriaEvaluadorPorDefecto", fields: [evaluadorPorDefectoId], references: [id], onDelete: SetNull)
   documentosRequeridos ConvocatoriaDocRequerido[]
   solicitudes          Solicitud[]
   reglasMonto          ConvocatoriaReglaMonto[]

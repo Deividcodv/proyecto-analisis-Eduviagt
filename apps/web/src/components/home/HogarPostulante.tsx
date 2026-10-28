@@ -79,6 +79,29 @@ function calcularProximoPaso(solicitudes: Solicitud[]): ProximoPaso {
     };
   }
 
+  const enviada = solicitudes.find((s) => s.estado === 'ENVIADA');
+  if (enviada) {
+    return {
+      titulo: 'Tu postulación fue enviada',
+      detalle:
+        'Está pendiente de iniciar revisión por el equipo. Te avisaremos cuando haya novedades.',
+      href: `/solicitudes/${enviada.id}`,
+      cta: 'Ver detalle',
+      icono: 'reloj',
+    };
+  }
+
+  const enRevision = solicitudes.find((s) => s.estado === 'EN_REVISION');
+  if (enRevision) {
+    return {
+      titulo: 'En revisión',
+      detalle: 'Tu postulación está siendo evaluada por el equipo revisor.',
+      href: `/solicitudes/${enRevision.id}`,
+      cta: 'Ver detalle',
+      icono: 'reloj',
+    };
+  }
+
   return {
     titulo: 'Tu postulación está en proceso',
     detalle:

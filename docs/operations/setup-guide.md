@@ -94,7 +94,7 @@ npx prisma db seed
 Esto crea:
 - 7 roles (ADMIN, POSTULANTE, EVALUADOR, COORDINADOR_COMITE, MIEMBRO_COMITE, STAFF, JEFE_BECAS)
 - Catálogos, 33 documentos de la base de conocimiento del asistente
-- 26 becas canónicas activas (3 base + 23 por nivel) y 4 legacy desactivadas
+- 24 becas canónicas activas (3 base + 23 por nivel − 2 colisiones de ID) y 4 legacy desactivadas
 - 51 convocatorias (35 abiertas = 5 por nivel × 7 niveles, 15 cerradas, 1 borrador)
 - 1000 solicitudes demo repartidas en 8 estados, 4 ciclos, 250 postulantes, 30 evaluadores, 50 miembros de comité
 - Capa `apps/api/prisma/semilla/` (datos.ts, escenarios.ts, ciclos.ts, verificar.ts) + `verificar-counts.ts`

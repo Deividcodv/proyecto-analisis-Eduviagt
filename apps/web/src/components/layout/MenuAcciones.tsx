@@ -29,7 +29,7 @@ export function MenuAcciones() {
   if (!usuario) return null;
 
   const rol = (usuario.rol || '').toUpperCase();
-  const acciones = accionesPorRol[rol] ?? accionesPorRol.ADMIN;
+  const acciones = accionesPorRol[rol] ?? [];
 
   return (
     <div className="relative" ref={ref}>

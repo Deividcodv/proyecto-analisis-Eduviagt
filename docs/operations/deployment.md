@@ -279,7 +279,7 @@ Qué hace, en orden:
 
 El pipeline (`deploy-staging` / `deploy-pm2.sh`) ejecuta `prisma migrate deploy` y `prisma generate`, pero **NUNCA `prisma db seed`**: el seed es destructivo (`deleteMany` de solicitudes, convocatorias, comités, notificaciones, documentos) y no debe correr en cada deploy.
 
-**Consecuencia:** si la BD de la VM queda vacía (o con datos viejos del seed del 13-oct), el portal no muestra convocatorias. La capa nueva (`prisma/semilla/`, 51 convocatorias + 1000 solicitudes + 26 becas + 4 ciclos) no se aplica automáticamente.
+**Consecuencia:** si la BD de la VM queda vacía (o con datos viejos del seed del 13-oct), el portal no muestra convocatorias. La capa nueva (`prisma/semilla/`, 51 convocatorias + 1000 solicitudes + 24 becas + 4 ciclos) no se aplica automáticamente.
 
 **Para sembrar manualmente (auditable):**
 

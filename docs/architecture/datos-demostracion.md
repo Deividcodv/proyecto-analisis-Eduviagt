@@ -29,7 +29,7 @@ apps/api/prisma/
 | Evaluadores | **30** | `datos.ts:33` |
 | Miembros de comité | **50** | `datos.ts:36` |
 | Ciclos | **4** | `datos.ts:39` |
-| Becas canónicas activas | **26** (3 base + 23 por nivel) | `datos.ts:678-695` |
+| Becas canónicas activas | **24** (3 base + 23 por nivel − 2 colisiones de ID) | `datos.ts:678-695` |
 | Documentos de la KB del asistente | **33** | `seed.ts` (33 entradas `titulo:`) |
 | Roles | **7** | `seed.ts` |
 | Usuarios totales | ~287+ | `verificar.ts:35` |
@@ -148,7 +148,13 @@ await prisma.beca.updateMany({
 
 Las 7 becas del `seed.ts` original (ids `...001` a `...007`) son datos legacy. Solo las 3 primeras (`001`, `002`, `003`) son canónicas; las otras 4 se desactivan junto con cualquier beca que no esté en el catálogo. Así el portal y el formulario de convocatorias nuevas solo ofrecen becas del catálogo.
 
-**Total activas: 3 base + 23 por nivel = 26.**
+**Total activas: 24** (3 base + 23 por nivel − 2 colisiones de ID).
+
+### Colisión de IDs en las becas (hallazgo)
+
+`BECAS_POR_NIVEL` (datos.ts) reutiliza los IDs `...0001` y `...0002` de las becas base de `seed.ts` ("Beca de Excelencia Académica" y "Beca de Permanencia Universitaria"). Como `asegurarConvocatorias` hace `prisma.beca.upsert({ where: { id } })`, las entradas de `BECAS_POR_NIVEL` **sobrescriben** a las base (mismo ID). El total único resultante es 24, no 26.
+
+**Fix propuesto:** asignar IDs únicos a las 2 becas de `BECAS_POR_NIVEL` que colisionan (p. ej. `...0040` y `...0041`), y desactivar las becas base que queden duplicadas. Registrado como deuda técnica.
 
 ## 7. Generadores de usuarios
 

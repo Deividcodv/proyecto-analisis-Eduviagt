@@ -91,6 +91,7 @@ describe('SolicitudesService', () => {
       new NotificacionesService(prisma),
       montos,
       bitacora,
+      { asignarEvaluadores: jest.fn(), quitarEvaluador: jest.fn() } as any,
     );
   });
 

@@ -127,6 +127,58 @@ export const BECAS_POR_NIVEL: Array<{
       { nombre: 'Participación comunitaria', peso: 0.2 },
     ],
   },
+  {
+    id: '00000000-0000-4000-8000-000000000040',
+    nombre: 'Beca de Excelencia en Diversificado Avanzado',
+    descripcion: 'Beca de alto monto para estudiantes de diversificado con excelencia academica sostenida y alto compromiso comunitario.',
+    nivel: 'DIVERSIFICADO',
+    cobertura: 'COMPLETA',
+    montoBase: 12000,
+    criterios: [
+      { nombre: 'Rendimiento academico', peso: 0.6 },
+      { nombre: 'Participacion comunitaria', peso: 0.25 },
+      { nombre: 'Situacion socioeconomica', peso: 0.15 },
+    ],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000041',
+    nombre: 'Beca de Excelencia en Primaria Avanzada',
+    descripcion: 'Beca de alto monto para estudiantes de primaria con excelencia sostenida.',
+    nivel: 'PRIMARIA',
+    cobertura: 'COMPLETA',
+    montoBase: 12000,
+    criterios: [
+      { nombre: 'Rendimiento academico', peso: 0.6 },
+      { nombre: 'Participacion comunitaria', peso: 0.25 },
+      { nombre: 'Situacion socioeconomica', peso: 0.15 },
+    ],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000042',
+    nombre: 'Beca de Excelencia en Basico Avanzado',
+    descripcion: 'Beca de alto monto para estudiantes de basico con excelencia sostenida.',
+    nivel: 'BASICO',
+    cobertura: 'COMPLETA',
+    montoBase: 12000,
+    criterios: [
+      { nombre: 'Rendimiento academico', peso: 0.6 },
+      { nombre: 'Participacion comunitaria', peso: 0.25 },
+      { nombre: 'Situacion socioeconomica', peso: 0.15 },
+    ],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000043',
+    nombre: 'Beca de Excelencia en Secundaria Avanzada',
+    descripcion: 'Beca de alto monto para estudiantes de secundaria con excelencia sostenida.',
+    nivel: 'SECUNDARIA',
+    cobertura: 'COMPLETA',
+    montoBase: 12000,
+    criterios: [
+      { nombre: 'Rendimiento academico', peso: 0.6 },
+      { nombre: 'Participacion comunitaria', peso: 0.25 },
+      { nombre: 'Situacion socioeconomica', peso: 0.15 },
+    ],
+  },
   // ===== TÉCNICO =====
   {
     id: '00000000-0000-4000-8000-000000000017',
@@ -650,6 +702,7 @@ export async function asegurarConvocatorias(total: number) {
           nombre: beca.nombre,
           descripcion: beca.descripcion,
           activa: true,
+          montoBase: beca.montoBase,
         },
       });
 
@@ -664,10 +717,10 @@ export async function asegurarConvocatorias(total: number) {
         });
       }
       becasCreadas++;
-    } else if (!existe.activa) {
+    } else {
       await prisma.beca.update({
         where: { id: beca.id },
-        data: { activa: true },
+        data: { activa: true, montoBase: beca.montoBase },
       });
     }
   }
@@ -743,6 +796,11 @@ export async function asegurarConvocatorias(total: number) {
     }
   }
 
+  // Evaluador por defecto para las convocatorias nuevas: evaluador@demo.gt
+  // (id fijo del seed). Si no existe, se deja null y la UI permite asignar.
+  const evaluadorPorDefecto = await prisma.usuario.findUnique({ where: { email: 'evaluador@demo.gt' } });
+  const evaluadorPorDefectoId = evaluadorPorDefecto?.id ?? null;
+
   // 3. Crear convocatorias. El correlativo mantiene nombres únicos dentro de
   // la demo y evita que dos niveles compartan el mismo "Ciclo N".
   let correlativo = existentes.length;
@@ -754,6 +812,7 @@ export async function asegurarConvocatorias(total: number) {
     aperturaDias: number;
     cierreDias: number;
     anio: number;
+    evaluadorPorDefectoId?: string | null;
   }) => {
     correlativo += 1;
     const montoBase = params.beca.montoBase;
@@ -765,6 +824,7 @@ export async function asegurarConvocatorias(total: number) {
         becaId: params.beca.id,
         nivelAcademicoId: nivelPorNombre.get(params.nivelNombre)?.id ?? null,
         cobertura: params.beca.cobertura,
+        evaluadorPorDefectoId: params.evaluadorPorDefectoId ?? null,
         estado: params.estado,
         fechaApertura: fechaRelativa(params.aperturaDias),
         fechaCierre: fechaRelativa(params.cierreDias),
@@ -796,7 +856,7 @@ export async function asegurarConvocatorias(total: number) {
             {
               nombre: 'Regla tramo alto',
               tipo: 'FIJO',
-              montoFijo: Math.round(montoBase * 0.6),
+              montoFijo: montoBase,
               prioridad: 3,
               ingresoMin: 10000,
               ingresoMax: 15000,
@@ -807,7 +867,7 @@ export async function asegurarConvocatorias(total: number) {
               tipo: 'COMPLETO',
               prioridad: 0,
               ingresoMin: 0,
-              ingresoMax: 3000,
+              ingresoMax: 5000,
               activo: true,
             },
           ],
@@ -854,6 +914,7 @@ export async function asegurarConvocatorias(total: number) {
         aperturaDias: -10,
         cierreDias: 30,
         anio: 2026,
+        evaluadorPorDefectoId,
       });
     }
 
@@ -879,7 +940,7 @@ export async function asegurarConvocatorias(total: number) {
           cierre: -10,
         };
         await crearConvocatoria({
-          beca: becasNivel[(i + 1) % becasNivel.length],
+          beca: becasNivel.reduce((a, b) => a.montoBase > b.montoBase ? a : b),
           nivelNombre: nivel.nombre,
           estado: segundo.estado,
           aperturaDias: segundo.apertura,
@@ -918,6 +979,7 @@ export async function asegurarConvocatorias(total: number) {
         aperturaDias: -240,
         cierreDias: -150,
         anio: 2025,
+        evaluadorPorDefectoId,
       });
     }
   }

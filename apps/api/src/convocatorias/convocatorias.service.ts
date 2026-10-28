@@ -31,6 +31,9 @@ export class ConvocatoriasService {
     if (dto.nivelAcademicoId) {
       await this.assertNivelAcademicoExists(dto.nivelAcademicoId);
     }
+    if (dto.evaluadorPorDefectoId) {
+      await this.assertEvaluadorExists(dto.evaluadorPorDefectoId);
+    }
     this.assertFechasCoherentes(dto.fechaApertura, dto.fechaCierre);
     this.assertReglasMonto(dto.montoBase, dto.reglasMonto);
 
@@ -54,6 +57,9 @@ export class ConvocatoriasService {
           : {}),
         ...(dto.maxCorrecciones !== undefined
           ? { maxCorrecciones: dto.maxCorrecciones }
+          : {}),
+        ...(dto.evaluadorPorDefectoId !== undefined
+          ? { evaluadorPorDefectoId: dto.evaluadorPorDefectoId }
           : {}),
         // Montos (Sprint 8 - US-801)
         ...(dto.moneda !== undefined ? { moneda: dto.moneda } : {}),
@@ -264,6 +270,9 @@ export class ConvocatoriasService {
     if (dto.nivelAcademicoId) {
       await this.assertNivelAcademicoExists(dto.nivelAcademicoId);
     }
+    if (dto.evaluadorPorDefectoId) {
+      await this.assertEvaluadorExists(dto.evaluadorPorDefectoId);
+    }
 
     // Al cambiar solo una de las dos fechas hay que comparar contra la otra ya
     // guardada; antes no se validaba nada y se podía dejar cierre < apertura.
@@ -301,6 +310,9 @@ export class ConvocatoriasService {
           : {}),
         ...(dto.maxCorrecciones !== undefined
           ? { maxCorrecciones: dto.maxCorrecciones }
+          : {}),
+        ...(dto.evaluadorPorDefectoId !== undefined
+          ? { evaluadorPorDefectoId: dto.evaluadorPorDefectoId }
           : {}),
         // Montos (Sprint 8 - US-801)
         ...(dto.moneda !== undefined ? { moneda: dto.moneda } : {}),
@@ -484,6 +496,18 @@ export class ConvocatoriasService {
     if (!nivel) {
       throw new NotFoundException(
         `Nivel académico con id ${nivelAcademicoId} no encontrado`,
+      );
+    }
+  }
+
+  private async assertEvaluadorExists(usuarioId: string) {
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { id: usuarioId },
+      include: { rol: true },
+    });
+    if (!usuario || usuario.rol.nombre !== 'EVALUADOR') {
+      throw new BadRequestException(
+        `El usuario ${usuarioId} no es un evaluador válido`,
       );
     }
   }
