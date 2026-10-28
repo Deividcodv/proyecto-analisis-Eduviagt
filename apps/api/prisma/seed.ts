@@ -515,6 +515,36 @@ const COMITES = [
     descripcion:
       'Comité encargado de evaluar las postulaciones a la Beca de Permanencia Universitaria y los casos de riesgo de deserción.',
   },
+  {
+    id: '00000000-0000-4000-8000-000000000033',
+    nombre: 'Comité Evaluador de Básico 2026',
+    descripcion: 'Comité encargado de evaluar las postulaciones a becas de nivel básico.',
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000034',
+    nombre: 'Comité Evaluador de Diversificado 2026',
+    descripcion: 'Comité encargado de evaluar las postulaciones a becas de nivel diversificado.',
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000035',
+    nombre: 'Comité Evaluador de Técnico 2026',
+    descripcion: 'Comité encargado de evaluar las postulaciones a becas de nivel técnico.',
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000036',
+    nombre: 'Comité Evaluador de Universitario 2026',
+    descripcion: 'Comité encargado de evaluar las postulaciones a becas de nivel universitario.',
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000037',
+    nombre: 'Comité Evaluador de Posgrado 2026',
+    descripcion: 'Comité encargado de evaluar las postulaciones a becas de posgrado.',
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000038',
+    nombre: 'Comité Evaluador de Primaria 2026',
+    descripcion: 'Comité encargado de evaluar las postulaciones a becas de nivel primario.',
+  },
 ];
 
 async function main() {
@@ -1034,6 +1064,36 @@ async function main() {
     ],
     '00000000-0000-4000-8000-000000000032': [
       { usuarioId: usuariosPorCui['7777777777777'].id, rol: 'PRESIDENTE' },
+      { usuarioId: usuariosPorCui['6666666666666'].id, rol: 'VOCAL' },
+    ],
+    '00000000-0000-4000-8000-000000000033': [
+      { usuarioId: usuariosPorCui['7777777777777'].id, rol: 'PRESIDENTE' },
+      { usuarioId: usuariosPorCui['8888888888888'].id, rol: 'VOCAL' },
+      { usuarioId: usuariosPorCui['6666666666666'].id, rol: 'VOCAL' },
+    ],
+    '00000000-0000-4000-8000-000000000034': [
+      { usuarioId: usuariosPorCui['7777777777777'].id, rol: 'PRESIDENTE' },
+      { usuarioId: usuariosPorCui['8888888888888'].id, rol: 'VOCAL' },
+      { usuarioId: usuariosPorCui['6666666666666'].id, rol: 'VOCAL' },
+    ],
+    '00000000-0000-4000-8000-000000000035': [
+      { usuarioId: usuariosPorCui['7777777777777'].id, rol: 'PRESIDENTE' },
+      { usuarioId: usuariosPorCui['8888888888888'].id, rol: 'VOCAL' },
+      { usuarioId: usuariosPorCui['6666666666666'].id, rol: 'VOCAL' },
+    ],
+    '00000000-0000-4000-8000-000000000036': [
+      { usuarioId: usuariosPorCui['7777777777777'].id, rol: 'PRESIDENTE' },
+      { usuarioId: usuariosPorCui['8888888888888'].id, rol: 'VOCAL' },
+      { usuarioId: usuariosPorCui['6666666666666'].id, rol: 'VOCAL' },
+    ],
+    '00000000-0000-4000-8000-000000000037': [
+      { usuarioId: usuariosPorCui['7777777777777'].id, rol: 'PRESIDENTE' },
+      { usuarioId: usuariosPorCui['8888888888888'].id, rol: 'VOCAL' },
+      { usuarioId: usuariosPorCui['6666666666666'].id, rol: 'VOCAL' },
+    ],
+    '00000000-0000-4000-8000-000000000038': [
+      { usuarioId: usuariosPorCui['7777777777777'].id, rol: 'PRESIDENTE' },
+      { usuarioId: usuariosPorCui['8888888888888'].id, rol: 'VOCAL' },
       { usuarioId: usuariosPorCui['6666666666666'].id, rol: 'VOCAL' },
     ],
   };

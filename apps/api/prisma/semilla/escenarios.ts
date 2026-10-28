@@ -369,10 +369,10 @@ export async function generarEscenarios() {
   await crearEvaluaciones(solicitudesCreadas, evaluadores, ciclos);
 
   // 9. Crear sesiones de comité
-  await crearSesionesComite(solicitudesCreadas, coord, miembros, ciclos);
+  const sesionesPorCiclo = await crearSesionesComite(solicitudesCreadas, coord, miembros, ciclos);
 
   // 10. Crear votos y decisiones
-  await crearVotosYDecisiones(solicitudesCreadas, miembros, coord, ciclos);
+  await crearVotosYDecisiones(solicitudesCreadas, miembros, coord, ciclos, sesionesPorCiclo);
 
   // 11. Crear aprobaciones
   await crearAprobaciones(solicitudesCreadas, jefe, dir, ciclos);
@@ -440,7 +440,7 @@ async function crearSesionesComite(
   _coordinador: any,
   miembros: any[],
   ciclos: CicloConvocatoria[]
-) {
+): Promise<Map<number, string>> {
   const paraSesion = solicitudes.filter(s =>
     ['EVALUADA', 'PENDIENTE_SEGUNDA_APROBACION', 'APROBADA', 'RECHAZADA'].includes(s.estado)
   );
@@ -454,6 +454,8 @@ async function crearSesionesComite(
     porCiclo.set(sol.ciclo.indice, arr);
   }
 
+  const sesionesPorCiclo = new Map<number, string>();
+
   for (const [cicloIdx, sols] of porCiclo) {
     const ciclo = ciclos[cicloIdx];
     const comite = await prisma.comite.findFirst({
@@ -461,42 +463,37 @@ async function crearSesionesComite(
     });
     if (!comite) continue;
 
-    const numSesiones = sols.length > 50 ? 4 : 2;
+    // Una sesión por ciclo. El estado refleja si el ciclo ya terminó.
+    const sesion = await prisma.sesion.create({
+      data: {
+        comiteId: comite.id,
+        fecha: fechaPostResultados(ciclo, 5),
+        estado: ciclo.finalizado ? 'FINALIZADA' : 'PROGRAMADA',
+        quorumMinimo: 5,
+        lugar: `Ciclo ${ciclo.indice + 1}`,
+      },
+    });
 
-    for (let s = 0; s < numSesiones; s++) {
-      const fechaSesion = fechaPostResultados(ciclo, s === 0 ? 5 : 15);
-      const sesion = await prisma.sesion.create({
-        data: {
-          comiteId: comite.id,
-          fecha: fechaSesion,
-          estado: 'FINALIZADA',
-          quorumMinimo: 5,
-        },
+    sesionesPorCiclo.set(cicloIdx, sesion.id);
+
+    const asistentes = barajar(miembros).slice(0, 5 + Math.floor(Math.random() * 3));
+    for (const miembro of asistentes) {
+      await prisma.comiteMiembro.upsert({
+        where: { comiteId_usuarioId: { comiteId: comite.id, usuarioId: miembro.id } },
+        update: { activo: true, rol: 'VOCAL' },
+        create: { comiteId: comite.id, usuarioId: miembro.id, rol: 'VOCAL', activo: true },
       });
+    }
 
-      const asistentes = barajar(miembros).slice(0, 5 + Math.floor(Math.random() * 3));
-      for (const miembro of asistentes) {
-        await prisma.comiteMiembro.upsert({
-          where: { comiteId_usuarioId: { comiteId: comite.id, usuarioId: miembro.id } },
-          update: { activo: true, rol: 'VOCAL' },
-          create: { comiteId: comite.id, usuarioId: miembro.id, rol: 'VOCAL', activo: true },
-        });
-      }
-
-      const solsEnSesion = s === 0 ? sols.slice(0, Math.ceil(sols.length / 2)) : sols.slice(Math.ceil(sols.length / 2));
-      for (let i = 0; i < solsEnSesion.length; i++) {
-        const sol = solsEnSesion[i];
-        await prisma.sesionAgenda.create({
-          data: {
-            sesionId: sesion.id,
-            solicitudId: sol.id,
-          },
-        });
-      }
+    for (const sol of sols) {
+      await prisma.sesionAgenda.create({
+        data: { sesionId: sesion.id, solicitudId: sol.id },
+      });
     }
   }
 
   console.log('✅ Sesiones de comité creadas');
+  return sesionesPorCiclo;
 }
 
 // ==========================================
@@ -507,7 +504,8 @@ async function crearVotosYDecisiones(
   solicitudes: SolicitudConCiclo[],
   miembros: any[],
   _coordinador: any,
-  _ciclos: CicloConvocatoria[]
+  _ciclos: CicloConvocatoria[],
+  sesionesPorCiclo: Map<number, string>
 ) {
   const paraDecision = solicitudes.filter(s =>
     ['PENDIENTE_SEGUNDA_APROBACION', 'APROBADA', 'RECHAZADA'].includes(s.estado)
@@ -522,10 +520,9 @@ async function crearVotosYDecisiones(
       const ciclo = sol.ciclo;
       const esAprobada = sol.estado === 'APROBADA' || sol.estado === 'PENDIENTE_SEGUNDA_APROBACION';
 
-      const sesion = await prisma.sesion.findFirst({
-        where: { comite: { nombre: { contains: 'Excelencia' } }, estado: 'FINALIZADA' },
-        orderBy: { fecha: 'desc' },
-      });
+      const sesionId = sesionesPorCiclo.get(sol.ciclo.indice);
+      if (!sesionId) continue;
+      const sesion = await prisma.sesion.findUnique({ where: { id: sesionId } });
       if (!sesion) continue;
 
       const votantes = barajar(miembros).slice(0, 5 + Math.floor(Math.random() * 3));
@@ -549,6 +546,12 @@ async function crearVotosYDecisiones(
 
       const resultado = esAprobada ? 'APROBADA' : 'RECHAZADA';
       const fechaDecision = fechaPostResultados(ciclo, 7);
+
+      // La sesión que recibió votos/decisiones queda FINALIZADA.
+      await prisma.sesion.update({
+        where: { id: sesion.id },
+        data: { estado: 'FINALIZADA' },
+      });
 
       await prisma.decision.create({
         data: {
