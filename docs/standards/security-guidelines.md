@@ -11,7 +11,7 @@
 | **Prisma por defecto** | Todas las queries Prisma son parametrizadas automáticamente |
 | **Prohibido `$queryRawUnsafe`** | Nunca usar `$queryRawUnsafe` con interpolación de variables de usuario |
 | **Permitido `$queryRaw`** | Solo con template literals parametrizados: `` $queryRaw\`SELECT * FROM usuario WHERE id = ${id}\` `` |
-| **IA nunca genera SQL** | El asistente de IA solo llama a métodos de repositorio parametrizados |
+| **IA y SQL** | El modo fallback ejecuta FTS parametrizado con `Prisma.sql` (no `$queryRawUnsafe`); el modo LLM envía la pregunta literal al LLM externo (sin BD). No hay repositorios en el código (Prisma directo). |
 
 ### Ejemplo correcto
 
@@ -87,8 +87,8 @@ app.useGlobalPipes(new ValidationPipe({
 | Regla | Detalle |
 |---|---|
 | Hash | bcrypt con 10 rounds |
-| Mínimo | 8 caracteres |
-| Requerido | Mayúscula, minúscula, número, carácter especial |
+| Mínimo | 8 caracteres (`@MinLength(8)` + `@MaxLength(128)` en `RegisterDto`). **No hay reglas de complejidad implementadas** — registrado como deuda. |
+| Requerido | Solo `MinLength(8)` (sin mayúscula/minúscula/número/símbolo) |
 | Throttling | Máximo 5 intentos de login en 15 minutos |
 
 ---
@@ -139,7 +139,7 @@ async obtenerSolicitud(id: string, usuarioId: string): Promise<Solicitud> {
 | Regla | Detalle |
 |---|---|
 | MIME types | Solo: `application/pdf`, `image/jpeg`, `image/png` |
-| Tamaño máximo | 10 MB por archivo |
+| Tamaño máximo | 5 MB por archivo (`DOCUMENTO_MAX_BYTES = 5 * 1024 * 1024`); 10 MB es el `client_max_body_size` de nginx |
 | Nombre | Generado con UUID + extensión original (nunca el nombre del usuario) |
 | Storage | Detrás de interfaz `DocumentStorage` (Adapter pattern) |
 | Descarga | Solo vía endpoint autenticado, validando permisos |
@@ -215,15 +215,17 @@ DATABASE_URL=postgresql://user:pass@localhost:5432/EDUVIAGT
 
 # JWT
 JWT_SECRET=tu-secreto-aqui
-JWT_EXPIRATION=15m
+JWT_ACCESS_EXPIRATION=15m
 JWT_REFRESH_EXPIRATION=7d
 
 # Storage
 STORAGE_PATH=./storage
 
 # IA
-AI_PROVIDER=gemini
 AI_API_KEY=tu-api-key
+AI_BASE_URL=https://api.openai.com/v1
+AI_MODEL=gpt-4o-mini
+AI_TIMEOUT_MS=15000
 
 # App
 PORT=3000
@@ -241,38 +243,13 @@ CORS_ORIGIN=http://localhost:3001
 
 ## Headers de seguridad
 
-```typescript
-// NestJS con helmet
-import helmet from 'helmet';
-
-app.use(helmet());
-```
-
-Headers configurados:
-- `X-Content-Type-Options: nosniff`
-- `X-Frame-Options: DENY`
-- `X-XSS-Protection: 1; mode=block`
-- `Strict-Transport-Security: max-age=31536000; includeSubDomains`
-- `Content-Security-Policy: default-src 'self'`
+⚠️ **No implementado en el código.** `helmet` no es dependencia de `apps/api` (grep = 0). Los headers de seguridad los pone nginx en el servidor (`scripts/nginx/EDUVIAGT.conf`, que **no está versionado en este repo**). En desarrollo no se aplican headers de seguridad. Registrado como deuda técnica.
 
 ---
 
 ## Rate limiting
 
-```typescript
-// Throttler guard global
-app.useGlobalGuards(new ThrottlerGuard({
-  throttlers: [{
-    ttl: 60000,   // 1 minuto
-    limit: 100,    // 100 requests por minuto
-  }],
-}));
-
-// Para login: más restrictivo
-@UseGuards(ThrottlerGuard)
-@Throttle(5, 900000) // 5 intentos en 15 minutos
-async login(@Body() dto: LoginDto) { ... }
-```
+⚠️ **No hay `@nestjs/throttler`.** El único control es `LoginAttemptService` (`auth/login-attempt.service.ts`): `Map` en memoria, clave `ip:email`, 5 intentos / 15 min. Se pierde al reiniciar y no escala horizontalmente. El endpoint del asistente (`/asistente/preguntar`) es público y sin rate limit (deuda P0).
 
 ---
 

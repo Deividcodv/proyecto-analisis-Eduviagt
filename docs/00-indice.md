@@ -16,10 +16,7 @@
 | 4 | `04-pr-paso-a-paso-por-persona.md` | Cómo cada persona crea su rama, sube su código y abre su Pull Request paso a paso | Cada persona |
 | 5 | `03-github-david-aprobar-pr.md` | Cómo David revisa, prueba, aprueba y mergea los PRs, y cómo verifica que todo quede fiel al proyecto original | Solo David |
 | 6 | `guia-recreacion-6-personas.md` | Resumen general de toda la simulación (este sí se lee completo al final) | Todos |
-<<<<<<< HEAD
-=======
 | 7 | `06-jose-replica-sigeb-prod.md` | Réplica de los cambios recientes de `sigeb-prod` en `proyecto-analisis-Eduviagt`: qué falta, cómo fusionar, cómo resolver conflictos y cómo verificar | José |
->>>>>>> sigeb-prod/develop
 
 ---
 
@@ -28,13 +25,13 @@
 | Dato | Valor |
 |---|---|
 | Repositorio de referencia (tiene el código original) | `https://github.com/Deividcodv/sigeb-prod.git` (alias: `sigeb-prod`) |
-| Repositorio del equipo (donde trabajamos y subimos los PRs) | `https://github.com/Deividcodv/proyecto-analisis-Sigeb.git` (repo real, público) |
+| Repositorio del equipo (donde trabajamos y subimos los PRs) | `https://github.com/Deividcodv/proyecto-analisis-Eduviagt.git` (repo real, público) |
 | **Código local listo por persona y sprint** | **`recreacion/sprint-N/<miembro>/`** (espejo `repo/` + `modulos/` + `README.md` por persona, ya descargado) |
-| **Estado final = CI #40 = commit `a720298`** | Es la versión a la que debe llegar el repositorio nuevo al cierre (16 oct) |
+| **Estado actual** | Rama de trabajo `fix-deploy-ci-2`, HEAD `36aab26` (CI #42, deploy-staging inline). `master` deshabilitado para deploy (`PRODUCTION_READY=false`). |
 | **Prototipo (demo ≈ 16 sep)** | **Hito personalizado `v0.1-prototipo-demo`** (tag en el repo del equipo): portal público + login funcionales en los primeros 3 sprints |
 | Commits fuente (de dónde copia cada persona su módulo) | `85122d2` (auth + catálogos/convocatorias), `28ea376` (storage), `986fc89` (portal público + endpoints públicos + consulta US-46), `3dfa19a` (login/registro + dashboard postulante), `ab66393` (layout base + reportes/asistente/auditoría), `1436e41` (panel admin), `2e52a69`/`dcba851`/`e36ac2c` (sistema interno) |
 | Rama de integración | `develop` |
-| Rama de producción | `master` (protegida) |
+| Rama de producción | `master` (protegida, deshabilitada para deploy: `PRODUCTION_READY=false`) |
 | Ramas de trabajo | `feature/<modulo>-<descripcion>` |
 | Ramas de arreglos | `hotfix/<descripcion>` |
 

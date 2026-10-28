@@ -38,7 +38,7 @@ Un servicio que maneje login **y** registro **y** eliminación de cuenta habría
 |---|---|---|
 | `DocumentStorage` (interfaz) | Nuevos adaptadores (S3, Azure) se agregan sin modificar servicios | `apps/api/src/storage/storage.interface.ts` |
 | `PdfRenderer` (interfaz) | Nuevo motor de PDF sin tocar `ConstanciasService` | `apps/api/src/solicitudes/pdf/pdf-renderer.interface.ts` |
-| `AsistenteIAProvider` (Strategy) | Nuevo proveedor de IA sin modificar el proxy | `apps/api/src/asistente/providers/` |
+| `ProveedorIA` (Strategy) | Nuevo proveedor de IA sin modificar el proxy | `apps/api/src/asistente/providers/` |
 | State Machine (tabla de transiciones) | Nuevos estados/transiciones se agregan a la tabla, no a condicionales | `solicitud-state-machine.ts` |
 
 ### Ejemplo concreto: Storage Adapter
@@ -56,7 +56,7 @@ export interface DocumentStorage {
 export class FilesystemStorageAdapter implements DocumentStorage { ... }
 
 // Futura implementación (sin tocar código existente)
-export class S3StorageAdapter implements DocumentStorage { ... }
+// [NO IMPLEMENTADO] export class S3StorageAdapter implements DocumentStorage { ... }
 ```
 
 ---
@@ -71,7 +71,7 @@ export class S3StorageAdapter implements DocumentStorage { ... }
 |---|---|---|
 | `PdfRenderer` | `PuppeteerPdfRenderer` (única, pero intercambiable) | `solicitudes/pdf/` |
 | `DocumentStorage` | `FilesystemStorageAdapter` | `storage/` |
-| `AsistenteIAProvider` | `FallbackProveedor`, `OpenAIProveedor` | `asistente/providers/` |
+| `ProveedorIA` | `FallbackProveedor`, `OpenAIProveedor` | `asistente/providers/` |
 
 ### Garantía LSP
 El servicio `ConstanciasService` depende de `PdfRenderer` (interfaz), no de `PuppeteerPdfRenderer`. Cualquier implementación de `PdfRenderer` puede sustituirse sin cambiar el servicio.
@@ -88,7 +88,7 @@ El servicio `ConstanciasService` depende de `PdfRenderer` (interfaz), no de `Pup
 |---|---|---|
 | `DocumentStorage` | `save`, `read`, `delete`, `exists` | Solo operaciones de archivos |
 | `PdfRenderer` | `render(html): Buffer` | Solo renderizado de PDF |
-| `AsistenteIAProvider` | `preguntar(pregunta, contexto): Respuesta` | Solo interacción con IA |
+| `ProveedorIA` | `preguntar(pregunta, contexto): Respuesta` | Solo interacción con IA |
 
 ### Anti-patrón evitado
 Una interfaz monolítica `ServicioCompleto` con todos los métodos habría obligado a implementar métodos no usados. Se segregaron en interfaces específicas por dominio.
@@ -105,7 +105,7 @@ Una interfaz monolítica `ServicioCompleto` con todos los métodos habría oblig
 |---|---|---|---|
 | `SolicitudesService` | `DocumentStorage` | Interfaz, no `FilesystemStorageAdapter` | `solicitudes/solicitudes.service.ts` |
 | `ConstanciasService` | `PdfRenderer` | Interfaz, no `PuppeteerPdfRenderer` | `solicitudes/constancias.service.ts` |
-| `AsistenteIAProxy` | `AsistenteIAProvider` | Interfaz, no `OpenAIProveedor` | `asistente/asistente-ia-proxy.ts` |
+| `AsistenteIAProxy` | `ProveedorIA` | Interfaz, no `OpenAIProveedor` | `asistente/asistente.proxy.ts` |
 | `PrismaService` | (singleton) | Inyectado vía NestJS DI | `prisma/prisma.service.ts` |
 
 ### Inyección de dependencias (NestJS)
@@ -137,13 +137,13 @@ El binding de la implementación concreta se hace en el módulo:
 
 | Patrón | Principio SOLID relacionado | Dónde |
 |---|---|---|
-| **Facade** | SRP (orquestación centralizada) | `SolicitudLifecycleService` |
+| **Facade** | SRP (orquestación centralizada) | `SolicitudesService` (de facto) + `UsersService` (explícita, "Fachada de seguridad") |
 | **Adapter** | OCP + DIP (intercambiable) | `DocumentStorage`, `PdfRenderer` |
 | **Proxy** | SRP (control de acceso separado de lógica) | `AsistenteIAProxy` |
 | **State** | OCP (transiciones extensibles) | State machines |
 | **Chain of Responsibility** | SRP (cada eslabón una responsabilidad) | `PermissionsGuard` |
-| **Observer** | OCP (nuevos reaccionadores sin modificar emisor) | Eventos de dominio |
-| **Builder** | SRP (construcción paso a paso) | `Solicitud` builder |
+| **Observer** | [NO IMPLEMENTADO] Sin `@nestjs/event-emitter` ni bus de eventos; integracion directa | — |
+| **Builder** | [NO IMPLEMENTADO] Solo `DocumentBuilder` de Swagger | `main.ts` (Swagger) |
 | **Singleton** | DIP (una instancia compartida) | `PrismaService` |
 
 ---

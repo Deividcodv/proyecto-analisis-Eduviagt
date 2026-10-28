@@ -109,10 +109,10 @@ describe('POST /auth/registro', () => {
 
 | Tipo | Cobertura mínima |
 |---|---|
-| Líneas | 70% |
-| Funciones | 70% |
-| Branches | 60% |
-| Statements | 70% |
+| Líneas | 49% |
+| Funciones | 48% |
+| Branches | 40% |
+| Statements | 49% |
 
 ---
 

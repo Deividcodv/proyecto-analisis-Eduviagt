@@ -27,13 +27,18 @@ Esta carpeta contiene toda la documentación administrativa, técnica y de proce
   - [Sprint 8 — Segunda Aprobación, Montos, Bitácora](scrum/sprint-8-segunda-aprobacion/sprint-plan.md)
   - [Sprint 9 — Mejoras Transversales](scrum/sprint-9-mejoras-transversales/goal.md)
 
-### Arquitectura
+### Arquitectura (documentos maestros verificados)
+- [Arquitectura real verificada (backend)](architecture/ARQUITECTURA-REAL.md)
+- [Arquitectura del asistente IA (sin RAG)](architecture/asistente-ia.md)
+- [Arquitectura del frontend](architecture/frontend.md)
+- [Contrato de integración API ↔ Web](architecture/api-web-contrato.md)
+- [Arquitectura técnica detallada (monorepo, API, Web, BD, despliegue, IA, JWT)](architecture/ARQUITECTURA_TECNICA_DETALLADA_SIGEB_v1.1.md)
+- [Patrones de diseño (verificados)](architecture/design-patterns.md)
+- [Diagramas (Mermaid)](architecture/diagrams.md)
 - [Decisiones arquitectónicas (ADR)](architecture/decisions.md)
-- [Principios SOLID](architecture/solid-principles.md)
-- [Patrones de diseño](architecture/design-patterns.md)
+- [Esquema de base de datos](architecture/database-schema.md)
 - [Contratos de API](architecture/api-contracts.md)
-- [Diagramas](architecture/diagrams.md)
-- [Schema de base de datos](architecture/database-schema.md)
+- [Principios SOLID](architecture/solid-principles.md)
 - [Diagramas interactivos](architecture/interactive/)
 
 ### Estándares

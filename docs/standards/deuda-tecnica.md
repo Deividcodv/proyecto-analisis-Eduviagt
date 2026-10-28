@@ -31,12 +31,14 @@ mayor de versión:
 
 ### Mitigación aplicada mientras tanto
 
-- **El Image Optimizer está desactivado** (`images.unoptimized` en
-  `apps/web/next.config.js`): el portal solo usa imágenes propias que no
-  necesitan optimización, así que se cierra esa vía sin coste para la persona.
-- **Las subidas tienen límites explícitos** de tamaño, de número de
-  archivos, de campos y de tamaño de nombre de campo, lo que acota los
-  vectores de agotamiento de recursos del procesamiento *multipart*.
+- ⚠️ **Corrección (2026-10-27):** `apps/web/next.config.js` **no contiene**
+  `images.unoptimized`. La afirmación anterior era incorrecta. Las imágenes
+  se sirven sin optimización porque no hay imágenes remotas (`images.domains: ['localhost']`),
+  pero no por una opción explícita de desactivación.
+- **Las subidas tienen límites explícitos** de tamaño (5 MB, `DOCUMENTO_MAX_BYTES`)
+  y de número de archivos (1, `FileInterceptor` con `limits: { fileSize, files: 1 }`).
+  **No** hay límites de campos ni de tamaño de nombre de campo (corrección de la
+  afirmación anterior).
 - nginx queda **en la misma máquina** que la web y normaliza las peticiones
   antes de reenviarlas, lo que reduce el alcance del *request smuggling*.
 
@@ -64,6 +66,77 @@ HTTPS. Es el punto de mayor riesgo abierto del proyecto.
 | Límite de intentos de login en Redis | En memoria | Se pierde al reiniciar PM2. Suficiente para una sola instancia; con varias, moverlo a Redis o PostgreSQL. |
 | Rotación de `JWT_SECRET` | Pendiente | Requiere invalidar las sesiones activas; conviene hacerlo junto con el HTTPS. |
 | Limpieza de archivos huérfanos | No existe | Los documentos borrados de la base dejan su archivo en `storage/`. |
+
+---
+
+## 4. Deuda técnica verificada en código (2026-10-27)
+
+> Hallazgos de la auditoría de arquitectura. Cada entrada cita `archivo:línea`.
+
+### 4.1 Bugs funcionales (P0)
+
+| # | Hallazgo | Evidencia | Impacto |
+|---|---|---|---|
+| 1 | El controller del asistente no pasa el usuario → `rol`/`usuarioId`/`sesionId` siempre `null` | `asistente/asistente.controller.ts:17-19` | El "acotado por rol y sesión" del README no está operativo; sin trazabilidad de quién preguntó |
+| 2 | El modo LLM no es RAG → puede inventar datos de convocatorias/becas | `asistente/providers/openai.provider.ts:58-66` (sin contexto inyectado) | Respuestas no verificables en un sistema de becas |
+| 3 | Endpoint del asistente público sin rate limit | `asistente/asistente.controller.ts` (sin `@nestjs/throttler`) | DoS + inflación de BD (3 filas/request) + abuso de cuota LLM |
+
+### 4.2 Seguridad / privacidad (P1)
+
+| # | Hallazgo | Evidencia |
+|---|---|---|
+| 4 | Sin sanitización ni defensa de prompt injection (pregunta literal al LLM) | `asistente/providers/openai.provider.ts:64` |
+| 5 | PII en la pregunta → BD sin dueño y enviada a un tercero | `asistente/asistente.service.ts:19-40` |
+| 6 | KB expone roles/estados/proceso de comités a anónimos (contradice la política del system prompt) | `prisma/seed.ts:1296-1385` |
+| 7 | `API_INTERNAL_URL` inlineado en build → Server Components apuntan al propio web en prod | `apps/web/next.config.js:12-15` |
+| 8 | Sin `middleware.ts` → flash de contenido y URLs privadas en el HTML inicial | ausencia de `middleware.ts` |
+| 9 | Tokens en `localStorage` (vulnerable a XSS); refresh de 7 d también en `localStorage` | `apps/web/src/lib/auth.ts` |
+
+### 4.3 Código muerto / inconsistencias (P2)
+
+| # | Hallazgo | Evidencia |
+|---|---|---|
+| 10 | `RolesGuard` + `@Roles()` registrados globalmente pero sin uso en ningún controller | `common/guards/roles.guard.ts`, `common/decorators/roles.decorator.ts` |
+| 11 | Token `LOGIN_ATTEMPT_SERVICE` declarado pero nunca usado | `auth/login-attempt.service.ts:3` |
+| 12 | `axios` en `package.json` sin uso en `src/` | `apps/web/package.json` |
+| 13 | `ReportesModule` no exporta `ReportesService` | `reportes/reportes.module.ts` |
+| 14 | `SOLICITUD_ESTADO` sin `PENDIENTE_SEGUNDA_APROBACION` (divergencia con FSM y enum Prisma) | `common/constants/estados.ts` vs `solicitudes/solicitud-state-machine.ts` |
+| 15 | `STAFF` en el seed pero ausente de `common/constants/roles.ts` | `prisma/seed.ts` vs `common/constants/roles.ts` |
+| 16 | `asistente_conversacion.usuarioId` sin FK a `usuario` | `prisma/schema.prisma:695` |
+| 17 | Sin endpoint `/health` (el healthcheck consulta `/api/catalogos/generos`) | `docker-compose.prod.yml` |
+| 18 | Capa Repository documentada pero inexistente | `docs/standards/code-conventions.md` |
+| 19 | `RolesGuard` no se usa pero está registrado globalmente | `common/common.module.ts:28` |
+
+### 4.4 Calidad / robustez (P2)
+
+| # | Hallazgo | Evidencia |
+|---|---|---|
+| 20 | `@@` de PostgreSQL ignora booleanos del tsquery → AND estricto, no OR | `asistente/providers/fallback.provider.ts:76-89` |
+| 21 | `tags` seleccionados pero nunca usados para filtrar | `asistente/providers/fallback.provider.ts:81` |
+| 22 | Truncamiento `contenido.split('\n')[0]` pierde contenido multilínea | `asistente/providers/fallback.provider.ts:61-64` |
+| 23 | Sin cache → FTS y tokens duplicados | `asistente/asistente.service.ts` |
+| 24 | Sin transacción ni try/catch en la persistencia del asistente | `asistente/asistente.service.ts:19-40` |
+| 25 | `IsNotEmpty` sin trim → `"   "` pasa validación | `asistente/dto/preguntar.dto.ts` |
+| 26 | `max_tokens` hardcodeado → incompatible con modelos que exigen `max_completion_tokens` | `asistente/providers/openai.provider.ts:43` |
+| 27 | Sin `AbortController` ni timeouts en el frontend | `apps/web/src/lib/api.ts`, `api-auth.ts` |
+| 28 | 401 no expulsa al usuario (no hay redirección a `/login`) | `apps/web/src/lib/api-auth.ts` |
+| 29 | `ConfirmDialog` sin focus trap ni Escape | `apps/web/src/components/ui/ConfirmDialog.tsx` |
+| 30 | `/sounds/notificacion.mp3` no existe → el sonido nunca suena | `apps/web/src/hooks/use-notificaciones-sonido.ts` |
+| 31 | Mojibake en `app/coordinador/page.tsx` | `apps/web/src/app/coordinador/page.tsx` |
+| 32 | Doble implementación del chat IA (lógica duplicada) | `ChatWidget.tsx`, `MiniAsistente.tsx` |
+
+### 4.5 Controles documentados como implementados pero NO implementados
+
+| Control documentado | Realidad | Evidencia |
+|---|---|---|
+| Cifrado AES-256 de CUI y datos financieros | No implementado (datos en claro) | grep `createCipher\|aes-\|encrypt` = 0 |
+| `helmet` (headers de seguridad) | No instalado ni usado | `apps/api/package.json` |
+| `@nestjs/throttler` (100 req/min global + `@Throttle`) | No instalado; solo `LoginAttemptService` en memoria | `apps/api/package.json` |
+| Validación de complejidad de contraseña (mayús/minús/número/símbolo) | Solo `MinLength(8)` | `auth/dto/register.dto.ts` |
+| Límite de 10 MB por archivo | Real: 5 MB en la API (`DOCUMENTO_MAX_BYTES`) | `solicitudes/solicitud-documento.service.ts` |
+| `images.unoptimized` en Next.js | No existe en `next.config.js` | `apps/web/next.config.js` |
+| Repositorios (`*.repository.ts`) | No existe capa Repository | grep `Repository` = 0 |
+| Verificación de correo con Resend | Analizado, no implementado | — |
 
 ---
 

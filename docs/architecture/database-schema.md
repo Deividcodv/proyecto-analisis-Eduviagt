@@ -643,6 +643,16 @@ CREATE INDEX idx_bc_contenido ON asistente_base_conocimiento USING gin(to_tsvect
 
 ---
 
+## Asistente IA — `asistente_base_conocimiento`
+
+33 documentos estáticos sembrados en `prisma/seed.ts` (líneas 1240-1427). Cada uno con `titulo`, `contenido` (texto plano), `tags[]` y `activo`. Índice GIN funcional sobre `to_tsvector('spanish', titulo || ' ' || contenido)` (migración `20260829061028_asistente_tsvector`).
+
+Los `tags` se seleccionan en la query FTS pero **no se usan para filtrar** (deuda técnica).
+
+## Datos de demostración — capa `prisma/semilla/`
+
+La semilla de datos de demostración (51 convocatorias, 1000 solicitudes, 26 becas canónicas, 4 ciclos, 250 postulantes, 30 evaluadores, 50 miembros de comité) vive en `apps/api/prisma/semilla/` (`datos.ts`, `escenarios.ts`, `ciclos.ts`, `verificar.ts`) + `verificar-counts.ts`. Documentación completa en `docs/architecture/datos-demostracion.md`.
+
 ## Roles del sistema
 
 | Rol | Descripción | Permisos clave |

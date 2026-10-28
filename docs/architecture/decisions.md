@@ -464,5 +464,97 @@ Todos los roles tienen enlace a "Mi perfil" y su panel propio. El backend ya lo 
 - Acceso a preferencias de notificaciones para todos los roles.
 
 ---
+---
 
-*Última actualización: Sprint 8 (2026-10-23)*
+## ADR-019 - Asistente IA: recuperacion lexica (FTS) + LLM opcional, sin RAG
+
+**Estado:** Aceptado (implementado)
+**Fecha:** 2026-10-27
+
+### Contexto
+
+El asistente "Eduvi" debe responder preguntas sobre el sistema. Se consideraron RAG con embeddings, Assistant API con function-calling y proveedor Gemini.
+
+### Decision
+
+- No se usa RAG. La recuperacion es lexica con PostgreSQL Full-Text Search (tsvector + websearch_to_tsquery + ts_rank, LIMIT 3, indice GIN funcional) sobre asistente_base_conocimiento (33 documentos curados en el seed).
+- El LLM es opcional (AI_API_KEY): si esta presente se usa un proveedor OpenAI-compatible; si no, solo la KB.
+- Los dos modos son mutuamente excluyentes: el LLM nunca recibe el contexto recuperado y devuelve fuentes: [].
+- El proveedor es intercambiable por la interfaz ProveedorIA (Strategy).
+
+### Alternativas descartadas
+
+- RAG con embeddings: mayor costo y complejidad; el corpus es pequeno y curado (33 docs).
+- pgvector: requiere extension y mantenimiento de embeddings; la FTS de PostgreSQL con diccionario spanish es suficiente.
+- Gemini: no se implemento; solo OpenAI-compatible y fallback.
+
+### Consecuencias
+
+- Cero costo de embeddings; cero infraestructura vectorial.
+- Respuestas deterministas en modo fallback (KB curada).
+- El LLM puede inventar datos de convocatorias/becas (sin grounding) - registrado como deuda P0.
+- fuentes: [] en modo LLM - sin trazabilidad de la respuesta.
+- El acotado por rol/sesion no esta operativo (controller @Public sin @CurrentUser) - registrado como deuda P0.
+- El endpoint es publico sin rate limit - registrado como deuda P0.
+
+---
+
+## ADR-020 - Contrato de respuesta y error transversal
+
+**Estado:** Aceptado (implementado)
+**Fecha:** 2026-10-27
+
+### Decision
+
+- Toda respuesta JSON se envuelve en { data: ... } por TransformInterceptor (global, APP_INTERCEPTOR), respetando headersSent (CSV/PDF).
+- Todo error se normaliza a { statusCode, message, timestamp } por AllExceptionsFilter (global, APP_FILTER).
+- Validacion global con ValidationPipe (whitelist, forbidNonWhitelisted, transform) y exceptionFactory que traduce los mensajes de class-validator a espanol.
+- Autorizacion fail-closed: @Permisos([]) deniega; @Roles() registrado pero sin uso (codigo muerto).
+
+### Consecuencias
+
+- Contrato uniforme para frontend y clientes.
+- El frontend tiene dos capas HTTP (http/httpData vs fetchConToken) con contratos ligeramente distintos - registrado como deuda.
+
+---
+
+## ADR-021 - Despliegue en VM con PM2 (vigente) y Docker Compose (alternativa)
+
+**Estado:** Aceptado
+**Fecha:** 2026-10-27
+
+### Decision
+
+- Vigente: PM2 en VM, desplegado por el job deploy-staging (SSH inline: git reset --hard -> npm ci -> migrate deploy -> build -> copia de assets -> pm2 startOrRestart sigeb-api,sigeb-web).
+- Alternativa/dev: docker-compose.prod.yml (3 servicios: postgres, api, web + volumenes).
+- Variables de entorno en .env raiz (no apps/api/.env).
+- Sin endpoint /health dedicado: el healthcheck consulta GET /api/catalogos/generos.
+
+### Consecuencias
+
+- Un solo camino de deploy para staging; produccion deshabilitada (PRODUCTION_READY).
+- PM2 en una sola instancia: el rate limit en memoria se pierde al reiniciar y no escala horizontalmente.
+- El API_INTERNAL_URL se inlinea en build (Next.js env block) -> los Server Components apuntan al propio web en produccion.
+
+---
+
+## ADR-022 - Rate limiting de login en memoria
+
+**Estado:** Aceptado (con limites conocidos)
+**Fecha:** 2026-10-27
+
+### Decision
+
+- LoginAttemptService con Map<string, Registro> en memoria, clave ip:email, 5 intentos / 15 min.
+- No se usa @nestjs/throttler (no instalado).
+
+### Consecuencias
+
+- Suficiente para una sola instancia.
+- Se pierde al reiniciar PM2.
+- No escala horizontalmente.
+- Sin rate limit en el endpoint del asistente (publico) - registrado como deuda P0.
+
+---
+
+*Ultima actualizacion: 2026-10-27 (post-auditoria de arquitectura)*

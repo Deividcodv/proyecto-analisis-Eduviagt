@@ -1,5 +1,7 @@
 ﻿# Contratos de API — EDUVIAGT
 
+> ⚠️ **Aviso (2026-10-27):** este documento está parcialmente desactualizado. Varias rutas y verbos no coinciden con el código real (p.ej. `PATCH /solicitudes/:id/perfil-academico` es en realidad `PUT`; `POST /solicitudes/:id/documentos` exige `:tipoId`; `GET /solicitudes/mias` no existe; `POST /solicitudes/:id/enviar` no existe; `GET /auth/configuracion` es `/usuarios/me/configuracion`; `GET /evaluaciones/asignadas` es `/evaluaciones/mias`; `POST /comites/:id/sesiones` no existe). **Toda respuesta JSON va envuelta en `{ data: ... }** (`TransformInterceptor`) y todo error es `{ statusCode, message, timestamp }` (`AllExceptionsFilter`). Para el inventario verificado de endpoints, ver `docs/architecture/ARQUITECTURA-REAL.md` §3.
+
 > Especificación de endpoints REST. Todas las rutas bajo `/api`.
 
 ---
@@ -151,7 +153,18 @@ Response 200: mismo shape que `GET /auth/perfil`.
 ## Convocatorias (`/convocatorias`)
 
 ### GET `/convocatorias`
-**Público** (solo abiertas) / `convocatoria:ver` (todas)
+**Público** (abiertas + cerradas por defecto) / `convocatoria:ver` (todas, endpoint `/convocatorias/todas`)
+
+Query params opcionales: `busqueda`, `nivelAcademicoId`, `cobertura`, `beca`, `estado` (`ABIERTA` | `CERRADA`).
+
+Comportamiento por `estado`:
+| `estado` | Resultado |
+|---|---|
+| (omitido) | Abiertas vigentes + cerradas/históricas (incluye ABIERTA con fecha de cierre vencida), **abiertas primero**, luego por `createdAt desc` |
+| `ABIERTA` | Solo abiertas vigentes (fecha de apertura pasada y cierre no vencido) |
+| `CERRADA` | `CERRADA`, `EN_EVALUACION`, `RESUELTA`, `ARCHIVADA` + `ABIERTA` con fecha de cierre vencida |
+
+`convocatoriaAbierta()` (web, `lib/api.ts`) decide el badge: una convocatoria `ABIERTA` con fecha de cierre vencida se muestra como `CERRADA`.
 
 Response 200:
 ```json

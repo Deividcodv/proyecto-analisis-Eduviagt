@@ -12,16 +12,12 @@ apps/api/src/
 │   ├── <modulo>.module.ts
 │   ├── <modulo>.controller.ts
 │   ├── <modulo>.service.ts
-│   ├── <modulo>.repository.ts
-│   ├── <modulo>.repository.interface.ts
 │   ├── dto/
-│   │   ├── create-<entidad>.dto.ts
-│   │   ├── update-<entidad>.dto.ts
-│   │   └── index.ts
-│   ├── entities/
-│   │   └── <entidad>.entity.ts
-│   └── <modulo>.constants.ts
+│   │   └── *.dto.ts
+│   └── <sub-servicios>.service.ts   # p.ej. solicitud-perfil.service.ts
 ```
+
+> No existe capa Repository, ni `entities/`, ni `<modulo>.constants.ts`. Prisma se usa directamente en los servicios. Las constantes viven en `common/constants/` (`estados.ts`, `roles.ts`). Los transversales (`AuthzService`, `AuditService`, `BitacoraService`, `NotificacionesService`) se inyectan directamente.
 
 ### Frontend (Next.js)
 
@@ -88,15 +84,13 @@ apps/web/src/
 
 ### Services
 - Un servicio por módulo
-- Depender de **interfaces** de repositorio, no de Prisma directamente
+- Prisma se usa directamente en los servicios (no hay capa Repository). Abstraer solo cuando hay más de una implementación (storage, pdf, IA).
 - Usar `@Injectable()` y constructor para DI
 - Lógica de negocio pura, sin HTTP
 
 ### Repositories
-- Interfaz en `<modulo>.repository.interface.ts`
-- Implementación en `<modulo>.repository.ts`
-- Usar Prisma para queries, nunca `$queryRawUnsafe`
-- Retornar entidades del dominio, no modelos Prisma directamente
+
+> [NO IMPLEMENTADO] No existe capa Repository en el código. Prisma se usa directamente en los servicios. Esta sección se mantiene como referencia de un patrón propuesto, no como convención vigente.
 
 ### DTOs
 - Usar `class-validator` para validación
