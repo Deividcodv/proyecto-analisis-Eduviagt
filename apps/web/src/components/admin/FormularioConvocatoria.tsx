@@ -191,7 +191,11 @@ export function FormularioConvocatoria({
               r.porcentaje != null ? String(r.porcentaje) : '',
           })),
         );
-        setCampos(conv.formulario ?? []);
+        setCampos(
+          Array.isArray(conv.formulario)
+            ? (conv.formulario as CampoFormulario[])
+            : [],
+        );
         const docs = (conv.documentosRequeridos ?? []).map((d) => ({
           documentoTipoId: d.documentoTipo.id,
           obligatorio: d.obligatorio,

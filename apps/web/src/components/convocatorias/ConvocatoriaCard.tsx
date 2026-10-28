@@ -22,11 +22,15 @@ export function ConvocatoriaCard({
 }) {
   const abierta = convocatoriaAbierta(convocatoria);
   const dias = diasRestantes(convocatoria.fechaCierre);
+  // En el portal público todo lo que no acepta postulaciones se muestra como
+  // cerrado. Así una convocatoria ABIERTA con la fecha vencida, o una ya
+  // RESUELTA, no confunde al visitante con una etiqueta de "abierta".
+  const estadoMostrado = abierta ? convocatoria.estado : 'CERRADA';
 
   return (
     <Card className="flex flex-col">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <Badge estado={convocatoria.estado} />
+        <Badge estado={estadoMostrado} />
         <span className="brut-label font-mono text-xs font-bold uppercase text-brutal-cyan">
           {convocatoria.beca.nombre}
         </span>

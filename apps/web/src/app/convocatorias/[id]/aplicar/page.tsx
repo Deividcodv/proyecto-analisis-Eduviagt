@@ -23,6 +23,7 @@ import {
 } from '@/components/solicitud/steps';
 import {
   ETIQUETA_COBERTURA,
+  convocatoriaAbierta,
   formatearFecha,
   type CampoFormulario,
   type ConvocatoriaDetalle,
@@ -80,13 +81,17 @@ function AplicarConvocatoriaContent() {
         setSolicitudId(mi.id);
         setRespuestas(mi.respuestas ?? null);
         setSnapshot(mi.formularioSnapshot ?? null);
-      } else if (conv.estado === 'ABIERTA') {
+      } else if (convocatoriaAbierta(conv)) {
         const creada = await fetchConToken<{ id: string }>('/solicitudes', {
           method: 'POST',
           body: { convocatoriaId },
         });
         setSolicitudId(creada.id);
-        setSnapshot(conv.formulario ?? null);
+        setSnapshot(
+          Array.isArray(conv.formulario)
+            ? (conv.formulario as CampoFormulario[])
+            : null,
+        );
       } else {
         setError('Esta convocatoria ya no acepta postulaciones.');
       }
@@ -117,7 +122,11 @@ function AplicarConvocatoriaContent() {
     if (solicitudId) void cargarChecklist();
   }, [solicitudId, cargarChecklist]);
 
-  const camposExtra = snapshot ?? convocatoria?.formulario ?? [];
+  const camposExtra = Array.isArray(snapshot)
+    ? snapshot
+    : Array.isArray(convocatoria?.formulario)
+      ? (convocatoria.formulario as CampoFormulario[])
+      : [];
 
   // El orden importa: el paso inicial es 'Convocatoria' y "Tus datos" va
   // justo después. Antes el array empezaba con 'Tus datos' mientras el paso
@@ -217,7 +226,13 @@ function AplicarConvocatoriaContent() {
                   <h2 className="font-brut text-lg font-black uppercase tracking-wide text-brutal-tinta">
                     {convocatoria.nombre}
                   </h2>
-                  <Badge estado={convocatoria.estado} />
+                  <Badge
+                    estado={
+                      convocatoriaAbierta(convocatoria)
+                        ? convocatoria.estado
+                        : 'CERRADA'
+                    }
+                  />
                 </div>
                 <dl className="grid gap-3 font-mono text-sm text-brutal-tinta/80 sm:grid-cols-2">
                   <div>

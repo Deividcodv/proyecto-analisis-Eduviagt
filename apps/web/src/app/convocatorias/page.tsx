@@ -5,6 +5,7 @@ import { FiltrosConvocatorias } from '@/components/convocatorias/FiltrosConvocat
 import { EmptyState } from '@/components/ui/EmptyState';
 import {
   fetcher,
+  convocatoriaAbierta,
   type Convocatoria,
   type ListaResponse,
   type NivelAcademicoResumen,
@@ -34,6 +35,11 @@ export default async function ConvocatoriasPage({ searchParams }: Props) {
   if (busqueda) params.set('busqueda', busqueda);
   if (nivel) params.set('nivelAcademicoId', nivel);
   if (cobertura) params.set('cobertura', cobertura);
+  // El estado se resuelve en el API: una convocatoria ABIERTA con la fecha de
+  // cierre vencida también debe aparecer como cerrada.
+  if (estado === 'ABIERTA' || estado === 'CERRADA') {
+    params.set('estado', estado);
+  }
   const qs = params.toString();
 
   let convocatorias: Convocatoria[] = [];
@@ -59,10 +65,12 @@ export default async function ConvocatoriasPage({ searchParams }: Props) {
     convocatorias = convocatorias.filter((c) => c.beca.nombre === beca);
   }
 
+  // El filtro del API ya hace el corte; se repite en el cliente para que la
+  // vista no dependa de una versión antigua del backend.
   if (estado === 'ABIERTA') {
-    convocatorias = convocatorias.filter((c) => c.estado === 'ABIERTA');
+    convocatorias = convocatorias.filter((c) => convocatoriaAbierta(c));
   } else if (estado === 'CERRADA') {
-    convocatorias = convocatorias.filter((c) => c.estado !== 'ABIERTA');
+    convocatorias = convocatorias.filter((c) => !convocatoriaAbierta(c));
   }
 
   const total = convocatorias.length;

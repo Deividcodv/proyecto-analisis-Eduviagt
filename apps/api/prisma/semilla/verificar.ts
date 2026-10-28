@@ -31,7 +31,7 @@ async function main() {
 
   console.log('📊 CONTEOS GENERALES:');
   console.log(`   Solicitudes: ${totalSolicitudes} (esperado: 1000)`);
-  console.log(`   Convocatorias: ${totalConvocatorias} (esperado: 35)`);
+  console.log(`   Convocatorias: ${totalConvocatorias} (esperado: 51) ${totalConvocatorias === 51 ? '✅' : '❌'}`);
   console.log(`   Usuarios: ${totalUsuarios} (esperado: ~287+)`);
   console.log(`   Evaluaciones: ${totalEvaluaciones} (esperado: ~2400)`);
   console.log(`   Sesiones: ${totalSesiones} (esperado: ~12-20)`);
@@ -89,6 +89,90 @@ async function main() {
   console.log(`   Solicitudes con createdAt > hoy: ${solicitudesFuturas} ${solicitudesFuturas === 0 ? '✅' : '❌'}`);
   console.log(`   Sesiones con fecha > hoy: ${sesionesFuturas} (pueden ser algunas programadas) ${sesionesFuturas <= 10 ? '✅' : '⚠️'}`);
   console.log(`   Evaluaciones con createdAt > hoy: ${evaluacionesFuturas} ${evaluacionesFuturas === 0 ? '✅' : '❌'}`);
+
+  // ==========================================
+  // CONVOCATORIAS: COBERTURA DEL CATÁLOGO
+  // ==========================================
+  const convocatorias = await prisma.convocatoria.findMany({
+    select: {
+      estado: true,
+      fechaApertura: true,
+      fechaCierre: true,
+      formulario: true,
+      cobertura: true,
+      nivelAcademicoId: true,
+      nivelAcademico: { select: { nombre: true } },
+    },
+  });
+
+  const estaAbierta = (conv: {
+    estado: string;
+    fechaApertura: Date | null;
+    fechaCierre: Date | null;
+  }) =>
+    conv.estado === 'ABIERTA' &&
+    (!conv.fechaApertura || conv.fechaApertura <= hoy) &&
+    (!conv.fechaCierre || conv.fechaCierre >= hoy);
+
+  const estaCerrada = (conv: {
+    estado: string;
+    fechaCierre: Date | null;
+  }) =>
+    ['CERRADA', 'EN_EVALUACION', 'RESUELTA', 'ARCHIVADA'].includes(
+      conv.estado,
+    ) ||
+    (conv.estado === 'ABIERTA' &&
+      !!conv.fechaCierre &&
+      conv.fechaCierre < hoy);
+
+  const nivelesEsperados = [
+    'Primaria',
+    'Básico',
+    'Diversificado',
+    'Secundaria',
+    'Técnico',
+    'Universitario',
+    'Posgrado',
+  ];
+
+  const sinNivel = convocatorias.filter((c) => !c.nivelAcademicoId).length;
+  const sinCobertura = convocatorias.filter((c) => !c.cobertura).length;
+  const formulariosInvalidos = convocatorias.filter(
+    (c) => !Array.isArray(c.formulario),
+  ).length;
+  const resueltas = convocatorias.filter((c) => c.estado === 'RESUELTA').length;
+
+  console.log('\n🎓 CONVOCATORIAS POR NIVEL:');
+  console.log(`   Sin nivel académico: ${sinNivel} ${sinNivel === 0 ? '✅' : '❌'}`);
+  console.log(`   Sin cobertura: ${sinCobertura} ${sinCobertura === 0 ? '✅' : '❌'}`);
+  console.log(
+    `   Formularios que no son arreglo: ${formulariosInvalidos} ${formulariosInvalidos === 0 ? '✅' : '❌'}`,
+  );
+  console.log(
+    `   RESUELTA para ciclos: ${resueltas} (esperado: ≥4) ${resueltas >= 4 ? '✅' : '❌'}`,
+  );
+
+  let convocatoriasOk =
+    totalConvocatorias === 51 &&
+    sinNivel === 0 &&
+    sinCobertura === 0 &&
+    formulariosInvalidos === 0 &&
+    resueltas >= 4;
+
+  for (const nombre of nivelesEsperados) {
+    const delNivel = convocatorias.filter(
+      (c) => c.nivelAcademico?.nombre === nombre,
+    );
+    const abiertas = delNivel.filter(estaAbierta).length;
+    const cerradas = delNivel.filter(estaCerrada).length;
+    const ok = abiertas === 5 && cerradas >= 2;
+    if (!ok) convocatoriasOk = false;
+    console.log(
+      `   ${nombre}: ${abiertas} abiertas (esperado: 5), ${cerradas} cerradas (esperado: ≥2) ${ok ? '✅' : '❌'}`,
+    );
+  }
+
+  if (!convocatoriasOk) todosOk = false;
 
   const conMonto = await prisma.solicitud.count({
     where: { montoOtorgable: { not: null } },

@@ -1,4 +1,4 @@
-import { PrismaClient, SolicitudEstado, Rol } from '@prisma/client';
+import { Prisma, PrismaClient, SolicitudEstado, Rol } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -20,8 +20,11 @@ export const DISTRIBUCION_ESTADOS: Record<SolicitudEstado, number> = {
   RECHAZADA: 170,
 };
 
-/** 35 convocatorias: 25 ABIERTAS (5 por nivel) + 10 históricas. */
-export const TOTAL_CONVOCATORIAS = 35;
+/**
+ * 51 convocatorias: 35 ABIERTAS (5 por cada uno de los 7 niveles del
+ * catálogo), 15 cerradas/históricas y 1 BORRADOR base.
+ */
+export const TOTAL_CONVOCATORIAS = 51;
 
 /** 250 postulantes únicos. */
 export const TOTAL_POSTULANTES = 250;
@@ -294,6 +297,58 @@ export const BECAS_POR_NIVEL: Array<{
       { nombre: 'Situación socioeconómica', peso: 0.25 },
     ],
   },
+  // ===== BÁSICO =====
+  {
+    id: '00000000-0000-4000-8000-000000000028',
+    nombre: 'Beca de Apoyo a Estudios Básicos',
+    descripcion: 'Apoyo económico para estudiantes del ciclo básico con necesidad socioeconómica.',
+    nivel: 'BASICO',
+    cobertura: 'PARCIAL',
+    montoBase: 3000,
+    criterios: [
+      { nombre: 'Rendimiento académico', peso: 0.55 },
+      { nombre: 'Situación socioeconómica', peso: 0.45 },
+    ],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000029',
+    nombre: 'Beca de Excelencia en Básico',
+    descripcion: 'Beca completa para estudiantes del ciclo básico con alto rendimiento académico.',
+    nivel: 'BASICO',
+    cobertura: 'COMPLETA',
+    montoBase: 4000,
+    criterios: [
+      { nombre: 'Rendimiento académico', peso: 0.65 },
+      { nombre: 'Situación socioeconómica', peso: 0.35 },
+    ],
+  },
+  // ===== POSGRADO =====
+  {
+    id: '00000000-0000-4000-8000-000000000030',
+    nombre: 'Beca de Investigación de Posgrado',
+    descripcion: 'Apoyo para estudiantes de posgrado que desarrollan proyectos de investigación aplicada.',
+    nivel: 'POSGRADO',
+    cobertura: 'COMPLETA',
+    montoBase: 18000,
+    criterios: [
+      { nombre: 'Calidad de la investigación', peso: 0.5 },
+      { nombre: 'Rendimiento académico', peso: 0.3 },
+      { nombre: 'Situación socioeconómica', peso: 0.2 },
+    ],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000031',
+    nombre: 'Beca de Excelencia en Posgrado',
+    descripcion: 'Beca parcial para profesionales que cursan un posgrado con alto rendimiento.',
+    nivel: 'POSGRADO',
+    cobertura: 'PARCIAL',
+    montoBase: 12000,
+    criterios: [
+      { nombre: 'Rendimiento académico', peso: 0.55 },
+      { nombre: 'Trayectoria profesional', peso: 0.25 },
+      { nombre: 'Situación socioeconómica', peso: 0.2 },
+    ],
+  },
 ];
 
 // ==========================================
@@ -547,21 +602,50 @@ export async function crearRolesEspeciales(
 // CONVOCATORIAS POR NIVEL
 // ==========================================
 
+/** Niveles del catálogo y el nombre que usa la semilla en `BECAS_POR_NIVEL`. */
+const NIVELES_CATALOGO = [
+  { semilla: 'PRIMARIA', nombre: 'Primaria' },
+  { semilla: 'BASICO', nombre: 'Básico' },
+  { semilla: 'DIVERSIFICADO', nombre: 'Diversificado' },
+  { semilla: 'SECUNDARIA', nombre: 'Secundaria' },
+  { semilla: 'TECNICO', nombre: 'Técnico' },
+  { semilla: 'UNIVERSIDAD', nombre: 'Universitario' },
+  { semilla: 'POSGRADO', nombre: 'Posgrado' },
+] as const;
+
+const ABIERTAS_POR_NIVEL = 5;
+const CERRADAS_POR_NIVEL = 2;
+
+/** Segunda convocatoria cerrada de cada nivel. Cuatro quedan RESUELTA para los ciclos. */
+const SEGUNDO_ESTADO_POR_NIVEL: Record<
+  string,
+  { estado: 'CERRADA' | 'EN_EVALUACION' | 'RESUELTA' | 'ABIERTA'; apertura: number; cierre: number }
+> = {
+  Primaria: { estado: 'RESUELTA', apertura: -240, cierre: -150 },
+  Básico: { estado: 'RESUELTA', apertura: -240, cierre: -150 },
+  Diversificado: { estado: 'RESUELTA', apertura: -240, cierre: -150 },
+  Secundaria: { estado: 'RESUELTA', apertura: -240, cierre: -150 },
+  Técnico: { estado: 'EN_EVALUACION', apertura: -150, cierre: -60 },
+  Universitario: { estado: 'EN_EVALUACION', apertura: -150, cierre: -60 },
+  Posgrado: { estado: 'ABIERTA', apertura: -90, cierre: -30 },
+};
+
 export async function asegurarConvocatorias(total: number) {
-  const existentes = await prisma.convocatoria.findMany({ orderBy: { createdAt: 'asc' } });
+  const hoy = new Date();
+  const existentes = await prisma.convocatoria.findMany({
+    orderBy: { createdAt: 'asc' },
+    include: { nivelAcademico: true },
+  });
   const convocatorias = [...existentes];
   const nuevasIds: string[] = [];
+  let becasCreadas = 0;
 
-  const becas = await prisma.beca.findMany({ where: { activa: true } });
-
-  // Crear becas que falten (de cualquier nivel)
+  // 1. Crear/actualizar las 23 becas canónicas y sus criterios.
   for (const beca of BECAS_POR_NIVEL) {
     const existe = await prisma.beca.findUnique({ where: { id: beca.id } });
     if (!existe) {
-      await prisma.beca.upsert({
-        where: { id: beca.id },
-        update: { nombre: beca.nombre, descripcion: beca.descripcion, activa: true },
-        create: {
+      await prisma.beca.create({
+        data: {
           id: beca.id,
           nombre: beca.nombre,
           descripcion: beca.descripcion,
@@ -569,7 +653,6 @@ export async function asegurarConvocatorias(total: number) {
         },
       });
 
-      await prisma.criterioEvaluacion.deleteMany({ where: { becaId: beca.id } });
       for (const criterio of beca.criterios) {
         await prisma.criterioEvaluacion.create({
           data: {
@@ -580,76 +663,116 @@ export async function asegurarConvocatorias(total: number) {
           },
         });
       }
+      becasCreadas++;
+    } else if (!existe.activa) {
+      await prisma.beca.update({
+        where: { id: beca.id },
+        data: { activa: true },
+      });
     }
   }
 
-  const becasActualizadas = await prisma.beca.findMany({ where: { activa: true } });
-  console.log(`✅ ${becasActualizadas.length} becas activas (${becasActualizadas.length - becas.length} nuevas)`);
+  // Las becas que no pertenecen al catálogo canónico son datos legacy de
+  // versiones anteriores de la demo. Se desactivan para no ofrecerlas en el
+  // portal ni en el formulario de convocatorias nuevas.
+  const idsCanonicos = [
+    // Becas base que usa `prisma/seed.ts` en las convocatorias iniciales.
+    '00000000-0000-4000-8000-000000000001',
+    '00000000-0000-4000-8000-000000000002',
+    '00000000-0000-4000-8000-000000000003',
+    ...BECAS_POR_NIVEL.map((beca) => beca.id),
+  ];
+  await prisma.beca.updateMany({
+    where: { id: { notIn: idsCanonicos } },
+    data: { activa: false },
+  });
 
-  const hoy = new Date();
-  const ciclos = 4;
-  const duracionCicloDias = 90;
-  const brechaDias = 30;
+  const becasActualizadas = await prisma.beca.findMany({
+    where: { id: { in: idsCanonicos }, activa: true },
+  });
+  console.log(
+    `✅ ${becasActualizadas.length} becas canónicas activas (${becasCreadas} nuevas)`,
+  );
 
-  // Rastrear ABIERTAS por nivel
-  const abiertasPorNivel: Record<string, number> = {};
+  // 2. Índice de becas canónicas por nombre de nivel del catálogo.
+  type DefinicionBeca = (typeof BECAS_POR_NIVEL)[number];
+  const becasPorNivel = new Map<string, DefinicionBeca[]>();
+  for (const definicion of BECAS_POR_NIVEL) {
+    const nivel = NIVELES_CATALOGO.find((n) => n.semilla === definicion.nivel);
+    if (!nivel) continue;
+    const lista = becasPorNivel.get(nivel.nombre) ?? [];
+    lista.push(definicion);
+    becasPorNivel.set(nivel.nombre, lista);
+  }
 
-  for (let c = existentes.length; c < total; c++) {
-    const cicloIdx = c % ciclos;
-    const inicioCiclo = new Date(hoy);
-    inicioCiclo.setDate(hoy.getDate() - (ciclos - 1 - cicloIdx) * (duracionCicloDias + brechaDias) - duracionCicloDias / 2);
+  const nivelesDb = await prisma.nivelAcademico.findMany();
+  const nivelPorNombre = new Map(
+    nivelesDb.map((nivel) => [nivel.nombre, nivel]),
+  );
 
-    const fechaInicio = new Date(inicioCiclo);
-    fechaInicio.setDate(fechaInicio.getDate() - 30);
-    const fechaCierre = new Date(fechaInicio);
-    fechaCierre.setDate(fechaCierre.getDate() + 45);
+  const estaAbierta = (conv: {
+    estado: string;
+    fechaApertura: Date | null;
+    fechaCierre: Date | null;
+  }) =>
+    conv.estado === 'ABIERTA' &&
+    (!conv.fechaApertura || conv.fechaApertura <= hoy) &&
+    (!conv.fechaCierre || conv.fechaCierre >= hoy);
 
-    const becaIdx = c % becasActualizadas.length;
-    const beca = becasActualizadas[becaIdx];
-    const esUniv = beca.nombre.includes('Excelencia') || beca.nombre.includes('Permanencia') || beca.nombre.includes('Investigación');
-    const montoBase = esUniv ? 12000 : (beca.nombre.includes('Primaria') ? 2000 : beca.nombre.includes('Técnica') || beca.nombre.includes('Tecnico') ? 5000 : 6000);
+  const estaCerrada = (conv: {
+    estado: string;
+    fechaCierre: Date | null;
+  }) =>
+    ['CERRADA', 'EN_EVALUACION', 'RESUELTA', 'ARCHIVADA'].includes(
+      conv.estado,
+    ) ||
+    (conv.estado === 'ABIERTA' &&
+      !!conv.fechaCierre &&
+      conv.fechaCierre < hoy);
 
-    // Determinar nivel académico a partir del nombre de la beca
-    let nivel = 'UNIVERSIDAD';
-    if (beca.nombre.includes('Primaria') || beca.nombre.includes('Matemáticas')) nivel = 'PRIMARIA';
-    else if (beca.nombre.includes('Secundaria') || beca.nombre.includes('Ciencias') || beca.nombre.includes('Deportiva') || beca.nombre.includes('Ambiental')) nivel = 'SECUNDARIA';
-    else if (beca.nombre.includes('Diversificado') || beca.nombre.includes('Continuidad') || beca.nombre.includes('Arte') || beca.nombre.includes('Emprendimiento')) nivel = 'DIVERSIFICADO';
-    else if (beca.nombre.includes('Técnica') || beca.nombre.includes('Tecnico') || beca.nombre.includes('Innovación')) nivel = 'TECNICO';
-    if (!abiertasPorNivel[nivel]) abiertasPorNivel[nivel] = 0;
-
-    let estado = 'EN_EVALUACION';
-    if (c === total - 1) estado = 'ARCHIVADA';
-    else if (c < 3) estado = 'RESUELTA';
-    else if (abiertasPorNivel[nivel] < 5) {
-      estado = 'ABIERTA';
-      abiertasPorNivel[nivel]++;
+  const abiertasPorNivel = new Map<string, number>();
+  const cerradasPorNivel = new Map<string, number>();
+  for (const conv of existentes) {
+    const nivel = conv.nivelAcademico?.nombre;
+    if (!nivel) continue;
+    if (estaAbierta(conv)) {
+      abiertasPorNivel.set(nivel, (abiertasPorNivel.get(nivel) ?? 0) + 1);
     }
-
-    // Para las ABIERTAS, usar fechas actuales (abierta hace 10 días, cierra en 30)
-    let fechaAperturaFinal = fechaInicio;
-    let fechaCierreFinal = fechaCierre;
-    if (estado === 'ABIERTA') {
-      fechaAperturaFinal = new Date(hoy);
-      fechaAperturaFinal.setDate(hoy.getDate() - 10);
-      fechaAperturaFinal.setHours(0, 0, 0, 0);
-      fechaCierreFinal = new Date(hoy);
-      fechaCierreFinal.setDate(hoy.getDate() + 30);
-      fechaCierreFinal.setHours(0, 0, 0, 0);
+    if (estaCerrada(conv)) {
+      cerradasPorNivel.set(nivel, (cerradasPorNivel.get(nivel) ?? 0) + 1);
     }
+  }
+
+  // 3. Crear convocatorias. El correlativo mantiene nombres únicos dentro de
+  // la demo y evita que dos niveles compartan el mismo "Ciclo N".
+  let correlativo = existentes.length;
+
+  const crearConvocatoria = async (params: {
+    beca: DefinicionBeca;
+    nivelNombre: string;
+    estado: 'ABIERTA' | 'CERRADA' | 'EN_EVALUACION' | 'RESUELTA' | 'ARCHIVADA';
+    aperturaDias: number;
+    cierreDias: number;
+    anio: number;
+  }) => {
+    correlativo += 1;
+    const montoBase = params.beca.montoBase;
 
     const convocatoria = await prisma.convocatoria.create({
       data: {
-        nombre: `${beca.nombre} - Ciclo ${cicloIdx + 1} 202${cicloIdx === 3 ? '5' : '6'}`,
-        descripcion: `Convocatoria del ciclo ${cicloIdx + 1} para ${beca.nombre.toLowerCase()}.`,
-        becaId: beca.id,
-        estado: estado as any,
-        fechaApertura: fechaAperturaFinal,
-        fechaCierre: fechaCierreFinal,
+        nombre: `${params.beca.nombre} - Ciclo ${correlativo} ${params.anio}`,
+        descripcion: `Convocatoria del ciclo ${correlativo} para ${params.beca.nombre.toLowerCase()}.`,
+        becaId: params.beca.id,
+        nivelAcademicoId: nivelPorNombre.get(params.nivelNombre)?.id ?? null,
+        cobertura: params.beca.cobertura,
+        estado: params.estado,
+        fechaApertura: fechaRelativa(params.aperturaDias),
+        fechaCierre: fechaRelativa(params.cierreDias),
         montoBase,
         moneda: 'GTQ',
         permiteParcial: true,
         usarReglasMonto: true,
-        formulario: JSON.stringify([]),
+        formulario: [] as Prisma.InputJsonValue,
         reglasMonto: {
           create: [
             {
@@ -690,7 +813,7 @@ export async function asegurarConvocatorias(total: number) {
           ],
         },
       },
-      include: { reglasMonto: true },
+      include: { reglasMonto: true, nivelAcademico: true },
     });
 
     nuevasIds.push(convocatoria.id);
@@ -707,9 +830,105 @@ export async function asegurarConvocatorias(total: number) {
     }
 
     convocatorias.push(convocatoria);
+    return convocatoria;
+  };
+
+  for (const nivel of NIVELES_CATALOGO) {
+    const becasNivel = becasPorNivel.get(nivel.nombre) ?? [];
+    if (becasNivel.length === 0) {
+      throw new Error(`No hay becas canónicas para el nivel ${nivel.nombre}`);
+    }
+    if (!nivelPorNombre.has(nivel.nombre)) {
+      throw new Error(`No existe el nivel académico ${nivel.nombre}`);
+    }
+
+    // 5 abiertas por nivel, contando las que ya existan de la semilla base.
+    const abiertasActuales = abiertasPorNivel.get(nivel.nombre) ?? 0;
+    const faltanAbiertas = Math.max(0, ABIERTAS_POR_NIVEL - abiertasActuales);
+    for (let i = 0; i < faltanAbiertas; i++) {
+      const beca = becasNivel[(abiertasActuales + i) % becasNivel.length];
+      await crearConvocatoria({
+        beca,
+        nivelNombre: nivel.nombre,
+        estado: 'ABIERTA',
+        aperturaDias: -10,
+        cierreDias: 30,
+        anio: 2026,
+      });
+    }
+
+    // 2 cerradas por nivel: una CERRADA y otra histórica (RESUELTA,
+    // EN_EVALUACION o ABIERTA vencida).
+    const cerradasActuales = cerradasPorNivel.get(nivel.nombre) ?? 0;
+    const faltanCerradas = Math.max(0, CERRADAS_POR_NIVEL - cerradasActuales);
+    for (let i = 0; i < faltanCerradas; i++) {
+      const beca = becasNivel[i % becasNivel.length];
+      if (i === 0) {
+        await crearConvocatoria({
+          beca,
+          nivelNombre: nivel.nombre,
+          estado: 'CERRADA',
+          aperturaDias: -60,
+          cierreDias: -10,
+          anio: 2025,
+        });
+      } else {
+        const segundo = SEGUNDO_ESTADO_POR_NIVEL[nivel.nombre] ?? {
+          estado: 'CERRADA' as const,
+          apertura: -60,
+          cierre: -10,
+        };
+        await crearConvocatoria({
+          beca: becasNivel[(i + 1) % becasNivel.length],
+          nivelNombre: nivel.nombre,
+          estado: segundo.estado,
+          aperturaDias: segundo.apertura,
+          cierreDias: segundo.cierre,
+          anio: 2025,
+        });
+      }
+    }
   }
 
-  console.log(`✅ ${convocatorias.length} convocatorias aseguradas (${nuevasIds.length} nuevas)`);
+  // 4. Una convocatoria ARCHIVADA global para el histórico del portal.
+  const becaArchivada = becasPorNivel.get('Universitario')?.[0];
+  if (becaArchivada) {
+    await crearConvocatoria({
+      beca: becaArchivada,
+      nivelNombre: 'Universitario',
+      estado: 'ARCHIVADA',
+      aperturaDias: -360,
+      cierreDias: -300,
+      anio: 2024,
+    });
+  }
+
+  // 5. Garantizar al menos 4 convocatorias RESUELTA para los ciclos de
+  // escenarios. En una semilla limpia ya se crearon exactamente 4.
+  const resueltas = convocatorias.filter((conv) => conv.estado === 'RESUELTA');
+  if (resueltas.length < 4) {
+    for (let i = resueltas.length; i < 4; i++) {
+      const nivel = NIVELES_CATALOGO[i % NIVELES_CATALOGO.length];
+      const beca = becasPorNivel.get(nivel.nombre)?.[0];
+      if (!beca) continue;
+      await crearConvocatoria({
+        beca,
+        nivelNombre: nivel.nombre,
+        estado: 'RESUELTA',
+        aperturaDias: -240,
+        cierreDias: -150,
+        anio: 2025,
+      });
+    }
+  }
+
+  const aviso =
+    convocatorias.length === total
+      ? ''
+      : ` (se esperaban ${total})`;
+  console.log(
+    `✅ ${convocatorias.length} convocatorias aseguradas${aviso} (${nuevasIds.length} nuevas)`,
+  );
   return { convocatorias, nuevasIds };
 }
 

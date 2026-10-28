@@ -8,6 +8,7 @@ import { traducirError } from '@/lib/mensajes-error';
 import {
   fetcher,
   formatearFecha,
+  convocatoriaAbierta,
   type Convocatoria,
   type ListaResponse,
   type Solicitud,
@@ -120,7 +121,7 @@ export function HogarPostulante() {
         if (activo) setCargandoSolicitudes(false);
       });
 
-    fetcher<ListaResponse<Convocatoria>>('/convocatorias')
+    fetcher<ListaResponse<Convocatoria>>('/convocatorias?estado=ABIERTA')
       .then((res) => {
         if (activo) setConvocatorias(res.data ?? []);
       })
@@ -134,7 +135,7 @@ export function HogarPostulante() {
   }, []);
 
   const abiertas = useMemo(
-    () => (convocatorias ?? []).filter((c) => c.estado === 'ABIERTA').slice(0, 3),
+    () => (convocatorias ?? []).filter((c) => convocatoriaAbierta(c)).slice(0, 3),
     [convocatorias],
   );
 

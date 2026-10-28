@@ -100,7 +100,7 @@ export interface CriterioEvaluacion {
 
 export interface ConvocatoriaDetalle extends Convocatoria {
   documentosRequeridos: ConvocatoriaDocRequerido[];
-  formulario?: CampoFormulario[] | null;
+  formulario?: CampoFormulario[] | string | null;
   reglasMonto?: ConvocatoriaReglaMonto[];
   beca: Beca & { criteriosEvaluacion: CriterioEvaluacion[] };
 }

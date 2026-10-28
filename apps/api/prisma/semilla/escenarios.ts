@@ -115,18 +115,27 @@ export async function generarEscenarios() {
   const miembros = await crearMiembrosComite(TOTAL_MIEMBROS_COMITE, rolMiembro);
   const { coord, jefe, dir } = await crearRolesEspeciales(rolCoordinador, rolJefeBecas, rolAdmin);
 
-  // 3. Asegurar 11 convocatorias
-  const { convocatorias, nuevasIds } = await asegurarConvocatorias(TOTAL_CONVOCATORIAS);
+  // 3. Asegurar 5 convocatorias abiertas por nivel + histórico
+  const { convocatorias } = await asegurarConvocatorias(TOTAL_CONVOCATORIAS);
 
-  // 4. Generar 4 ciclos y sincronizar SOLO las nuevas convocatorias NO ABIERTAS
-  const ciclos = generarCiclos(nuevasIds);
-  for (let i = 0; i < ciclos.length; i++) {
-    const conv = convocatorias.find(c => c.id === ciclos[i].convocatoriaId);
-    if (conv && conv.estado !== 'ABIERTA') {
-      await sincronizarConvocatoriaConCiclo(ciclos[i].convocatoriaId, ciclos[i]);
-    }
+  // 4. Los ciclos históricos se asocian a convocatorias RESUELTA (nunca a una
+  // convocatoria abierta, que recibiría solicitudes de ciclos ya cerrados).
+  const convocatoriasResueltas = convocatorias
+    .filter((conv) => conv.estado === 'RESUELTA')
+    .slice(0, 4);
+  if (convocatoriasResueltas.length < 4) {
+    throw new Error(
+      `Se necesitan 4 convocatorias RESUELTA para los ciclos y solo hay ${convocatoriasResueltas.length}`,
+    );
   }
-  console.log('✅ 4 ciclos generados y convocatorias nuevas sincronizadas (ABIERTAS mantienen fechas actuales)');
+
+  const ciclos = generarCiclos(
+    convocatoriasResueltas.map((conv) => conv.id),
+  );
+  for (const ciclo of ciclos) {
+    await sincronizarConvocatoriaConCiclo(ciclo.convocatoriaId, ciclo);
+  }
+  console.log('✅ 4 ciclos generados y sincronizados con convocatorias RESUELTA');
 
   // 5. Distribuir 1000 solicitudes en los 4 ciclos
   const distribucionCiclos = distribuirEnCiclos(TOTAL_SOLICITUDES, ciclos);
@@ -215,9 +224,10 @@ export async function generarEscenarios() {
     const ciclo = ciclos[c];
     const numSolicitudes = distribucionCiclos[c];
 
-    // Seleccionar convocatoria para este ciclo (rotar entre las 11)
-    const convocatoriaIdx = c % convocatorias.length;
-    const convocatoria = convocatorias[convocatoriaIdx];
+    // Cada solicitud pertenece a la convocatoria RESUELTA de su ciclo.
+    const convocatoria =
+      convocatorias.find((conv) => conv.id === ciclo.convocatoriaId) ??
+      convocatorias[c % convocatorias.length];
 
     // Seleccionar postulantes para este ciclo
     const postulantesCiclo = barajar(postulantes).slice(0, numSolicitudes);
