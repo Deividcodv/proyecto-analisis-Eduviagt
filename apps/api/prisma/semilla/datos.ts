@@ -20,8 +20,8 @@ export const DISTRIBUCION_ESTADOS: Record<SolicitudEstado, number> = {
   RECHAZADA: 170,
 };
 
-/** 19 convocatorias para distintos niveles académicos (11 base + 8 nuevas becas). */
-export const TOTAL_CONVOCATORIAS = 19;
+/** 35 convocatorias: 25 ABIERTAS (5 por nivel) + 10 históricas. */
+export const TOTAL_CONVOCATORIAS = 35;
 
 /** 250 postulantes únicos. */
 export const TOTAL_POSTULANTES = 250;
@@ -591,6 +591,9 @@ export async function asegurarConvocatorias(total: number) {
   const duracionCicloDias = 90;
   const brechaDias = 30;
 
+  // Rastrear ABIERTAS por nivel
+  const abiertasPorNivel: Record<string, number> = {};
+
   for (let c = existentes.length; c < total; c++) {
     const cicloIdx = c % ciclos;
     const inicioCiclo = new Date(hoy);
@@ -606,17 +609,26 @@ export async function asegurarConvocatorias(total: number) {
     const esUniv = beca.nombre.includes('Excelencia') || beca.nombre.includes('Permanencia') || beca.nombre.includes('Investigación');
     const montoBase = esUniv ? 12000 : (beca.nombre.includes('Primaria') ? 2000 : beca.nombre.includes('Técnica') || beca.nombre.includes('Tecnico') ? 5000 : 6000);
 
-    // Determinar estado: 5 convocatorias ABIERTAS con fechas actuales
+    // Determinar nivel académico a partir del nombre de la beca
+    let nivel = 'UNIVERSIDAD';
+    if (beca.nombre.includes('Primaria') || beca.nombre.includes('Matemáticas')) nivel = 'PRIMARIA';
+    else if (beca.nombre.includes('Secundaria') || beca.nombre.includes('Ciencias') || beca.nombre.includes('Deportiva') || beca.nombre.includes('Ambiental')) nivel = 'SECUNDARIA';
+    else if (beca.nombre.includes('Diversificado') || beca.nombre.includes('Continuidad') || beca.nombre.includes('Arte') || beca.nombre.includes('Emprendimiento')) nivel = 'DIVERSIFICADO';
+    else if (beca.nombre.includes('Técnica') || beca.nombre.includes('Tecnico') || beca.nombre.includes('Innovación')) nivel = 'TECNICO';
+    if (!abiertasPorNivel[nivel]) abiertasPorNivel[nivel] = 0;
+
     let estado = 'EN_EVALUACION';
     if (c === total - 1) estado = 'ARCHIVADA';
-    else if (c < 2) estado = 'RESUELTA';
-    else if (c >= 2 && c <= 6) estado = 'ABIERTA';
+    else if (c < 3) estado = 'RESUELTA';
+    else if (abiertasPorNivel[nivel] < 5) {
+      estado = 'ABIERTA';
+      abiertasPorNivel[nivel]++;
+    }
 
     // Para las ABIERTAS, usar fechas actuales (abierta hace 10 días, cierra en 30)
     let fechaAperturaFinal = fechaInicio;
     let fechaCierreFinal = fechaCierre;
     if (estado === 'ABIERTA') {
-      const hoy = new Date();
       fechaAperturaFinal = new Date(hoy);
       fechaAperturaFinal.setDate(hoy.getDate() - 10);
       fechaAperturaFinal.setHours(0, 0, 0, 0);
