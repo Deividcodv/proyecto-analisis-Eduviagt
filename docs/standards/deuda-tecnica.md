@@ -140,6 +140,47 @@ HTTPS. Es el punto de mayor riesgo abierto del proyecto.
 
 ---
 
+## 4. Hallazgos adicionales (2026-10-28)
+
+### 4.1 Colisión de IDs en `BECAS_POR_NIVEL`
+
+Dos becas de `BECAS_POR_NIVEL` (`datos.ts`) reutilizan los IDs `...001` y `...002` de las becas base de `seed.ts` ("Beca de Excelencia Académica" y "Beca de Permanencia Universitaria"). El `upsert` por ID las sobrescribe → **24 activas, no 26**.
+
+- **Evidencia:** `apps/api/prisma/semilla/datos.ts` (BECAS_POR_NIVEL) vs `apps/api/prisma/seed.ts` (BECAS, líneas 293-324)
+- **Severidad:** P2
+- **Impacto:** las becas base se sobrescriben silenciosamente; el catálogo de becas del admin muestra la versión de `BECAS_POR_NIVEL`
+- **Fix:** asignar IDs únicos (`...040`, `...041`) a las 2 becas colisionantes
+
+### 4.2 A11y: desborde horizontal en `/convocatorias` (375px)
+
+El `<Select>` de "Tipo de beca" renderizaba nativo con el texto de la opción más larga, provocando `scrollWidth - clientWidth = 4` en móvil. Fix aplicado: `max-w-full` en `Select.tsx`.
+
+- **Evidencia:** `apps/web/src/components/ui/Select.tsx`
+- **Severidad:** P1 (bloqueaba CI)
+- **Estado:** ✅ Resuelto (commit `496c296`)
+
+### 4.3 FSM↔UI: 8 transiciones huérfanas
+
+`iniciar_revision`, `rechazar` (2ª instancia), `reabrir` (CERRADA/ARCHIVADA), `archivar` (BORRADOR/ABIERTA/EN_EVALUACION), `ENVIADA` ausente del filtro del panel. Detalle en `docs/architecture/ARQUITECTURA-REAL.md` y el plan.
+
+- **Severidad:** P0 (bloqueaba el flujo de revisión)
+- **Estado:** ✅ Resuelto en `6e4fa1e` (botón "Iniciar revisión" + filtro ENVIADA)
+
+### 4.4 Autorización asimétrica de `JEFE_BECAS`
+
+`POST /solicitudes/:id/transicion` (aprobar) funciona para JEFE_BECAS, pero `GET /solicitudes` filtra por `esAdmin ? {} : { usuarioId }` → **puede aprobar lo que no puede ver.**
+
+- **Evidencia:** `apps/api/src/solicitudes/solicitudes.service.ts:118,151`
+- **Severidad:** P0
+- **Estado:** ✅ Resuelto en `5239e93` (`esPersonal` en lugar de `esAdmin`)
+
+### 4.5 Comités y sesiones incoherentes
+
+16 sesiones todas `FINALIZADA`, 15 con 0 votos y 0 decisiones. 3598 votos y 600 decisiones concentrados en 1 sola sesión. 2 comités para 24 becas y 51 convocatorias.
+
+- **Severidad:** P1
+- **Estado:** ✅ Resuelto en `050ec68` (sesiones por ciclo, estado coherente, votos/decisiones asociados)
+
 ## 4. Estado de la réplica (completada en Sprint 8)
 
 La réplica de `EDUVIAGT-prod` en `proyecto-analisis-Eduviagt` se completó en Sprint 8. El repositorio
