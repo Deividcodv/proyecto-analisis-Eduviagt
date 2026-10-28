@@ -20,8 +20,8 @@ export const DISTRIBUCION_ESTADOS: Record<SolicitudEstado, number> = {
   RECHAZADA: 170,
 };
 
-/** 11 convocatorias para distintos niveles académicos. */
-export const TOTAL_CONVOCATORIAS = 11;
+/** 19 convocatorias para distintos niveles académicos (11 base + 8 nuevas becas). */
+export const TOTAL_CONVOCATORIAS = 19;
 
 /** 250 postulantes únicos. */
 export const TOTAL_POSTULANTES = 250;
@@ -187,6 +187,111 @@ export const BECAS_POR_NIVEL: Array<{
       { nombre: 'Calidad del proyecto', peso: 0.4 },
       { nombre: 'Rendimiento académico', peso: 0.3 },
       { nombre: 'Situación socioeconómica', peso: 0.3 },
+    ],
+  },
+  // ===== NUEVAS BECAS =====
+  {
+    id: '00000000-0000-4000-8000-000000000020',
+    nombre: 'Beca de Arte y Cultura',
+    descripcion: 'Apoyo para estudiantes destacados en artes visuales, música, teatro y danza.',
+    nivel: 'DIVERSIFICADO',
+    cobertura: 'PARCIAL',
+    montoBase: 4000,
+    criterios: [
+      { nombre: 'Talento artístico', peso: 0.5 },
+      { nombre: 'Situación socioeconómica', peso: 0.3 },
+      { nombre: 'Participación cultural', peso: 0.2 },
+    ],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000021',
+    nombre: 'Beca Deportiva',
+    descripcion: 'Apoyo para estudiantes-atletas con alto rendimiento deportivo y académico.',
+    nivel: 'SECUNDARIA',
+    cobertura: 'COMPLETA',
+    montoBase: 5000,
+    criterios: [
+      { nombre: 'Rendimiento deportivo', peso: 0.5 },
+      { nombre: 'Rendimiento académico', peso: 0.3 },
+      { nombre: 'Situación socioeconómica', peso: 0.2 },
+    ],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000022',
+    nombre: 'Beca de Liderazgo Comunitario',
+    descripcion: 'Apoyo para estudiantes que lideran proyectos comunitarios y sociales.',
+    nivel: 'UNIVERSIDAD',
+    cobertura: 'PARCIAL',
+    montoBase: 8000,
+    criterios: [
+      { nombre: 'Liderazgo comunitario', peso: 0.4 },
+      { nombre: 'Rendimiento académico', peso: 0.3 },
+      { nombre: 'Situación socioeconómica', peso: 0.3 },
+    ],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000023',
+    nombre: 'Beca de Innovación Tecnológica',
+    descripcion: 'Apoyo para estudiantes que desarrollan soluciones tecnológicas innovadoras.',
+    nivel: 'TECNICO',
+    cobertura: 'COMPLETA',
+    montoBase: 9000,
+    criterios: [
+      { nombre: 'Innovación tecnológica', peso: 0.5 },
+      { nombre: 'Rendimiento académico', peso: 0.3 },
+      { nombre: 'Situación socioeconómica', peso: 0.2 },
+    ],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000024',
+    nombre: 'Beca de Inclusión Educativa',
+    descripcion: 'Apoyo para estudiantes con discapacidad o en situación de vulnerabilidad.',
+    nivel: 'PRIMARIA',
+    cobertura: 'COMPLETA',
+    montoBase: 3500,
+    criterios: [
+      { nombre: 'Necesidad socioeconómica', peso: 0.5 },
+      { nombre: 'Rendimiento académico', peso: 0.3 },
+      { nombre: 'Situación de vulnerabilidad', peso: 0.2 },
+    ],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000025',
+    nombre: 'Beca de Emprendimiento',
+    descripcion: 'Apoyo para estudiantes que desarrollan proyectos de emprendimiento.',
+    nivel: 'DIVERSIFICADO',
+    cobertura: 'PARCIAL',
+    montoBase: 5500,
+    criterios: [
+      { nombre: 'Proyecto de emprendimiento', peso: 0.45 },
+      { nombre: 'Rendimiento académico', peso: 0.3 },
+      { nombre: 'Situación socioeconómica', peso: 0.25 },
+    ],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000026',
+    nombre: 'Beca de Educación Ambiental',
+    descripcion: 'Apoyo para estudiantes que desarrollan proyectos de conservación ambiental.',
+    nivel: 'SECUNDARIA',
+    cobertura: 'PARCIAL',
+    montoBase: 4500,
+    criterios: [
+      { nombre: 'Proyecto ambiental', peso: 0.4 },
+      { nombre: 'Rendimiento académico', peso: 0.35 },
+      { nombre: 'Situación socioeconómica', peso: 0.25 },
+    ],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000027',
+    nombre: 'Beca de Salud Comunitaria',
+    descripcion: 'Apoyo para estudiantes de carreras de salud que sirven en comunidades rurales.',
+    nivel: 'UNIVERSIDAD',
+    cobertura: 'COMPLETA',
+    montoBase: 10000,
+    criterios: [
+      { nombre: 'Compromiso comunitario', peso: 0.4 },
+      { nombre: 'Rendimiento académico', peso: 0.35 },
+      { nombre: 'Situación socioeconómica', peso: 0.25 },
     ],
   },
 ];

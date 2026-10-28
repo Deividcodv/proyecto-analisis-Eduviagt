@@ -31,7 +31,7 @@ async function main() {
 
   console.log('📊 CONTEOS GENERALES:');
   console.log(`   Solicitudes: ${totalSolicitudes} (esperado: 1000)`);
-  console.log(`   Convocatorias: ${totalConvocatorias} (esperado: 11)`);
+  console.log(`   Convocatorias: ${totalConvocatorias} (esperado: 19)`);
   console.log(`   Usuarios: ${totalUsuarios} (esperado: ~287+)`);
   console.log(`   Evaluaciones: ${totalEvaluaciones} (esperado: ~2400)`);
   console.log(`   Sesiones: ${totalSesiones} (esperado: ~12-20)`);
