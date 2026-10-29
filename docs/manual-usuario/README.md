@@ -37,3 +37,13 @@ Contraseña común: `Admin123!`
 Cualquier visitante puede ver el portal público y **consultar el estado de una beca** por código de solicitud, sin iniciar sesión.
 
 > Para levantar la plataforma localmente, ver [../operations/guia-inicio-rapido.md](../operations/guia-inicio-rapido.md).
+
+## Formatos disponibles
+
+- **Markdown:** los archivos `01-...md` … `06-...md` de esta carpeta.
+- **LaTeX:** [../latex/manuales/](../latex/manuales/) — fuentes `.tex` con capturas embebidas.
+- **PDF (LaTeX):** [../latex/manuales/](../latex/manuales/) — 7 PDFs compilados (6 manuales + manual técnico).
+- **DOCX:** [docx/](docx/) — manuales poblados con capturas reales y plantilla branded.
+- **PDF (DOCX):** [pdf/](pdf/) — subset formal para entrega.
+- **Capturas:** [img/](img/) — 32 pantallas capturadas automáticamente.
+- **Plantillas:** [../latex/templates/](../latex/templates/) (LaTeX) y [../templates/](../templates/) (DOCX).

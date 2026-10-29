@@ -44,8 +44,8 @@ Rol: **jefe de becas**. Correo demo: `jefe@demo.gt` (contraseña `Admin123!`).
 ```mermaid
 flowchart TD
     A[Solicitud EVALUADA] --> B{Monto > Q10,000?}
-    B -->|No| C[APROBADA (primera firma)]
-    B -->|Sí| D[PENDIENTE_SEGUNDA_APROBACION]
+    B -->|No| C["APROBADA (primera firma)"]
+    B -->|Si| D["PENDIENTE_SEGUNDA_APROBACION"]
     D --> E{Segunda firma}
     E -->|Aprobar| F[APROBADA]
     E -->|Rechazar| G[RECHAZADA]
