@@ -34,6 +34,7 @@ describe('SolicitudesService', () => {
       solicitud: {
         findUnique: jest.fn(),
         findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue([]),
         create: jest.fn(),
         update: jest.fn(),
       },
@@ -43,6 +44,8 @@ describe('SolicitudesService', () => {
       solicitudPerfilAcademico: { upsert: jest.fn() },
       historialEstado: { create: jest.fn() },
       solicitudAprobacion: { create: jest.fn() },
+      evaluacion: { findFirst: jest.fn().mockResolvedValue(null) },
+      decision: { findFirst: jest.fn().mockResolvedValue(null) },
       genero: { findUnique: jest.fn() },
       usuario: { findMany: jest.fn().mockResolvedValue([]) },
       notificacion: {
@@ -62,7 +65,7 @@ describe('SolicitudesService', () => {
     /* eslint-enable @typescript-eslint/no-explicit-any */
       fn(prisma),
     );
-    authz = new AuthzService();
+    authz = new AuthzService(prisma);
     storage = {
       save: jest.fn(),
       delete: jest.fn(),
@@ -90,8 +93,9 @@ describe('SolicitudesService', () => {
       new SolicitudChecklistService(prisma, authz),
       new NotificacionesService(prisma),
       montos,
+      { abrirAlAprobar: jest.fn(), registrar: jest.fn(), obtener: jest.fn() } as any,
       bitacora,
-      { asignarEvaluadores: jest.fn(), quitarEvaluador: jest.fn() } as any,
+      { asignarEvaluadores: jest.fn(), quitarEvaluador: jest.fn(), finalizarMisEvaluaciones: jest.fn() } as any,
     );
   });
 
@@ -1048,6 +1052,424 @@ describe('SolicitudesService', () => {
       await expect(
         service.create('u-postulante', { convocatoriaId: 'c1' }),
       ).resolves.toEqual({ id: 's1' });
+    });
+  });
+
+  describe('create — normalización del snapshot del formulario', () => {
+    // El snapshot se itera en la interfaz. Si se guarda como texto JSON
+    // ("[]") en vez de arreglo, el panel del evaluador se cae con
+    // "campos.map is not a function".
+    const convocatoriaBase = {
+      id: 'c1',
+      estado: 'ABIERTA',
+      fechaApertura: null as Date | null,
+      fechaCierre: null as Date | null,
+    };
+
+    beforeEach(() => {
+      prisma.solicitud.create.mockResolvedValue({ id: 's1' });
+      prisma.historialEstado.create.mockResolvedValue({ id: 'h1' });
+    });
+
+    const snapshotGuardado = () =>
+      prisma.solicitud.create.mock.calls[0][0].data.formularioSnapshot;
+
+    it('guarda un arreglo vacío si la convocatoria no tiene formulario', async () => {
+      prisma.convocatoria.findUnique.mockResolvedValue({
+        ...convocatoriaBase,
+        formulario: null,
+      });
+
+      await service.create('u-postulante', { convocatoriaId: 'c1' });
+
+      expect(snapshotGuardado()).toEqual([]);
+    });
+
+    it('interpreta el formulario si viene como texto JSON', async () => {
+      prisma.convocatoria.findUnique.mockResolvedValue({
+        ...convocatoriaBase,
+        formulario: '[{"id":"c1","etiqueta":"Carrera"}]',
+      });
+
+      await service.create('u-postulante', { convocatoriaId: 'c1' });
+
+      expect(snapshotGuardado()).toEqual([{ id: 'c1', etiqueta: 'Carrera' }]);
+    });
+
+    it('mantiene el arreglo de campos de la convocatoria', async () => {
+      const campos = [{ id: 'c1', etiqueta: 'Carrera' }];
+      prisma.convocatoria.findUnique.mockResolvedValue({
+        ...convocatoriaBase,
+        formulario: campos,
+      });
+
+      await service.create('u-postulante', { convocatoriaId: 'c1' });
+
+      expect(snapshotGuardado()).toEqual(campos);
+    });
+  });
+
+  describe('transicion — matriz de roles del flujo de revisión', () => {
+    const jefe = {
+      id: 'u-jefe',
+      cui: '1234567890124',
+      nombres: 'Jefe de Becas',
+      email: 'jefe@demo.gt',
+      rol: { id: 'r-jefe', nombre: 'JEFE_BECAS', descripcion: null },
+    };
+    const coordinador = {
+      id: 'u-coordinador',
+      cui: '1234567890125',
+      nombres: 'Coordinador Comité',
+      email: 'coordinador@demo.gt',
+      rol: { id: 'r-coord', nombre: 'COORDINADOR_COMITE', descripcion: null },
+    };
+    const miembro = {
+      id: 'u-miembro',
+      cui: '1234567890126',
+      nombres: 'Miembro Comité',
+      email: 'miembro@demo.gt',
+      rol: { id: 'r-miem', nombre: 'MIEMBRO_COMITE', descripcion: null },
+    };
+    const evaluador = {
+      id: 'u-evaluador',
+      cui: '1234567890127',
+      nombres: 'Evaluador Demo',
+      email: 'evaluador@demo.gt',
+      rol: { id: 'r-eval', nombre: 'EVALUADOR', descripcion: null },
+    };
+
+    const enviada = () => ({
+      id: 's1',
+      usuarioId: 'u-postulante',
+      estado: 'ENVIADA',
+      correccionesCount: 0,
+      convocatoria: { maxCorrecciones: 3, beca: { nombre: 'Beca X' } },
+    });
+
+    const evaluada = () => ({
+      id: 's1',
+      usuarioId: 'u-postulante',
+      estado: 'EVALUADA',
+      correccionesCount: 0,
+      montoOtorgable: 5000,
+      aprobaciones: [],
+      convocatoria: { maxCorrecciones: 3, beca: { nombre: 'Beca X' } },
+    });
+
+    beforeEach(() => {
+      prisma.solicitud.update.mockImplementation(
+        async ({ data }: { data: { estado?: string } }) => ({
+          id: 's1',
+          estado: data.estado,
+        }),
+      );
+      prisma.historialEstado.create.mockResolvedValue({ id: 'h1' });
+      prisma.solicitudAprobacion.create.mockResolvedValue({ id: 'ap1' });
+    });
+
+    it('un miembro del comité puede iniciar la revisión', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(enviada());
+
+      await expect(
+        service.transicion('s1', { accion: 'iniciar_revision' }, miembro),
+      ).resolves.toMatchObject({ estado: 'EN_REVISION' });
+    });
+
+    it('un coordinador del comité puede aprobar', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(evaluada());
+
+      await expect(
+        service.transicion('s1', { accion: 'aprobar' }, coordinador),
+      ).resolves.toMatchObject({ estado: 'APROBADA' });
+    });
+
+    it('el evaluador no puede aprobar', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(evaluada());
+
+      await expect(
+        service.transicion('s1', { accion: 'aprobar' }, evaluador),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('el miembro del comité no puede aprobar (solo vota en sesión)', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(evaluada());
+
+      await expect(
+        service.transicion('s1', { accion: 'aprobar' }, miembro),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('quien evaluó la solicitud no puede aprobarla', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(evaluada());
+      prisma.evaluacion.findFirst.mockResolvedValue({ id: 'ev1' });
+
+      await expect(
+        service.transicion('s1', { accion: 'aprobar' }, jefe),
+      ).rejects.toThrow(/evaluaste/i);
+    });
+
+    it('no se puede aprobar si el comité ya decidió en sesión', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(evaluada());
+      prisma.decision.findFirst.mockResolvedValue({ id: 'd1' });
+
+      await expect(
+        service.transicion('s1', { accion: 'aprobar' }, jefe),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('findAll / findById — acceso del personal y del evaluador', () => {
+    const admin = {
+      id: 'u-admin',
+      cui: '1234567890123',
+      nombres: 'Admin Demo',
+      email: 'admin@demo.gt',
+      rol: { id: 'r-admin', nombre: 'ADMIN', descripcion: null },
+    };
+    const evaluador = {
+      id: 'u-evaluador',
+      cui: '1234567890127',
+      nombres: 'Evaluador Demo',
+      email: 'evaluador@demo.gt',
+      rol: { id: 'r-eval', nombre: 'EVALUADOR', descripcion: null },
+    };
+
+    it('el listado incluye el nombre del postulante', async () => {
+      prisma.solicitud.findMany.mockResolvedValue([]);
+
+      await service.findAll(admin);
+
+      expect(prisma.solicitud.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.objectContaining({
+            usuario: { select: { nombres: true, cui: true } },
+          }),
+        }),
+      );
+    });
+
+    it('el evaluador asignado puede ver el detalle de la solicitud', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        id: 's1',
+        usuarioId: 'u-postulante',
+        estado: 'EN_REVISION',
+      });
+      prisma.evaluacion.findFirst.mockResolvedValue({ id: 'ev1' });
+
+      await expect(service.findById('s1', evaluador)).resolves.toMatchObject({
+        id: 's1',
+      });
+    });
+
+    it('el evaluador sin asignación no puede ver el detalle', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        id: 's1',
+        usuarioId: 'u-postulante',
+        estado: 'EN_REVISION',
+      });
+      prisma.evaluacion.findFirst.mockResolvedValue(null);
+
+      await expect(service.findById('s1', evaluador)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('el postulante puede ver su propia solicitud', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        id: 's1',
+        usuarioId: 'u-postulante',
+        estado: 'BORRADOR',
+      });
+
+      await expect(service.findById('s1', postulante)).resolves.toMatchObject({
+        id: 's1',
+      });
+    });
+
+    it('el detalle incluye el nombre y el CUI del postulante', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        id: 's1',
+        usuarioId: 'u-postulante',
+        estado: 'BORRADOR',
+      });
+
+      await service.findById('s1', admin);
+
+      expect(prisma.solicitud.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.objectContaining({
+            usuario: { select: { nombres: true, cui: true } },
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('finalizarEvaluacion (el evaluador cierra su revisión)', () => {
+    const evaluador = {
+      id: 'u-evaluador',
+      cui: '1234567890127',
+      nombres: 'Evaluador Demo',
+      email: 'evaluador@demo.gt',
+      rol: { id: 'r-eval', nombre: 'EVALUADOR', descripcion: null },
+    };
+
+    const enRevision = () => ({
+      id: 's1',
+      usuarioId: 'u-postulante',
+      estado: 'EN_REVISION',
+      correccionesCount: 0,
+      montoOtorgable: null,
+      aprobaciones: [],
+      convocatoria: {
+        maxCorrecciones: 3,
+        beca: {
+          nombre: 'Beca X',
+          criteriosEvaluacion: [{ id: 'c1', activo: true, peso: 1 }],
+        },
+      },
+      evaluaciones: [{ evaluadorId: 'u-evaluador', completada: true }],
+    });
+
+    beforeEach(() => {
+      prisma.solicitud.update.mockImplementation(
+        async ({ data }: { data: { estado?: string } }) => ({
+          id: 's1',
+          estado: data.estado,
+        }),
+      );
+      prisma.historialEstado.create.mockResolvedValue({ id: 'h1' });
+      prisma.notificacion.create.mockResolvedValue({
+        id: 'n1',
+        usuarioId: 'u-postulante',
+        tipo: 'SOLICITUD_ENVIADA',
+        titulo: 'x',
+        cuerpo: null,
+        createdAt: new Date(),
+      });
+    });
+
+    it('el evaluador asignado puede cerrar la revisión', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(enRevision());
+      prisma.evaluacion.findFirst.mockResolvedValue({ id: 'ev1' });
+
+      await expect(
+        service.transicion('s1', { accion: 'evaluar' }, evaluador),
+      ).resolves.toMatchObject({ estado: 'EVALUADA' });
+    });
+
+    it('quien no tiene la solicitud asignada no puede cerrarla', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(enRevision());
+      prisma.evaluacion.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.transicion('s1', { accion: 'evaluar' }, evaluador),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('finalizar la evaluación deja la solicitud en revisión si falta el mínimo de evaluadores', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(enRevision());
+      (service as any).evaluaciones.finalizarMisEvaluaciones.mockResolvedValue({
+        finalizada: true,
+        minimoAlcanzado: false,
+      });
+
+      const result = await service.finalizarEvaluacion('s1', evaluador);
+
+      expect(result.estado).toBe('EN_REVISION');
+    });
+
+    it('finalizar la evaluación pasa la solicitud a EVALUADA cuando se alcanza el mínimo', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(enRevision());
+      prisma.evaluacion.findFirst.mockResolvedValue({ id: 'ev1' });
+      (service as any).evaluaciones.finalizarMisEvaluaciones.mockResolvedValue({
+        finalizada: true,
+        minimoAlcanzado: true,
+      });
+
+      const result = await service.finalizarEvaluacion('s1', evaluador);
+
+      expect(result.estado).toBe('EVALUADA');
+    });
+  });
+
+  describe('cerrarRevisionSiProcede (el evaluador termina y la solicitud se evalúa)', () => {
+    const evaluador = {
+      id: 'u-evaluador',
+      cui: '1234567890127',
+      nombres: 'Evaluador Demo',
+      email: 'evaluador@demo.gt',
+      rol: { id: 'r-eval', nombre: 'EVALUADOR', descripcion: null },
+    };
+
+    const enRevision = (
+      evaluaciones: Array<{ evaluadorId: string; completada: boolean }>,
+    ) => ({
+      id: 's1',
+      usuarioId: 'u-postulante',
+      estado: 'EN_REVISION',
+      correccionesCount: 0,
+      montoOtorgable: null,
+      aprobaciones: [],
+      convocatoria: {
+        maxCorrecciones: 3,
+        beca: {
+          nombre: 'Beca X',
+          criteriosEvaluacion: [
+            { id: 'c1', activo: true, peso: 0.5 },
+            { id: 'c2', activo: true, peso: 0.5 },
+          ],
+        },
+      },
+      evaluaciones,
+    });
+
+    beforeEach(() => {
+      prisma.solicitud.update.mockImplementation(
+        async ({ data }: { data: { estado?: string } }) => ({
+          id: 's1',
+          estado: data.estado,
+        }),
+      );
+      prisma.historialEstado.create.mockResolvedValue({ id: 'h1' });
+      prisma.notificacion.create.mockResolvedValue({
+        id: 'n1',
+        usuarioId: 'u-postulante',
+        tipo: 'SOLICITUD_ENVIADA',
+        titulo: 'x',
+        cuerpo: null,
+        createdAt: new Date(),
+      });
+    });
+
+    it('no cierra la revisión si falta el mínimo de evaluadores', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(
+        enRevision([{ evaluadorId: 'u-evaluador', completada: true }]),
+      );
+      prisma.evaluacion.findFirst.mockResolvedValue({ id: 'ev1' });
+
+      const result = await service.cerrarRevisionSiProcede('s1', evaluador);
+
+      expect(result.cerrada).toBe(false);
+      expect(result.estado).toBe('EN_REVISION');
+    });
+
+    it('cierra la revisión cuando se alcanzó el mínimo de evaluadores', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue(
+        enRevision([
+          { evaluadorId: 'u-evaluador', completada: true },
+          { evaluadorId: 'u-evaluador', completada: true },
+          { evaluadorId: 'u-otro', completada: true },
+          { evaluadorId: 'u-otro', completada: true },
+        ]),
+      );
+      prisma.evaluacion.findFirst.mockResolvedValue({ id: 'ev1' });
+
+      const result = await service.cerrarRevisionSiProcede('s1', evaluador);
+
+      expect(result.cerrada).toBe(true);
+      expect(result.estado).toBe('EVALUADA');
     });
   });
 

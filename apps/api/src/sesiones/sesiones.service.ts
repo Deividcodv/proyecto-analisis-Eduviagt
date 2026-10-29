@@ -11,6 +11,7 @@ import { AuthenticatedUser } from '../common/interfaces/authenticated-user.inter
 import { SolicitudStateMachine } from '../solicitudes/solicitud-state-machine';
 import { ConvocatoriaStateMachine } from '../convocatorias/convocatoria-state-machine';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
+import { MontosService } from '../solicitudes/montos.service';
 import {
   SOLICITUD_ESTADO,
   CONVOCATORIA_ESTADO,
@@ -24,6 +25,7 @@ export class SesionesService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly notificaciones: NotificacionesService,
+    private readonly montos: MontosService,
   ) {}
 
   async crearSesion(dto: CrearSesionDto, usuario: AuthenticatedUser) {
@@ -90,8 +92,21 @@ export class SesionesService {
     return sesion;
   }
 
-  async listarSesiones() {
+  /**
+   * Sesiones de los comités a los que pertenece el usuario. Un miembro solo
+   * ve (y vota en) las sesiones de sus propios comités.
+   */
+  async listarMisSesiones(usuario: AuthenticatedUser) {
+    const membresias = await this.prisma.comiteMiembro.findMany({
+      where: { usuarioId: usuario.id, activo: true },
+      select: { comiteId: true },
+    });
+    return this.listarSesiones(membresias.map((m) => m.comiteId));
+  }
+
+  async listarSesiones(comiteIds?: string[]) {
     const sesiones = await this.prisma.sesion.findMany({
+      where: comiteIds ? { comiteId: { in: comiteIds } } : undefined,
       include: {
         comite: { select: { id: true, nombre: true } },
         votos: { select: { usuarioId: true } },
@@ -237,6 +252,51 @@ export class SesionesService {
     return voto;
   }
 
+  /**
+   * Quita una solicitud de la agenda de la sesión. Solo mientras la sesión
+   * está abierta: una sesión finalizada ya tiene su decisión.
+   */
+  async quitarDeAgenda(
+    sesionId: string,
+    solicitudId: string,
+    usuario?: AuthenticatedUser,
+  ) {
+    const sesion = await this.prisma.sesion.findUnique({
+      where: { id: sesionId },
+      select: { id: true, estado: true, comiteId: true },
+    });
+
+    if (!sesion) {
+      throw new NotFoundException(`Sesión con id ${sesionId} no encontrada`);
+    }
+
+    if (sesion.estado === SESION_ESTADO.FINALIZADA) {
+      throw new BadRequestException(
+        'La sesión ya fue finalizada: su agenda no se puede modificar',
+      );
+    }
+
+    const quitada = await this.prisma.sesionAgenda.deleteMany({
+      where: { sesionId, solicitudId },
+    });
+
+    if (quitada.count === 0) {
+      throw new NotFoundException(
+        'La solicitud no está en la agenda de esta sesión',
+      );
+    }
+
+    await this.audit.log({
+      usuarioId: usuario?.id ?? '',
+      accion: 'quitar-de-agenda',
+      entidad: 'sesion',
+      entidadId: sesionId,
+      detalle: { solicitudId },
+    });
+
+    return { sesionId, solicitudId, quitada: true };
+  }
+
   async finalizarSesion(sesionId: string, usuario: AuthenticatedUser) {
     const sesion = await this.prisma.sesion.findUnique({
       where: { id: sesionId },
@@ -250,6 +310,7 @@ export class SesionesService {
                 estado: true,
                 convocatoriaId: true,
                 usuarioId: true,
+                montoOtorgable: true,
               },
             },
           },
@@ -288,7 +349,11 @@ export class SesionesService {
       );
     }
 
-    const avisos: { usuarioId: string; resultado: string }[] = [];
+    const avisos: {
+      usuarioId: string;
+      resultado: string;
+      requiereSegunda: boolean;
+    }[] = [];
 
     const sesionFinal = await this.prisma.$transaction(async (tx) => {
       const decisiones = [];
@@ -301,10 +366,19 @@ export class SesionesService {
             ? DECISION_RESULTADO.APROBADA
             : DECISION_RESULTADO.RECHAZADA;
 
-        const siguiente = SolicitudStateMachine.next(
-          solicitud.estado,
-          resultado === DECISION_RESULTADO.APROBADA ? 'aprobar' : 'rechazar',
-        );
+        // La decisión del comité es la PRIMERA instancia y respeta el mismo
+        // control de monto que el camino directo: si el monto supera el
+        // umbral, la solicitud queda pendiente de una segunda firma.
+        const requiereSegunda =
+          resultado === DECISION_RESULTADO.APROBADA &&
+          this.montos.requiereSegundaAprobacion(solicitud.montoOtorgable);
+        const accion = requiereSegunda
+          ? 'solicitar_segunda_aprobacion'
+          : resultado === DECISION_RESULTADO.APROBADA
+            ? 'aprobar'
+            : 'rechazar';
+
+        const siguiente = SolicitudStateMachine.next(solicitud.estado, accion);
 
         await tx.solicitud.update({
           where: { id: solicitud.id },
@@ -319,6 +393,22 @@ export class SesionesService {
           },
         });
 
+        // Trazabilidad de la instancia de aprobación: la firma de la
+        // primera instancia es la de quien cerró la sesión.
+        await tx.solicitudAprobacion.create({
+          data: {
+            solicitudId: solicitud.id,
+            usuarioId: usuario.id,
+            rolNombre: usuario.rol?.nombre ?? 'COORDINADOR_COMITE',
+            nivel: 1,
+            accion,
+            resultado: requiereSegunda
+              ? 'PENDIENTE_SEGUNDA_APROBACION'
+              : resultado,
+            comentario: 'Decisión del comité',
+          },
+        });
+
         decisiones.push(
           await tx.decision.create({
             data: {
@@ -329,7 +419,11 @@ export class SesionesService {
           }),
         );
 
-        avisos.push({ usuarioId: solicitud.usuarioId, resultado });
+        avisos.push({
+          usuarioId: solicitud.usuarioId,
+          resultado,
+          requiereSegunda,
+        });
       }
 
       const convocatoriaId = solicitudes[0]?.convocatoriaId;
@@ -389,6 +483,15 @@ export class SesionesService {
     });
 
     for (const aviso of avisos) {
+      if (aviso.requiereSegunda) {
+        await this.notificaciones.notificarUsuario(aviso.usuarioId, {
+          tipo: 'SOLICITUD_SEGUNDA_APROBACION',
+          titulo: 'Tu solicitud pasó a una segunda revisión',
+          cuerpo:
+            'El comité aprobó tu postulación y ahora una segunda persona debe confirmarla.',
+        });
+        continue;
+      }
       const aprobada = aviso.resultado === DECISION_RESULTADO.APROBADA;
       await this.notificaciones.notificarUsuario(aviso.usuarioId, {
         tipo: aprobada ? 'SOLICITUD_APROBADA' : 'SOLICITUD_RECHAZADA',

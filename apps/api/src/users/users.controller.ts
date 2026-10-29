@@ -18,8 +18,10 @@ import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 import { AssignUsuarioPermisosDto } from './dto/assign-usuario-permisos.dto';
 import { Permisos } from '../common/decorators/permisos.decorator';
+import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
+import { ROL } from '../common/constants/roles';
 
 @ApiTags('Seguridad')
 @Controller('seguridad')
@@ -113,12 +115,19 @@ export class UsersController {
   }
 
   @Get('personal')
-  @Permisos('personal:ver')
+  // El directorio de personal es una lectura de referencia (para asignar
+  // evaluadores y miembros de comité). Se controla por ROL y no por el
+  // permiso `personal:ver` a propósito: un permiso depende de que la base
+  // se haya re-sembrado con el seed vigente, mientras que el rol es
+  // determinista desde el primer despliegue. Con `personal:ver` el
+  // endpoint respondía 403 en bases sembradas con un seed anterior y el
+  // panel de solicitudes quedaba vacío.
+  @Roles(ROL.ADMIN, ROL.JEFE_BECAS, ROL.COORDINADOR_COMITE)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar personal con un rol (para asignar evaluadores/miembros de comité)' })
   @ApiResponse({ status: 200, description: 'Lista de personal' })
   findPersonal(@Query('rol') rol?: string) {
-    return this.usersService.findAllUsuarios(rol);
+    return this.usersService.findPersonal(rol);
   }
 
   @Get('usuarios/:id')

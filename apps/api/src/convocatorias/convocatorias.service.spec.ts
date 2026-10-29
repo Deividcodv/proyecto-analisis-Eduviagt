@@ -17,6 +17,7 @@ describe('ConvocatoriasService', () => {
 
   beforeEach(() => {
     prisma = {
+      usuario: { findFirst: jest.fn().mockResolvedValue(null) },
       convocatoria: {
         create: jest.fn(),
         update: jest.fn(),

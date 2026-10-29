@@ -19,6 +19,12 @@ import {
   CONVOCATORIA_ESTADO,
 } from '../common/constants/estados';
 
+/**
+ * Correo del evaluador que el sistema asigna por defecto a las
+ * convocatorias nuevas.
+ */
+const EVALUADOR_POR_DEFECTO = 'evaluador@demo.gt';
+
 @Injectable()
 export class ConvocatoriasService {
   constructor(
@@ -36,6 +42,14 @@ export class ConvocatoriasService {
     }
     this.assertFechasCoherentes(dto.fechaApertura, dto.fechaCierre);
     this.assertReglasMonto(dto.montoBase, dto.reglasMonto);
+
+    // Si no se indica uno, la convocatoria queda con el evaluador por
+    // defecto del sistema: así toda convocatoria nueva puede autoasignar
+    // su evaluación al iniciar la revisión.
+    const evaluadorPorDefectoId =
+      dto.evaluadorPorDefectoId !== undefined
+        ? dto.evaluadorPorDefectoId
+        : await this.evaluadorPorDefectoDelSistema();
 
     const creada = await this.prisma.convocatoria.create({
       data: {
@@ -58,8 +72,8 @@ export class ConvocatoriasService {
         ...(dto.maxCorrecciones !== undefined
           ? { maxCorrecciones: dto.maxCorrecciones }
           : {}),
-        ...(dto.evaluadorPorDefectoId !== undefined
-          ? { evaluadorPorDefectoId: dto.evaluadorPorDefectoId }
+        ...(evaluadorPorDefectoId !== undefined
+          ? { evaluadorPorDefectoId }
           : {}),
         // Montos (Sprint 8 - US-801)
         ...(dto.moneda !== undefined ? { moneda: dto.moneda } : {}),
@@ -510,5 +524,21 @@ export class ConvocatoriasService {
         `El usuario ${usuarioId} no es un evaluador válido`,
       );
     }
+  }
+
+
+  /**
+   * Evaluador por defecto del sistema.
+   *
+   * Es el mismo que usa la semilla (evaluador@demo.gt): si existe y está
+   * activo, las convocatorias nuevas lo llevan para que al iniciar la
+   * revisión se le asigne la evaluación.
+   */
+  private async evaluadorPorDefectoDelSistema(): Promise<string | null> {
+    const evaluador = await this.prisma.usuario.findFirst({
+      where: { email: EVALUADOR_POR_DEFECTO, estado: 'ACTIVO' },
+      select: { id: true },
+    });
+    return evaluador?.id ?? null;
   }
 }

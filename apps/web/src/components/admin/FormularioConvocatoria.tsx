@@ -21,6 +21,7 @@ import type {
   TipoCampoFormulario,
   UsuarioSimplificado,
 } from '@/lib/api';
+import { AvisoDialog } from '@/components/ui/AvisoDialog';
 
 const SECCIONES: { value: SeccionCampoFormulario; label: string }[] = [
   { value: 'personal', label: 'Datos personales' },
@@ -384,16 +385,17 @@ export function FormularioConvocatoria({
 
   return (
     <div className="space-y-6">
-      {error && (
-        <p className="rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-4 text-sm font-bold text-brutal-rojo">
-          {error}
-        </p>
-      )}
-      {exito && (
-        <p className="rounded-brutal border-[3px] border-brutal-tinta bg-brutal-lima/30 p-4 text-sm font-bold text-brutal-tinta">
-          {exito}
-        </p>
-      )}
+      <AvisoDialog
+        open={!!error || !!exito}
+        titulo={error ? 'No se pudo completar la acción' : 'Listo'}
+        tono={error ? 'error' : 'exito'}
+        mensaje={error ?? exito ?? ''}
+        onCerrar={() => {
+          setError(null);
+          setExito(null);
+        }}
+      />
+      
 
       <Card>
         <h2 className="mb-4 font-brut text-lg font-black uppercase tracking-wide text-brutal-tinta">

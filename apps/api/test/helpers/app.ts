@@ -54,6 +54,7 @@ export const USUARIOS_DEMO: Record<string, Credenciales> = {
   evaluador: { email: 'evaluador@demo.gt', password: 'Admin123!' },
   coordinador: { email: 'coordinador@demo.gt', password: 'Admin123!' },
   miembro: { email: 'miembro@demo.gt', password: 'Admin123!' },
+  jefe: { email: 'jefebecas@demo.gt', password: 'Admin123!' },
 };
 
 /** Beca demo con criterios de evaluación creada por el seed (0002). */

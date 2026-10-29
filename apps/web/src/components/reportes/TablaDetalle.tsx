@@ -71,13 +71,31 @@ function dias(valor: number | null): string {
   return valor == null ? '—' : `${valor} d`;
 }
 
-export function TablaDetalle() {
+export function TablaDetalle({
+  convocatoriaId,
+  estado,
+  desde,
+  hasta,
+}: {
+  convocatoriaId?: string;
+  estado?: string;
+  desde?: string;
+  hasta?: string;
+} = {}) {
   const [data, setData] = useState<Detalle | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
     try {
-      const detalle = await fetchConToken<Detalle>('/reportes/detalle');
+      const params = new URLSearchParams();
+      if (convocatoriaId) params.set('convocatoriaId', convocatoriaId);
+      if (estado) params.set('estado', estado);
+      if (desde) params.set('desde', desde);
+      if (hasta) params.set('hasta', hasta);
+      const query = params.toString();
+      const detalle = await fetchConToken<Detalle>(
+        `/reportes/detalle${query ? `?${query}` : ''}`,
+      );
       setData(detalle);
       setError(null);
     } catch (e) {

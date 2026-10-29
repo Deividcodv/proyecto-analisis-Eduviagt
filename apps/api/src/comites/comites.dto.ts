@@ -1,5 +1,6 @@
 import {
   IsBoolean,
+  IsIn,
   IsOptional,
   IsString,
   IsUUID,
@@ -7,6 +8,9 @@ import {
   MinLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+/** Roles que puede tener una persona dentro de un comité. */
+export const ROLES_COMITE = ['PRESIDENTE', 'VOCAL', 'SECRETARIO'] as const;
 
 export class CrearComiteDto {
   @ApiProperty()
@@ -47,9 +51,13 @@ export class AgregarMiembroDto {
   @IsUUID('4')
   usuarioId!: string;
 
-  @ApiProperty({ description: 'Rol dentro del comité (ej. PRESIDENTE, VOCAL)' })
-  @IsString()
-  @MinLength(2)
-  @MaxLength(50)
+  @ApiProperty({ description: 'Rol dentro del comité (PRESIDENTE, VOCAL o SECRETARIO)' })
+  @IsIn(ROLES_COMITE)
+  rol!: string;
+}
+
+export class CambiarRolMiembroDto {
+  @ApiProperty({ description: 'Nuevo rol dentro del comité' })
+  @IsIn(ROLES_COMITE)
   rol!: string;
 }

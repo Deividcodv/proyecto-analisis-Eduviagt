@@ -5,6 +5,7 @@ import { SolicitudPerfilService } from './solicitud-perfil.service';
 import { SolicitudDocumentoService } from './solicitud-documento.service';
 import { SolicitudChecklistService } from './solicitud-checklist.service';
 import { MontosService } from './montos.service';
+import { DesembolsoService } from './desembolso.service';
 import { ConstanciasService } from './constancias.service';
 import { PDF_RENDERER } from './pdf/pdf-renderer.interface';
 import { PuppeteerPdfRenderer } from './pdf/puppeteer-pdf-renderer';
@@ -22,6 +23,7 @@ import { EvaluacionesModule } from '../evaluaciones/evaluaciones.module';
     SolicitudDocumentoService,
     SolicitudChecklistService,
     MontosService,
+    DesembolsoService,
     ConstanciasService,
     { provide: PDF_RENDERER, useClass: PuppeteerPdfRenderer },
   ],
@@ -31,7 +33,9 @@ import { EvaluacionesModule } from '../evaluaciones/evaluaciones.module';
     SolicitudDocumentoService,
     SolicitudChecklistService,
     MontosService,
+    DesembolsoService,
     ConstanciasService,
+    PDF_RENDERER,
   ],
 })
 export class SolicitudesModule {}

@@ -23,6 +23,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { InternalPageHeader } from '@/components/ui/InternalPageHeader';
 import { KpisPanel } from '@/components/home/KpisPanel';
 import { ConvocatoriaCard } from '@/components/convocatorias/ConvocatoriaCard';
+import { AvisoDialog } from '@/components/ui/AvisoDialog';
 
 interface ProximoPaso {
   titulo: string;
@@ -177,11 +178,15 @@ export function HogarPostulante() {
       />
 
       <Container className="py-10">
-        {error && (
-          <p className="mb-6 rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-4 text-sm font-bold text-brutal-rojo">
-            {error}
-          </p>
-        )}
+        <AvisoDialog
+        open={!!error}
+        titulo="No se pudo completar la acción"
+        tono="error"
+        mensaje={error ?? ''}
+        onCerrar={() => {
+          setError(null);
+        }}
+      />
 
         {cargando ? (
           <div className="flex justify-center py-20">

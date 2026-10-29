@@ -4,6 +4,9 @@ export const SOLICITUD_ESTADO = {
   EN_REVISION: 'EN_REVISION',
   CORRECCION: 'CORRECCION',
   EVALUADA: 'EVALUADA',
+  /// Segunda instancia de aprobación (Sprint 8 - US-802): la decisión del
+  /// comité ya está, pero falta la firma de otra persona.
+  PENDIENTE_SEGUNDA_APROBACION: 'PENDIENTE_SEGUNDA_APROBACION',
   APROBADA: 'APROBADA',
   RECHAZADA: 'RECHAZADA',
 } as const;

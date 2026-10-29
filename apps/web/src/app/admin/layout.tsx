@@ -15,7 +15,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const pestanas: { href: string; label: string; icono: IconName }[] = [
     { href: '/admin/convocatorias', label: 'Convocatorias', icono: 'becas' },
-    { href: '/admin/solicitudes', label: 'Solicitudes', icono: 'documento' },
+    { href: '/revision', label: 'Solicitudes', icono: 'documento' },
     { href: '/admin/comites', label: 'Comités', icono: 'grupos' },
     { href: '/admin/sesiones', label: 'Sesiones', icono: 'calendario' },
     { href: '/admin/auditoria', label: 'Auditoría', icono: 'buscar' },
@@ -35,15 +35,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           className="mb-6 flex flex-wrap gap-2"
         >
           {pestanas.map((pestana) => {
-            const activo =
-              pathname === pestana.href || pathname.startsWith(`${pestana.href}/`);
+            // `/revision` es la ruta canónica de "Solicitudes"; la antigua
+            // `/admin/solicitudes` redirige allí, así que se marca activa.
+            const activa =
+              pathname === pestana.href ||
+              pathname.startsWith(`${pestana.href}/`) ||
+              (pestana.href === '/revision' && pathname === '/admin/solicitudes');
             return (
               <Link
                 key={pestana.href}
                 href={pestana.href}
-                aria-current={activo ? 'page' : undefined}
+                aria-current={activa ? 'page' : undefined}
                 className={`inline-flex items-center gap-2 rounded-brutal border-[3px] border-brutal-tinta px-4 py-2 font-brut text-xs font-bold uppercase tracking-wide transition-all ${
-                  activo
+                  activa
                     ? 'bg-brutal-tinta text-brutal-papel shadow-brutal-sm'
                     : 'bg-brutal-blanco text-brutal-tinta hover:bg-brutal-cyan'
                 }`}

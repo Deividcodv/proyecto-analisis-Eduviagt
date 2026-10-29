@@ -13,6 +13,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Stepper } from '@/components/ui/Stepper';
 import { Spinner } from '@/components/ui/Spinner';
 import { InternalPageHeader } from '@/components/ui/InternalPageHeader';
+import { AvisoDialog } from '@/components/ui/AvisoDialog';
+import { etiquetaEstado } from '@/lib/etiquetas';
 import {
   PasoCamposExtra,
   PasoDatosPersonales,
@@ -62,6 +64,7 @@ function AplicarConvocatoriaContent() {
   const [paso, setPaso] = useState('Convocatoria');
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [yaPostulada, setYaPostulada] = useState<MiSolicitud | null>(null);
 
   const inicializar = useCallback(async () => {
     if (!convocatoriaId) return;
@@ -78,9 +81,16 @@ function AplicarConvocatoriaContent() {
       );
 
       if (mi) {
-        setSolicitudId(mi.id);
-        setRespuestas(mi.respuestas ?? null);
-        setSnapshot(mi.formularioSnapshot ?? null);
+        // Una postulación en borrador o en corrección se puede seguir
+        // completando. Si ya se envió, no: se avisa y se lleva a la
+        // postulación existente.
+        if (mi.estado === 'BORRADOR' || mi.estado === 'CORRECCION') {
+          setSolicitudId(mi.id);
+          setRespuestas(mi.respuestas ?? null);
+          setSnapshot(mi.formularioSnapshot ?? null);
+        } else {
+          setYaPostulada(mi);
+        }
       } else if (convocatoriaAbierta(conv)) {
         const creada = await fetchConToken<{ id: string }>('/solicitudes', {
           method: 'POST',
@@ -182,6 +192,31 @@ function AplicarConvocatoriaContent() {
             Volver a las becas
           </Button>
         </div>
+      </Container>
+    );
+  }
+
+  // Ya se envió la postulación a esta beca: se avisa en una ventana y se
+  // lleva a la postulación existente (no se puede volver a postular).
+  if (yaPostulada) {
+    return (
+      <Container className="py-16">
+        <AvisoDialog
+          open
+          titulo="Ya tienes una postulación para esta beca"
+          tono="info"
+          mensaje={`Tu postulación está en estado ${etiquetaEstado(yaPostulada.estado).toLowerCase()}. Solo puedes tener una postulación por convocatoria: sigue su avance desde tu panel.`}
+          onCerrar={() => router.push('/dashboard')}
+          textoBoton="Ir a mis postulaciones"
+          acciones={
+            <Button
+              variant="ghost"
+              onClick={() => router.push(`/solicitudes/${yaPostulada.id}`)}
+            >
+              Ver la postulación
+            </Button>
+          }
+        />
       </Container>
     );
   }

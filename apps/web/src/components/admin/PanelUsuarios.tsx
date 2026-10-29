@@ -21,6 +21,7 @@ import {
   type Permiso,
   type PermisoEfecto,
 } from '@/lib/seguridad';
+import { AvisoDialog } from '@/components/ui/AvisoDialog';
 
 type EstadoPermiso = PermisoEfecto | null;
 
@@ -140,12 +141,17 @@ export function PanelUsuarios() {
 
   return (
     <div>
-      {error && (
-        <p className="mb-4 rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-4 text-sm font-bold text-brutal-rojo">{error}</p>
-      )}
-      {exito && (
-        <p className="mb-4 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-lima/30 p-4 text-sm font-bold text-brutal-tinta">{exito}</p>
-      )}
+      <AvisoDialog
+        open={!!error || !!exito}
+        titulo={error ? 'No se pudo completar la acción' : 'Listo'}
+        tono={error ? 'error' : 'exito'}
+        mensaje={error ?? exito ?? ''}
+        onCerrar={() => {
+          setError(null);
+          setExito(null);
+        }}
+      />
+      
 
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-col gap-3 md:flex-row md:items-center">

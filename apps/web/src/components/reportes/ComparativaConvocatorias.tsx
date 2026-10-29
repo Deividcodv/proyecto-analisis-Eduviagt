@@ -74,15 +74,25 @@ function formatDias(dias: number | null): string {
   return `${dias} días`;
 }
 
-export function ComparativaConvocatorias() {
+export function ComparativaConvocatorias({
+  convocatoriaId,
+  estado,
+}: {
+  convocatoriaId?: string;
+  estado?: string;
+} = {}) {
   const [filas, setFilas] = useState<FilaComparativa[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
     try {
       const [porEstado, evaluaciones] = await Promise.all([
-        fetchConToken<SolicitudesPorEstado>('/reportes/solicitudes-por-estado'),
-        fetchConToken<Evaluaciones>('/reportes/evaluaciones'),
+        fetchConToken<SolicitudesPorEstado>(
+          `/reportes/solicitudes-por-estado${query(convocatoriaId, estado)}`,
+        ),
+        fetchConToken<Evaluaciones>(
+          `/reportes/evaluaciones${query(convocatoriaId, estado)}`,
+        ),
       ]);
 
       const evPorId = new Map(
@@ -244,4 +254,12 @@ export function ComparativaConvocatorias() {
       )}
     </div>
   );
+}
+
+function query(convocatoriaId?: string, estado?: string): string {
+  const params = new URLSearchParams();
+  if (convocatoriaId) params.set('convocatoriaId', convocatoriaId);
+  if (estado) params.set('estado', estado);
+  const texto = params.toString();
+  return texto ? `?${texto}` : '';
 }

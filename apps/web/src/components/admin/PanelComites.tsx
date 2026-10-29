@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchConToken } from '@/lib/api-auth';
 import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -14,6 +15,7 @@ import {
   type ComiteMiembro,
   type UsuarioSimplificado,
 } from '@/lib/api';
+import { AvisoDialog } from '@/components/ui/AvisoDialog';
 
 export function PanelComites() {
   const [comites, setComites] = useState<Comite[] | null>(null);
@@ -70,17 +72,24 @@ export function PanelComites() {
   const abrirDetalle = async (id: string) => {
     setError(null);
     setExito(null);
-    try {
-      const [det, catUsuarios] = await Promise.all([
-        fetchConToken<ComiteDetalle>(`/comites/${id}`),
-        fetchConToken<UsuarioSimplificado[]>('/seguridad/personal'),
-      ]);
-      setDetalle(det);
-      setUsuarios(catUsuarios);
-      setNuevoMiembro({ usuarioId: '', rol: 'VOCAL' });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo cargar el detalle');
+    // El catálogo de usuarios es auxiliar: si falla, el detalle del comité
+    // se sigue mostrando (solo se pierde la lista para agregar miembros).
+    const [resDetalle, resUsuarios] = await Promise.allSettled([
+      fetchConToken<ComiteDetalle>(`/comites/${id}`),
+      fetchConToken<UsuarioSimplificado[]>('/seguridad/personal'),
+    ]);
+    if (resDetalle.status === 'fulfilled') {
+      setDetalle(resDetalle.value);
+    } else {
+      setDetalle(null);
+      setError(
+        resDetalle.reason instanceof Error
+          ? resDetalle.reason.message
+          : 'No se pudo cargar el detalle',
+      );
     }
+    setUsuarios(resUsuarios.status === 'fulfilled' ? resUsuarios.value : []);
+    setNuevoMiembro({ usuarioId: '', rol: 'VOCAL' });
   };
 
   const agregarMiembro = async () => {
@@ -103,6 +112,47 @@ export function PanelComites() {
       abrirDetalle(detalle.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo agregar el miembro');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  /** Cambia el rol de un miembro dentro del comité. */
+  const cambiarRol = async (
+    miembro: ComiteMiembro,
+    rol: string,
+  ) => {
+    setEnviando(true);
+    setError(null);
+    setExito(null);
+    try {
+      await fetchConToken(`/comites/${detalle!.id}/miembros/${miembro.usuario.id}`, {
+        method: 'PATCH',
+        body: { rol },
+      });
+      setExito(`Rol de ${miembro.usuario.nombres} actualizado a ${rol}.`);
+      await abrirDetalle(detalle!.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo cambiar el rol');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  /** Archiva o reactiva un comité. */
+  const cambiarEstado = async (comite: Comite, activo: boolean) => {
+    setEnviando(true);
+    setError(null);
+    setExito(null);
+    try {
+      await fetchConToken(`/comites/${comite.id}`, {
+        method: 'PATCH',
+        body: { activo },
+      });
+      setExito(activo ? 'Comité reactivado.' : 'Comité archivado.');
+      cargar();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo actualizar el comité');
     } finally {
       setEnviando(false);
     }
@@ -137,12 +187,17 @@ export function PanelComites() {
 
   return (
     <div>
-      {error && (
-        <p className="mb-4 rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-4 text-sm font-bold text-brutal-rojo">{error}</p>
-      )}
-      {exito && (
-        <p className="mb-4 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-lima/30 p-4 text-sm font-bold text-brutal-tinta">{exito}</p>
-      )}
+      <AvisoDialog
+        open={!!error || !!exito}
+        titulo={error ? 'No se pudo completar la acción' : 'Listo'}
+        tono={error ? 'error' : 'exito'}
+        mensaje={error ?? exito ?? ''}
+        onCerrar={() => {
+          setError(null);
+          setExito(null);
+        }}
+      />
+      
 
       <div className="mb-6 flex justify-end">
         <Button onClick={() => setMostrarForm((v) => !v)}>
@@ -233,19 +288,31 @@ export function PanelComites() {
                   <div>
                     <p className="font-mono text-sm font-bold text-brutal-tinta">
                       {miembro.usuario.nombres}
-                      <span className="ml-2 rounded-brutal border-2 border-brutal-tinta bg-brutal-cyan px-2 py-0.5 text-xs font-bold text-brutal-tinta">
-                        {miembro.rol}
-                      </span>
                     </p>
                     <p className="font-mono text-xs text-brutal-tinta/75">{miembro.usuario.email}</p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    onClick={() => quitarMiembro(miembro)}
-                    disabled={enviando}
-                  >
-                    Quitar
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Select
+                      aria-label={`Rol de ${miembro.usuario.nombres} en el comité`}
+                      value={miembro.rol}
+                      onChange={(e) =>
+                        cambiarRol(miembro, e.target.value)
+                      }
+                      options={[
+                        { value: 'PRESIDENTE', label: 'Presidente' },
+                        { value: 'VOCAL', label: 'Vocal' },
+                        { value: 'SECRETARIO', label: 'Secretario' },
+                      ]}
+                      className="w-44"
+                    />
+                    <Button
+                      variant="ghost"
+                      onClick={() => quitarMiembro(miembro)}
+                      disabled={enviando}
+                    >
+                      Quitar
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -263,14 +330,28 @@ export function PanelComites() {
               className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
-                <h3 className="text-lg font-bold text-brutal-tinta">{comite.nombre}</h3>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-bold text-brutal-tinta">{comite.nombre}</h3>
+                  {comite.activo ? (
+                    <Badge estado="APROBAR" />
+                  ) : (
+                    <span className="rounded-brutal border-2 border-brutal-tinta bg-gray-300 px-2 py-0.5 font-brut text-xs font-bold text-brutal-tinta">
+                      Archivado
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-brutal-tinta/70">
                   {comite.descripcion ?? 'Sin descripción'} · {comite._count?.miembros ?? 0} miembros
                 </p>
               </div>
-              <Button variant="ghost" onClick={() => abrirDetalle(comite.id)}>
-                Gestionar miembros
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="ghost" onClick={() => cambiarEstado(comite, !comite.activo)} disabled={enviando}>
+                  {comite.activo ? 'Archivar' : 'Reactivar'}
+                </Button>
+                <Button variant="ghost" onClick={() => abrirDetalle(comite.id)}>
+                  Gestionar miembros
+                </Button>
+              </div>
             </Card>
           ))}
         </div>

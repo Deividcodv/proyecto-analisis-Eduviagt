@@ -18,6 +18,8 @@ import { SolicitudChecklistService } from './solicitud-checklist.service';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
 import { MontosService } from './montos.service';
 import { EvaluacionesService } from '../evaluaciones/evaluaciones.service';
+import { RegistrarPuntajeDto } from '../evaluaciones/evaluaciones.dto';
+import { DesembolsoService } from './desembolso.service';
 import { BitacoraService } from '../bitacora/bitacora.service';
 import {
   SOLICITUD_ESTADO,
@@ -36,6 +38,7 @@ export class SolicitudesService {
     private readonly checklist: SolicitudChecklistService,
     private readonly notificaciones: NotificacionesService,
     private readonly montos: MontosService,
+    private readonly desembolsos: DesembolsoService,
     private readonly bitacora: BitacoraService,
   private readonly evaluaciones: EvaluacionesService,
   ) {}
@@ -90,13 +93,10 @@ export class SolicitudesService {
           convocatoriaId: dto.convocatoriaId,
           usuarioId,
           estado: SOLICITUD_ESTADO.BORRADOR,
-          ...(convocatoria.formulario !== null &&
-          convocatoria.formulario !== undefined
-            ? {
-                formularioSnapshot:
-                  convocatoria.formulario as Prisma.InputJsonValue,
-              }
-            : {}),
+          // El snapshot siempre es un arreglo de campos: si la convocatoria no
+          // lo tiene (o viene como texto JSON) se normaliza, porque la
+          // interfaz lo itera y un string la rompe.
+          formularioSnapshot: this.normalizarFormulario(convocatoria.formulario),
         },
         include: { convocatoria: { include: { beca: true } } },
       });
@@ -116,6 +116,88 @@ export class SolicitudesService {
     return solicitud;
   }
 
+  /**
+   * Normaliza el formulario de una convocatoria a un arreglo de campos.
+   *
+   * El campo `formulario` es `Json`: puede venir `null` o, si se guardó mal,
+   * como texto JSON. La interfaz lo itera, así que cualquier valor que no sea
+   * un arreglo se convierte en uno vacío.
+   */
+  private normalizarFormulario(valor: unknown): Prisma.InputJsonValue {
+    if (Array.isArray(valor)) return valor as Prisma.InputJsonValue;
+    if (typeof valor === 'string') {
+      try {
+        const parsed: unknown = JSON.parse(valor);
+        if (Array.isArray(parsed)) return parsed as Prisma.InputJsonValue;
+      } catch {
+        // Texto que no es JSON: se trata como formulario vacío.
+      }
+    }
+    return [] as Prisma.InputJsonValue;
+  }
+
+  /**
+   * Conflicto de intereses: quien evaluó la solicitud no puede firmarla.
+   * La separación entre quien evalúa y quien aprueba es real, no solo de rol.
+   */
+  private async assertSinConflictoDeInteres(
+    solicitudId: string,
+    usuario: AuthenticatedUser,
+  ): Promise<void> {
+    const fueEvaluador = await this.prisma.evaluacion.findFirst({
+      where: { solicitudId, evaluadorId: usuario.id },
+      select: { id: true },
+    });
+    if (fueEvaluador) {
+      throw new ForbiddenException(
+        'No puedes aprobar una solicitud que tú evaluaste',
+      );
+    }
+  }
+
+  /**
+   * La decisión del comité (votación en sesión) es la primera instancia. Si
+   * ya existe, la aprobación directa desde el panel no aplica.
+   */
+  private async assertSinDecisionDeComite(
+    solicitudId: string,
+  ): Promise<void> {
+    const decision = await this.prisma.decision.findFirst({
+      where: { solicitudId },
+      select: { id: true },
+    });
+    if (decision) {
+      throw new BadRequestException(
+        'El comité ya decidió esta solicitud: la aprobación directa ya no aplica',
+      );
+    }
+  }
+
+  /**
+   * El evaluador da por terminada su revisión.
+   *
+   * Sale de su cola de "por evaluar" siempre; la solicitud pasa a EVALUADA
+   * cuando se alcanzó el mínimo de evaluadores.
+   */
+  async finalizarEvaluacion(solicitudId: string, usuario: AuthenticatedUser) {
+    const resultado = await this.evaluaciones.finalizarMisEvaluaciones(
+      solicitudId,
+      usuario,
+    );
+
+    if (!resultado.minimoAlcanzado) {
+      return { ...resultado, estado: SOLICITUD_ESTADO.EN_REVISION };
+    }
+
+    const actualizada = await this.transicion(
+      solicitudId,
+      { accion: 'evaluar' },
+      usuario,
+    );
+
+    return { ...resultado, estado: actualizada.estado };
+  }
+
   async findAll(usuario: AuthenticatedUser) {
     const where = this.authz.esPersonal(usuario) ? {} : { usuarioId: usuario.id };
 
@@ -129,6 +211,9 @@ export class SolicitudesService {
             _count: { select: { documentosRequeridos: true } },
           },
         },
+        // El personal identifica la postulación por la persona, no por el
+        // nombre de la beca.
+        usuario: { select: { nombres: true, cui: true } },
         _count: { select: { documentos: true } },
       },
     });
@@ -143,6 +228,8 @@ export class SolicitudesService {
         perfilFinanciero: true,
         documentos: { include: { documentoTipo: true } },
         historial: { orderBy: { createdAt: 'asc' } },
+        // Para que el personal identifique la postulación por la persona.
+        usuario: { select: { nombres: true, cui: true } },
       },
     });
 
@@ -150,7 +237,7 @@ export class SolicitudesService {
       throw new NotFoundException(`Solicitud con id ${id} no encontrada`);
     }
 
-    this.authz.assertAccesoPersonal(solicitud, usuario);
+    await this.authz.assertAccesoASolicitud(id, solicitud, usuario);
     return solicitud;
   }
 
@@ -207,6 +294,10 @@ export class SolicitudesService {
       dto.accion === 'enviar' || dto.accion === 'corregir';
     const esSegundaInstancia =
       dto.accion === 'aprobar_segunda' || dto.accion === 'devolver_a_revision';
+    // Firmar la aprobación (o el rechazo) es del jefe de becas, del
+    // coordinador del comité o del administrador. El miembro del comité
+    // vota en la sesión: no firma.
+    const esFirma = dto.accion === 'aprobar' || dto.accion === 'rechazar';
 
     if (esAccionPostulante) {
       if (solicitud.usuarioId !== usuario.id) {
@@ -218,6 +309,32 @@ export class SolicitudesService {
         (a) => a.nivel === 1,
       );
       this.authz.assertSegundaAprobacion(usuario, primerAprobador?.usuarioId);
+      await this.assertSinConflictoDeInteres(id, usuario);
+    } else if (esFirma) {
+      if (!this.authz.puedeAprobar(usuario)) {
+        throw new ForbiddenException(
+          'Solo el jefe de becas o el coordinador del comité pueden firmar la aprobación',
+        );
+      }
+      await this.assertSinConflictoDeInteres(id, usuario);
+      // La decisión del comité es la primera instancia: si la sesión ya
+      // decidió, la aprobación directa ya no aplica (solo aplica cuando la
+      // solicitud llega a EVALUADA sin pasar por el comité).
+      if (solicitud.estado === SOLICITUD_ESTADO.EVALUADA) {
+        await this.assertSinDecisionDeComite(id);
+      }
+    } else if (dto.accion === 'evaluar') {
+      // El evaluador cierra la revisión de las solicitudes que tiene
+      // asignadas; el personal revisor puede cerrarlas todas.
+      const asignado = await this.prisma.evaluacion.findFirst({
+        where: { solicitudId: id, evaluadorId: usuario.id },
+        select: { id: true },
+      });
+      if (!asignado && !this.authz.esPersonal(usuario)) {
+        throw new ForbiddenException(
+          'No tienes permisos para esta transición',
+        );
+      }
     } else if (!this.authz.esPersonal(usuario)) {
       throw new ForbiddenException(
         'No tienes permisos para esta transición',
@@ -388,6 +505,21 @@ export class SolicitudesService {
           // No bloquear la transición si la asignación falla (p. ej. el
           // evaluador quedó inactivo): la asignación se puede hacer a mano.
         }
+      }
+    }
+
+    // Al aprobarse la beca se abre el desembolso: el postulante ve que su
+    // beca está aprobada y que el pago está en camino.
+    if (siguienteEstado === SOLICITUD_ESTADO.APROBADA) {
+      try {
+        await this.desembolsos.abrirAlAprobar(
+          id,
+          solicitud.montoOtorgable,
+          usuario,
+        );
+      } catch {
+        // Si el desembolso no se puede abrir, la aprobación sigue siendo
+        // válida: se puede registrar el pago después.
       }
     }
 
@@ -801,6 +933,26 @@ export class SolicitudesService {
       );
     }
 
+    const { completos, minimo } = await this.conteoEvaluadoresCompletos(
+      solicitud,
+    );
+    if (completos < minimo) {
+      throw new BadRequestException(
+        `Se requieren al menos ${minimo} evaluadores con la evaluación completa (actual: ${completos})`,
+      );
+    }
+  }
+
+  /**
+   * Cuántos evaluadores terminaron su evaluación y cuántos se requieren.
+   */
+  private async conteoEvaluadoresCompletos(solicitud: {
+    convocatoria: {
+      evaluadoresMinimos?: number;
+      beca: { criteriosEvaluacion: { activo: boolean }[] };
+    };
+    evaluaciones: { evaluadorId: string; completada: boolean }[];
+  }): Promise<{ completos: number; minimo: number }> {
     const criteriosActivos =
       solicitud.convocatoria.beca.criteriosEvaluacion.filter(
         (c) => c.activo,
@@ -823,12 +975,74 @@ export class SolicitudesService {
       (g) => criteriosActivos > 0 && g.completados >= criteriosActivos,
     ).length;
 
-    const minimo = solicitud.convocatoria.evaluadoresMinimos;
-    if (completos < minimo) {
-      throw new BadRequestException(
-        `Se requieren al menos ${minimo} evaluadores con la evaluación completa (actual: ${completos})`,
+    return { completos, minimo: solicitud.convocatoria.evaluadoresMinimos ?? 1 };
+  }
+
+  /**
+   * Registra el puntaje de un criterio y, si el evaluador terminó su parte,
+   * cierra la revisión cuando ya se alcanzó el mínimo de evaluadores.
+   */
+  async registrarPuntaje(
+    solicitudId: string,
+    criterioId: string,
+    dto: RegistrarPuntajeDto,
+    usuario: AuthenticatedUser,
+  ) {
+    const puntaje = await this.evaluaciones.registrarPuntaje(
+      solicitudId,
+      criterioId,
+      dto,
+      usuario,
+    );
+    const cierre = await this.cerrarRevisionSiProcede(solicitudId, usuario);
+    return { ...puntaje, cierre };
+  }
+
+  /**
+   * Cierra la revisión si ya se alcanzó el mínimo de evaluadores.
+   *
+   * La dispara el evaluador al terminar de calificar: cuando el último
+   * evaluador necesario completa su parte, la solicitud pasa a EVALUADA sin
+   * que nadie tenga que marcarla a mano.
+   */
+  async cerrarRevisionSiProcede(
+    solicitudId: string,
+    usuario: AuthenticatedUser,
+  ): Promise<{ cerrada: boolean; estado: string }> {
+    const solicitud = await this.prisma.solicitud.findUnique({
+      where: { id: solicitudId },
+      include: {
+        convocatoria: {
+          include: { beca: { include: { criteriosEvaluacion: true } } },
+        },
+        evaluaciones: { select: { evaluadorId: true, completada: true } },
+      },
+    });
+
+    if (!solicitud) {
+      throw new NotFoundException(
+        `Solicitud con id ${solicitudId} no encontrada`,
       );
     }
+
+    if (solicitud.estado !== SOLICITUD_ESTADO.EN_REVISION) {
+      return { cerrada: false, estado: solicitud.estado };
+    }
+
+    const { completos, minimo } = await this.conteoEvaluadoresCompletos(
+      solicitud,
+    );
+    if (completos < minimo) {
+      return { cerrada: false, estado: solicitud.estado };
+    }
+
+    const actualizada = await this.transicion(
+      solicitudId,
+      { accion: 'evaluar' },
+      usuario,
+    );
+
+    return { cerrada: true, estado: actualizada.estado };
   }
 
   async guardarPerfilAcademico(

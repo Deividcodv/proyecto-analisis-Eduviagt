@@ -8,6 +8,8 @@ import { Container } from '@/components/ui/Container';
 import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { Spinner } from '@/components/ui/Spinner';
 import { InternalPageHeader } from '@/components/ui/InternalPageHeader';
 import { nombreRol } from '@/lib/rol';
@@ -75,21 +77,56 @@ function ReportesContent() {
   const [misComites, setMisComites] = useState<ReporteMisComites | null>(null);
   const [misSesiones, setMisSesiones] = useState<ReporteMisSesiones | null>(null);
   const [meses, setMeses] = useState(12);
+  // Filtros que aplica a todo el reporte y a las exportaciones.
+  const [filtroConvocatoria, setFiltroConvocatoria] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('');
+  const [desde, setDesde] = useState('');
+  const [hasta, setHasta] = useState('');
+  const [busqueda, setBusqueda] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [cargando, setCargando] = useState(true);
 
   const rol = (usuario?.rol ?? '').toUpperCase();
 
-  const cargar = useCallback(async () => {
-    try {
-      const [g, tr, cv] = await Promise.all([
-        fetchConToken<ReporteGeneral>('/reportes/general'),
-        fetchConToken<TendenciaData>(`/reportes/tendencia?meses=${meses}`),
-        fetchConToken<ConvocatoriasDetalle>('/reportes/convocatorias'),
-      ]);
-      setGeneral(g);
-      setTendencia(tr);
-      setConvDetalle(cv);
+  // Convocatorias que se pueden elegir: las que coinciden con la búsqueda.
+  const convocatoriasFiltradas = (convDetalle?.detalle ?? [])
+    .filter((c) =>
+      busqueda.trim() === ''
+        ? true
+        : c.nombre.toLowerCase().includes(busqueda.trim().toLowerCase()),
+    )
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
+  const cargar = useCallback(async () => {
+    setCargando(true);
+    // Cada reporte se resuelve por separado: que uno falle no deja la
+    // página en un spinner eterno.
+    const [resGeneral, resTendencia, resConvocatorias] = await Promise.allSettled([
+      fetchConToken<ReporteGeneral>('/reportes/general'),
+      fetchConToken<TendenciaData>(`/reportes/tendencia?meses=${meses}`),
+      fetchConToken<ConvocatoriasDetalle>('/reportes/convocatorias'),
+    ]);
+
+    const fallos = [resGeneral, resTendencia, resConvocatorias].filter(
+      (r) => r.status === 'rejected',
+    );
+    if (fallos.length > 0) {
+      const motivo = fallos[0] as PromiseRejectedResult;
+      setError(
+        motivo.reason instanceof Error
+          ? motivo.reason.message
+          : 'No se pudieron cargar los reportes',
+      );
+    } else {
+      setError(null);
+      setGeneral((resGeneral as PromiseFulfilledResult<ReporteGeneral>).value);
+      setTendencia((resTendencia as PromiseFulfilledResult<TendenciaData>).value);
+      setConvDetalle(
+        (resConvocatorias as PromiseFulfilledResult<ConvocatoriasDetalle>).value,
+      );
+    }
+
+    try {
       if (rol === 'EVALUADOR') {
         const ev = await fetchConToken<ReporteMisEvaluaciones>('/reportes/mis-evaluaciones');
         setMisEvaluaciones(ev);
@@ -102,8 +139,11 @@ function ReportesContent() {
         const se = await fetchConToken<ReporteMisSesiones>('/reportes/mis-sesiones');
         setMisSesiones(se);
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error cargando reportes');
+    } catch {
+      // Los bloques por rol son complementarios: si fallan, el resto del
+      // reporte sigue siendo útil.
+    } finally {
+      setCargando(false);
     }
   }, [rol, meses]);
 
@@ -136,11 +176,104 @@ function ReportesContent() {
 
       <Container className="py-10">
         {error && (
-          <p className="mb-6 rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-4 text-sm font-bold text-brutal-rojo">{error}</p>
+          <div className="mb-6 rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-4">
+            <p className="text-sm font-bold text-brutal-rojo">{error}</p>
+            <Button
+              variant="ghost"
+              className="mt-3"
+              onClick={() => void cargar()}
+              disabled={cargando}
+            >
+              Reintentar
+            </Button>
+          </div>
         )}
 
+        <Card className="mb-6">
+          <p className="brut-label mb-3 text-xs font-bold uppercase tracking-wide text-brutal-tinta">
+            // Filtros del reporte
+          </p>
+          <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_1fr]">
+            <Input
+              label="Buscar convocatoria"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Escribe parte del nombre…"
+            />
+            <Select
+              label="Convocatoria"
+              value={filtroConvocatoria}
+              onChange={(e) => setFiltroConvocatoria(e.target.value)}
+              placeholder="Todas las convocatorias"
+              options={convocatoriasFiltradas.map((c) => ({
+                value: c.id,
+                label: c.nombre.length > 40 ? `${c.nombre.slice(0, 39)}…` : c.nombre,
+              }))}
+            />
+            <Select
+              label="Estado de la solicitud"
+              value={filtroEstado}
+              onChange={(e) => setFiltroEstado(e.target.value)}
+              placeholder="Todos los estados"
+              options={[
+                { value: 'BORRADOR', label: 'Borrador' },
+                { value: 'ENVIADA', label: 'Enviada' },
+                { value: 'EN_REVISION', label: 'En revisión' },
+                { value: 'CORRECCION', label: 'Necesita correcciones' },
+                { value: 'EVALUADA', label: 'Evaluada' },
+                { value: 'PENDIENTE_SEGUNDA_APROBACION', label: '2ª aprobación' },
+                { value: 'APROBADA', label: 'Aprobada' },
+                { value: 'RECHAZADA', label: 'No seleccionada' },
+              ]}
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                label="Desde"
+                type="date"
+                value={desde}
+                onChange={(e) => setDesde(e.target.value)}
+              />
+              <Input
+                label="Hasta"
+                type="date"
+                value={hasta}
+                onChange={(e) => setHasta(e.target.value)}
+              />
+            </div>
+          </div>
+          {(filtroConvocatoria || filtroEstado || desde || hasta) && (
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <p className="font-mono text-xs text-brutal-tinta/70">
+                Filtros aplicados: todas las secciones y las exportaciones
+                muestran solo estos datos.
+              </p>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setFiltroConvocatoria('');
+                  setFiltroEstado('');
+                  setDesde('');
+                  setHasta('');
+                }}
+              >
+                Quitar filtros
+              </Button>
+            </div>
+          )}
+        </Card>
+
         {!general || !tendencia ? (
-          <div className="flex justify-center py-20"><Spinner /></div>
+          cargando ? (
+            <div className="flex justify-center py-20"><Spinner /></div>
+          ) : (
+            !error && (
+              <div className="flex justify-center py-20">
+                <p className="text-sm font-bold text-brutal-tinta/70">
+                  No hay datos para mostrar.
+                </p>
+              </div>
+            )
+          )
         ) : (
           <div className="space-y-10">
             {/* KPIs por rol */}
@@ -276,20 +409,33 @@ function ReportesContent() {
                 </MarcoBrutal>
               </div>
 
-              <div className="mt-6">
-                <MarcoBrutal titulo="Detalle por convocatoria y totales">
-                  <TablaDetalle />
-                </MarcoBrutal>
-              </div>
+              {filtroConvocatoria && (
+                <div className="mt-6">
+                  <MarcoBrutal titulo="Detalle de la convocatoria elegida">
+                    <TablaDetalle
+                      convocatoriaId={filtroConvocatoria}
+                      estado={filtroEstado}
+                      desde={desde}
+                      hasta={hasta}
+                    />
+                  </MarcoBrutal>
+                </div>
+              )}
             </section>
 
-            <section>
-              <p className="brut-label mb-4 text-xs font-bold text-brutal-gold">// Comparativa de convocatorias</p>
-              <ComparativaConvocatorias />
-            </section>
+            {filtroConvocatoria && (
+              <section>
+                <p className="brut-label mb-4 text-xs font-bold text-brutal-gold">
+                  // Comparativa de la convocatoria elegida
+                </p>
+                <ComparativaConvocatorias
+                  convocatoriaId={filtroConvocatoria}
+                  estado={filtroEstado}
+                />
+              </section>
+            )}
 
-            {rol === 'ADMIN' && (
-              <section className="space-y-4">
+            <section className="space-y-4">
                 <p className="brut-label mb-1 text-xs font-bold text-brutal-gold">// Exportar datos</p>
                 <div className="flex flex-wrap gap-3">
                   <Button onClick={() => descargarCsv('solicitudes-por-estado')} variant="ghost">
@@ -302,9 +448,11 @@ function ReportesContent() {
                     ↓ Descargar evaluaciones (CSV)
                   </Button>
                 </div>
-                <ExportarReporte />
-              </section>
-            )}
+              <ExportarReporte
+                convocatoriaId={filtroConvocatoria}
+                estado={filtroEstado}
+              />
+            </section>
           </div>
         )}
       </Container>

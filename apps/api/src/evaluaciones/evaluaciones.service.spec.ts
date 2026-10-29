@@ -60,7 +60,7 @@ describe('EvaluacionesService', () => {
     service = new EvaluacionesService(
       prisma,
       audit,
-      new AuthzService(),
+      new AuthzService(prisma),
       new NotificacionesService(prisma),
     );
   });
@@ -267,6 +267,9 @@ describe('EvaluacionesService', () => {
         completada: true,
         criterioEvaluacion: { id: 'c1', nombre: 'Situación socioeconómica' },
       });
+      prisma.evaluacion.findMany.mockResolvedValue([
+        { id: 'ev1', completada: true },
+      ]);
 
       const result = await service.registrarPuntaje(
         's1',
@@ -424,6 +427,31 @@ describe('EvaluacionesService', () => {
       await expect(service.scoreSolicitud('s1')).rejects.toThrow(NotFoundException);
     });
 
+    it('incluye las observaciones de cada criterio', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        id: 's1',
+        estado: 'EN_REVISION',
+        convocatoria: { evaluadoresMinimos: 2 },
+      });
+      prisma.evaluacion.findMany.mockResolvedValue([
+        {
+          solicitudId: 's1',
+          evaluadorId: 'u-eval1',
+          completada: true,
+          puntaje: 80,
+          observaciones: 'Buen desempeño académico',
+          criterioEvaluacion: { id: 'c1', nombre: 'Trayectoria académica', peso: 0.4 },
+          evaluador: { id: 'u-eval1', nombres: 'Evaluador 1' },
+        },
+      ]);
+
+      const result = await service.scoreSolicitud('s1');
+
+      expect(result.evaluadores[0].criterios[0].observaciones).toBe(
+        'Buen desempeño académico',
+      );
+    });
+
     it('devuelve score null si no hay evaluaciones completadas', async () => {
       prisma.solicitud.findUnique.mockResolvedValue({ id: 's1', estado: 'EN_REVISION' });
       prisma.evaluacion.findMany.mockResolvedValue([]);
@@ -473,6 +501,172 @@ describe('EvaluacionesService', () => {
       expect(result.completo).toBe(false);
       expect(result.evaluadores[0].completo).toBe(true);
       expect(result.evaluadores[1].completo).toBe(false);
+    });
+  });
+
+  describe('registrarPuntaje — cierre automático de la revisión', () => {
+    it('marca la evaluación como finalizada al completar el último criterio', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        id: 's1',
+        estado: 'EN_REVISION',
+      });
+      prisma.evaluacion.findFirst.mockResolvedValue({
+        id: 'ev1',
+        solicitudId: 's1',
+        evaluadorId: 'u-evaluador',
+        completada: false,
+        confirmImparcialidad: true,
+      });
+      prisma.evaluacion.update.mockResolvedValue({ id: 'ev1' });
+      // Tras guardar, sus evaluaciones ya están todas completas.
+      prisma.evaluacion.findMany.mockResolvedValue([
+        { id: 'ev1', completada: true },
+        { id: 'ev2', completada: true },
+      ]);
+
+      await service.registrarPuntaje(
+        's1',
+        'c1',
+        { puntaje: 90, observaciones: 'Bien' },
+        evaluador,
+      );
+
+      expect(prisma.evaluacion.updateMany).toHaveBeenCalledWith({
+        where: { solicitudId: 's1', evaluadorId: 'u-evaluador' },
+        data: { finalizada: true },
+      });
+    });
+
+    it('no marca nada como finalizada si todavía faltan criterios', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        id: 's1',
+        estado: 'EN_REVISION',
+      });
+      prisma.evaluacion.findFirst.mockResolvedValue({
+        id: 'ev1',
+        solicitudId: 's1',
+        evaluadorId: 'u-evaluador',
+        completada: false,
+        confirmImparcialidad: true,
+      });
+      prisma.evaluacion.update.mockResolvedValue({ id: 'ev1' });
+      prisma.evaluacion.findMany.mockResolvedValue([
+        { id: 'ev1', completada: true },
+        { id: 'ev2', completada: false },
+      ]);
+
+      await service.registrarPuntaje(
+        's1',
+        'c1',
+        { puntaje: 90 },
+        evaluador,
+      );
+
+      expect(prisma.evaluacion.updateMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('finalizarMisEvaluaciones (el evaluador cierra su revisión)', () => {
+    const misEvaluaciones = (completadas: boolean, finalizada = false) => [
+      {
+        id: 'ev1',
+        solicitudId: 's1',
+        evaluadorId: 'u-evaluador',
+        completada: completadas,
+        finalizada,
+        puntaje: completadas ? 90 : null,
+        evaluador: { id: 'u-evaluador', nombres: 'Evaluador' },
+        criterioEvaluacion: { id: 'c1', nombre: 'Criterio 1', peso: 0.5 },
+      },
+      {
+        id: 'ev2',
+        solicitudId: 's1',
+        evaluadorId: 'u-evaluador',
+        completada: completadas,
+        finalizada,
+        puntaje: completadas ? 80 : null,
+        evaluador: { id: 'u-evaluador', nombres: 'Evaluador' },
+        criterioEvaluacion: { id: 'c2', nombre: 'Criterio 2', peso: 0.5 },
+      },
+    ];
+
+    beforeEach(() => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        id: 's1',
+        estado: 'EN_REVISION',
+      });
+      prisma.evaluacion.updateMany.mockResolvedValue({ count: 2 });
+    });
+
+    it('no permite finalizar si falta calificar algún criterio', async () => {
+      prisma.evaluacion.findMany.mockResolvedValue(misEvaluaciones(false));
+
+      await expect(
+        service.finalizarMisEvaluaciones('s1', evaluador),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('no permite finalizar si no tiene evaluación asignada', async () => {
+      prisma.evaluacion.findMany.mockResolvedValue([]);
+
+      await expect(
+        service.finalizarMisEvaluaciones('s1', evaluador),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('no permite finalizar si la solicitud ya no está en revisión', async () => {
+      prisma.solicitud.findUnique.mockResolvedValue({
+        id: 's1',
+        estado: 'EVALUADA',
+      });
+
+      await expect(
+        service.finalizarMisEvaluaciones('s1', evaluador),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('no permite finalizar dos veces', async () => {
+      prisma.evaluacion.findMany.mockResolvedValue(
+        misEvaluaciones(true, true),
+      );
+
+      await expect(
+        service.finalizarMisEvaluaciones('s1', evaluador),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('marca su evaluación como finalizada', async () => {
+      prisma.evaluacion.findMany.mockResolvedValue(misEvaluaciones(true));
+
+      await service.finalizarMisEvaluaciones('s1', evaluador);
+
+      expect(prisma.evaluacion.updateMany).toHaveBeenCalledWith({
+        where: { solicitudId: 's1', evaluadorId: 'u-evaluador' },
+        data: { finalizada: true },
+      });
+    });
+
+    it('avisa si se alcanzó el mínimo de evaluadores', async () => {
+      prisma.evaluacion.findMany.mockResolvedValue(misEvaluaciones(true));
+      // El segundo evaluador ya terminó: se alcanzó el mínimo de 2.
+      prisma.evaluacion.findMany.mockResolvedValue([
+        ...misEvaluaciones(true),
+        {
+          id: 'ev3',
+          solicitudId: 's1',
+          evaluadorId: 'u-eval2',
+          completada: true,
+          finalizada: true,
+          puntaje: 70,
+          evaluador: { id: 'u-eval2', nombres: 'Evaluador 2' },
+          criterioEvaluacion: { id: 'c1', nombre: 'Criterio 1', peso: 0.5 },
+        },
+      ]);
+
+      const result = await service.finalizarMisEvaluaciones('s1', evaluador);
+
+      expect(result.finalizada).toBe(true);
+      expect(result.minimoAlcanzado).toBe(true);
     });
   });
 });

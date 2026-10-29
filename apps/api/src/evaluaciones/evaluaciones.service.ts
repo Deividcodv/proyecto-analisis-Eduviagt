@@ -22,6 +22,8 @@ export interface CriterioPuntaje {
   nombre: string;
   peso: number;
   puntaje: number | null;
+  /// Observación del evaluador: el personal necesita leerlas para decidir.
+  observaciones: string | null;
 }
 
 export interface GrupoEvaluador {
@@ -76,6 +78,7 @@ export class EvaluacionesService {
       solicitudId: string;
       solicitud: (typeof evaluaciones)[number]['solicitud'];
       imparcialidadConfirmada: boolean;
+      finalizada: boolean;
       criterios: {
         id: string;
         nombre: string;
@@ -101,11 +104,15 @@ export class EvaluacionesService {
         grupo.criterios.push(criterio);
         grupo.imparcialidadConfirmada =
           grupo.imparcialidadConfirmada || ev.confirmImparcialidad;
+        // El evaluador cierra toda su revisión de una vez: el grupo está
+        // finalizado cuando todas sus evaluaciones lo están.
+        grupo.finalizada = grupo.finalizada && ev.finalizada;
       } else {
         porSolicitud.set(key, {
           solicitudId: key,
           solicitud: ev.solicitud,
           imparcialidadConfirmada: ev.confirmImparcialidad,
+          finalizada: ev.finalizada,
           criterios: [criterio],
         });
       }
@@ -279,7 +286,7 @@ export class EvaluacionesService {
       );
     }
 
-    return this.prisma.evaluacion.update({
+    const actualizado = await this.prisma.evaluacion.update({
       where: { id: evaluacion.id },
       data: {
         puntaje: dto.puntaje,
@@ -288,6 +295,22 @@ export class EvaluacionesService {
       },
       include: { criterioEvaluacion: true },
     });
+
+    // Si con este puntaje el evaluador terminó todos sus criterios, su
+    // revisión queda cerrada: sale de la cola de "por evaluar" sin que
+    // tenga que hacer nada más.
+    const suyas = await this.prisma.evaluacion.findMany({
+      where: { solicitudId, evaluadorId: usuario.id },
+      select: { completada: true },
+    });
+    if (suyas.length > 0 && suyas.every((e) => e.completada)) {
+      await this.prisma.evaluacion.updateMany({
+        where: { solicitudId, evaluadorId: usuario.id },
+        data: { finalizada: true },
+      });
+    }
+
+    return actualizado;
   }
 
   async confirmarImparcialidad(
@@ -408,6 +431,75 @@ export class EvaluacionesService {
     return { solicitudId, evaluadorId, removido: true };
   }
 
+  /**
+   * El evaluador da por terminada su revisión de la solicitud.
+   *
+   * Solo puede hacerlo si ya calificación todos sus criterios. Devuelve si
+   * se alcanzó el mínimo de evaluadores: en ese caso la solicitud pasa a
+   * EVALUADA (lo hace el servicio de solicitudes).
+   */
+  async finalizarMisEvaluaciones(
+    solicitudId: string,
+    usuario: AuthenticatedUser,
+  ) {
+    const solicitud = await this.prisma.solicitud.findUnique({
+      where: { id: solicitudId },
+      select: { id: true, estado: true },
+    });
+
+    if (!solicitud) {
+      throw new NotFoundException(`Solicitud con id ${solicitudId} no encontrada`);
+    }
+
+    if (solicitud.estado !== SOLICITUD_ESTADO.EN_REVISION) {
+      throw new BadRequestException(
+        'La solicitud ya no está en revisión: no se puede finalizar la evaluación',
+      );
+    }
+
+    const evaluaciones = await this.prisma.evaluacion.findMany({
+      where: { solicitudId, evaluadorId: usuario.id },
+    });
+
+    if (evaluaciones.length === 0) {
+      throw new ForbiddenException(
+        'No tienes una evaluación asignada para esta solicitud',
+      );
+    }
+
+    if (evaluaciones.some((e) => !e.completada)) {
+      throw new BadRequestException(
+        'Completa todos los criterios antes de finalizar tu evaluación',
+      );
+    }
+
+    if (evaluaciones.every((e) => e.finalizada)) {
+      throw new BadRequestException('Ya habías finalizado esta evaluación');
+    }
+
+    await this.prisma.evaluacion.updateMany({
+      where: { solicitudId, evaluadorId: usuario.id },
+      data: { finalizada: true },
+    });
+
+    const score = await this.scoreSolicitud(solicitudId);
+
+    await this.audit.log({
+      usuarioId: usuario.id,
+      accion: 'finalizar-evaluacion',
+      entidad: 'solicitud',
+      entidadId: solicitudId,
+    });
+
+    return {
+      solicitudId,
+      finalizada: true,
+      minimoAlcanzado: score.minimoAlcanzado,
+      evaluadoresCompletos: score.evaluadoresCompletos,
+      evaluadoresMinimos: score.evaluadoresMinimos,
+    };
+  }
+
   async scoreSolicitud(solicitudId: string): Promise<ScoreSolicitudResult> {
     const solicitud = await this.prisma.solicitud.findUnique({
       where: { id: solicitudId },
@@ -443,6 +535,7 @@ export class EvaluacionesService {
           nombre: ev.criterioEvaluacion.nombre,
           peso: ev.criterioEvaluacion.peso,
           puntaje: ev.puntaje,
+          observaciones: ev.observaciones,
         });
       }
       porEvaluador.set(key, grupo);

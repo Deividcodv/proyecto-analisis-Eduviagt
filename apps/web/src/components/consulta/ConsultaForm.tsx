@@ -7,6 +7,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { httpData, type ConsultaSolicitud } from '@/lib/api';
 import { etiquetaEstado } from '@/lib/etiquetas';
 import { traducirError } from '@/lib/mensajes-error';
+import { AvisoDialog } from '@/components/ui/AvisoDialog';
 
 export function ConsultaForm() {
   const [codigo, setCodigo] = useState('');
@@ -57,11 +58,15 @@ export function ConsultaForm() {
         </Button>
       </form>
 
-      {error && (
-        <div className="rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-4 text-sm font-bold text-brutal-rojo">
-          {error}
-        </div>
-      )}
+      <AvisoDialog
+        open={!!error}
+        titulo="No se pudo completar la acción"
+        tono="error"
+        mensaje={error ?? ''}
+        onCerrar={() => {
+          setError(null);
+        }}
+      />
 
       {cargando && (
         <div className="flex justify-center py-8">

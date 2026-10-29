@@ -1,10 +1,12 @@
 import {
   Controller,
   Get,
+  Inject,
   Param,
   Query,
   Res,
   ParseUUIDPipe,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -14,6 +16,10 @@ import {
 } from '@nestjs/swagger';
 import { Response } from 'express';
 import { ReportesService, TipoReporte } from './reportes.service';
+import {
+  PDF_RENDERER,
+  type PdfRenderer,
+} from '../solicitudes/pdf/pdf-renderer.interface';
 import { Permisos } from '../common/decorators/permisos.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
@@ -22,7 +28,10 @@ import { AuthenticatedUser } from '../common/interfaces/authenticated-user.inter
 @Controller('reportes')
 @ApiBearerAuth()
 export class ReportesController {
-  constructor(private readonly reportesService: ReportesService) {}
+  constructor(
+    private readonly reportesService: ReportesService,
+    @Inject(PDF_RENDERER) private readonly pdfRenderer: PdfRenderer,
+  ) {}
 
   @Get('solicitudes-por-estado')
   @Permisos('reporte:ver')
@@ -128,13 +137,60 @@ export class ReportesController {
     @Res() res: Response,
     @Query('desde') desde?: string,
     @Query('hasta') hasta?: string,
+    @Query('convocatoriaId') convocatoriaId?: string,
+    @Query('estado') estado?: string,
   ) {
-    const csv = await this.reportesService.generarCsv(tipo, desde, hasta);
+    const csv = await this.reportesService.generarCsv(
+      tipo,
+      desde,
+      hasta,
+      convocatoriaId,
+      estado,
+    );
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader(
       'Content-Disposition',
       `attachment; filename="reporte-${tipo}.csv"`,
     );
     res.send(csv);
+  }
+
+  @Get(':tipo/pdf')
+  @Permisos('reporte:ver')
+  @ApiOperation({
+    summary: 'Exportar el reporte a PDF con sus gráficas (A4)',
+  })
+  @ApiQuery({ name: 'convocatoriaId', required: false, type: String })
+  @ApiQuery({ name: 'estado', required: false, type: String })
+  @ApiQuery({ name: 'desde', required: false, type: String })
+  @ApiQuery({ name: 'hasta', required: false, type: String })
+  async exportarPdf(
+    @Param('tipo') tipo: string,
+    @Res() res: Response,
+    @Query('convocatoriaId') convocatoriaId?: string,
+    @Query('estado') estado?: string,
+    @Query('desde') desde?: string,
+    @Query('hasta') hasta?: string,
+    @Query('meses') meses?: string,
+  ) {
+    if (tipo !== 'general' && tipo !== 'detalle') {
+      throw new BadRequestException(
+        'Tipo de reporte inválido. Válidos: general, detalle',
+      );
+    }
+    const html = await this.reportesService.generarPdf(tipo, {
+      convocatoriaId,
+      estado,
+      desde,
+      hasta,
+      meses: meses ? Number(meses) : undefined,
+    });
+    const pdf = await this.pdfRenderer.render(html, { formato: 'A4' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="reporte-${tipo}.pdf"`,
+    );
+    res.send(pdf);
   }
 }

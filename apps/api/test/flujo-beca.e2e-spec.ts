@@ -276,14 +276,23 @@ describe('Flujo completo de beca (pruebas funcionales E2E)', () => {
     expect(typeof res.body.data.score).toBe('number');
   });
 
-  it('admin marca la solicitud como EVALUADA', async () => {
+  it('la solicitud queda EVALUADA al terminar la evaluación', async () => {
+    // Al calificar el último criterio, si ya se alcanzó el mínimo de
+    // evaluadores, la solicitud se evalúa sola: nadie tiene que marcarla.
+    const detalle = await api(app)
+      .get(`/api/solicitudes/${estado.solicitudId}`)
+      .set(auth(tokens.admin));
+
+    expect(detalle.body.data.estado).toBe('EVALUADA');
+  });
+
+  it('no se puede volver a evaluar una solicitud ya evaluada', async () => {
     const res = await api(app)
       .post(`/api/solicitudes/${estado.solicitudId}/transicion`)
       .set(auth(tokens.admin))
       .send({ accion: 'evaluar' });
 
-    expect(res.status).toBe(201);
-    expect(res.body.data.estado).toBe('EVALUADA');
+    expect(res.status).toBe(400);
   });
 
   it('lleva la convocatoria a EN_EVALUACION', async () => {

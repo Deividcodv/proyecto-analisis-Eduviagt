@@ -1,9 +1,12 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { AuthenticatedUser } from '../interfaces/authenticated-user.interface';
 import { ROL, ROLES_REVISORES } from '../constants/roles';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class AuthzService {
+  constructor(private readonly prisma: PrismaService) {}
+
   esAdmin(usuario: AuthenticatedUser): boolean {
     return usuario.rol?.nombre === ROL.ADMIN;
   }
@@ -15,13 +18,35 @@ export class AuthzService {
   }
 
   /**
-   * Personal autorizado a gestionar solicitudes (Sprint 8 - US-806).
-   * El jefe de becas se suma al administrador: puede revisar, aprobar y
-   * devolver a revisión, pero la segunda firma nunca puede ser la misma
-   * persona que firmó la primera.
+   * Personal revisor: puede gestionar el ciclo de revisión de las
+   * solicitudes (iniciar revisión, asignar evaluadores, pedir correcciones,
+   * devolver a revisión).
+   *
+   * No es lo mismo que "puede aprobar": el jefe de becas y el coordinador
+   * del comité firman, el miembro del comité vota en la sesión.
    */
   esPersonal(usuario: AuthenticatedUser): boolean {
-    return this.esAdmin(usuario) || usuario.rol?.nombre === ROL.JEFE_BECAS;
+    return (
+      this.esAdmin(usuario) ||
+      usuario.rol?.nombre === ROL.JEFE_BECAS ||
+      usuario.rol?.nombre === ROL.COORDINADOR_COMITE ||
+      usuario.rol?.nombre === ROL.MIEMBRO_COMITE
+    );
+  }
+
+  /**
+   * Quién puede firmar la aprobación de una solicitud.
+   *
+   * La decisión del comité (votación en sesión) es la primera instancia; la
+   * firma la hace el jefe de becas, el coordinador del comité o el
+   * administrador. El miembro del comité únicamente vota.
+   */
+  puedeAprobar(usuario: AuthenticatedUser): boolean {
+    return (
+      this.esAdmin(usuario) ||
+      usuario.rol?.nombre === ROL.JEFE_BECAS ||
+      usuario.rol?.nombre === ROL.COORDINADOR_COMITE
+    );
   }
 
   /**
@@ -79,6 +104,56 @@ export class AuthzService {
   }
 
   /**
+   * ¿El usuario tiene esta solicitud asignada como evaluador?
+   */
+  async esEvaluadorAsignado(
+    solicitudId: string,
+    usuario: AuthenticatedUser,
+  ): Promise<boolean> {
+    if (usuario.rol?.nombre !== ROL.EVALUADOR) {
+      return false;
+    }
+    const asignacion = await this.prisma.evaluacion.findFirst({
+      where: { solicitudId, evaluadorId: usuario.id },
+      select: { id: true },
+    });
+    return Boolean(asignacion);
+  }
+
+  /**
+   * Quién puede ver el detalle de una solicitud:
+   * - el postulante dueño de ella;
+   * - el personal revisor (administrador, jefe de becas, comité);
+   * - el evaluador que tiene esa solicitud asignada.
+   *
+   * Es el punto único de decisión: lo usan el detalle, el checklist y la
+   * descarga de documentos, para que no se abra una puerta por un lado y se
+   * cierre por otro.
+   */
+  async assertAccesoASolicitud(
+    solicitudId: string,
+    solicitud: { usuarioId: string },
+    usuario: AuthenticatedUser,
+    mensaje = 'No tienes acceso a este recurso',
+  ): Promise<void> {
+    if (this.esPersonal(usuario)) return;
+    if (solicitud.usuarioId === usuario.id) return;
+    if (await this.esEvaluadorAsignado(solicitudId, usuario)) return;
+
+    throw new ForbiddenException(mensaje);
+  }
+
+  /**
+   * Quién puede gestionar el pago de una beca (el desembolso).
+   *
+   * Es la autoridad competente sobre el dinero: el jefe de becas y el
+   * administrador. El comité y los evaluadores no.
+   */
+  puedeGestionarDesembolso(usuario: AuthenticatedUser): boolean {
+    return this.esAdmin(usuario) || usuario.rol?.nombre === ROL.JEFE_BECAS;
+  }
+
+  /**
    * Segunda instancia de aprobación (Sprint 8 - US-802/803).
    *
    * Además del permiso, la segunda firma nunca puede ser la misma persona
@@ -92,7 +167,7 @@ export class AuthzService {
     if (primerAprobadorId && primerAprobadorId === usuario.id) {
       return false;
     }
-    return this.esAdmin(usuario) || usuario.rol?.nombre === ROL.JEFE_BECAS;
+    return this.puedeAprobar(usuario);
   }
 
   assertSegundaAprobacion(

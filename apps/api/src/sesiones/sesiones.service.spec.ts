@@ -6,6 +6,8 @@ import {
 import { SesionesService } from './sesiones.service';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
+import { AuditService } from '../audit/audit.service';
+import { MontosService } from '../solicitudes/montos.service';
 
 const miembro: AuthenticatedUser = {
   id: 'u-miembro',
@@ -33,8 +35,10 @@ describe('SesionesService', () => {
         create: jest.fn(),
         update: jest.fn(),
       },
+      sesionAgenda: { deleteMany: jest.fn() },
       voto: { findFirst: jest.fn(), create: jest.fn() },
       decision: { create: jest.fn() },
+      solicitudAprobacion: { create: jest.fn() },
       historialEstado: { create: jest.fn() },
       convocatoria: { findUnique: jest.fn(), update: jest.fn() },
       usuario: { findMany: jest.fn().mockResolvedValue([]) },
@@ -60,6 +64,9 @@ describe('SesionesService', () => {
       prisma,
       audit,
       new NotificacionesService(prisma),
+      {
+        requiereSegundaAprobacion: jest.fn().mockReturnValue(false),
+      } as unknown as MontosService,
     );
   });
 
@@ -222,6 +229,46 @@ describe('SesionesService', () => {
     });
   });
 
+  describe('quitarDeAgenda', () => {
+    beforeEach(() => {
+      prisma.sesion.findUnique.mockResolvedValue({
+        id: 'ses1',
+        estado: 'PROGRAMADA',
+        comiteId: 'co1',
+      });
+      prisma.sesionAgenda.deleteMany.mockResolvedValue({ count: 1 });
+    });
+
+    it('quita la solicitud de la agenda', async () => {
+      const result = await service.quitarDeAgenda('ses1', 's1');
+
+      expect(result.quitada).toBe(true);
+      expect(prisma.sesionAgenda.deleteMany).toHaveBeenCalledWith({
+        where: { sesionId: 'ses1', solicitudId: 's1' },
+      });
+    });
+
+    it('no permite quitar de una sesión finalizada', async () => {
+      prisma.sesion.findUnique.mockResolvedValue({
+        id: 'ses1',
+        estado: 'FINALIZADA',
+        comiteId: 'co1',
+      });
+
+      await expect(service.quitarDeAgenda('ses1', 's1')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('avisa si la solicitud no estaba en la agenda', async () => {
+      prisma.sesionAgenda.deleteMany.mockResolvedValue({ count: 0 });
+
+      await expect(service.quitarDeAgenda('ses1', 's1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
   describe('finalizarSesion (US-33)', () => {
     const sesionBase = {
       id: 'ses1',
@@ -325,5 +372,157 @@ describe('SesionesService', () => {
       });
       expect(result.id).toBe('ses1');
     });
+  });
+});
+
+/**
+ * La sesión del comité es la PRIMERA instancia de la aprobación. Al
+ * finalizar, la decisión debe respetar el mismo control de monto que el
+ * camino directo: si el monto supera el umbral, la solicitud queda
+ * pendiente de una segunda firma.
+ */
+describe('SesionesService — la decisión del comité es la primera instancia', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let prisma: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let montos: any;
+  let service: SesionesService;
+
+  const usuario = {
+    id: 'u-coordinador',
+    cui: '1234567890123',
+    nombres: 'Coordinador Comité',
+    email: 'coordinador@demo.gt',
+    rol: { id: 'r-coord', nombre: 'COORDINADOR_COMITE', descripcion: null },
+  };
+
+  const sesionBase = (solicitudes: Array<Record<string, unknown>>) => ({
+    id: 'se1',
+    comiteId: 'co1',
+    estado: 'PROGRAMADA',
+    quorumMinimo: 1,
+    comite: { id: 'co1', nombre: 'Comité X' },
+    agenda: solicitudes.map((s) => ({
+      solicitudId: s.id,
+      solicitud: s,
+    })),
+    votos: [
+      { solicitudId: 's1', usuarioId: 'u-miembro', voto: 'APROBAR' },
+      { solicitudId: 's1', usuarioId: 'u-otro', voto: 'APROBAR' },
+    ],
+  });
+
+  const solicitudEvaluada = (monto: number) => ({
+    id: 's1',
+    estado: 'EVALUADA',
+    convocatoriaId: 'cv1',
+    usuarioId: 'u-postulante',
+    montoOtorgable: monto,
+  });
+
+  beforeEach(() => {
+    prisma = {
+      sesion: {
+        findUnique: jest.fn(),
+        update: jest.fn().mockResolvedValue({
+          id: 'se1',
+          estado: 'FINALIZADA',
+          decisiones: [],
+        }),
+      },
+      solicitud: {
+        update: jest.fn().mockResolvedValue({ id: 's1' }),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      convocatoria: { findUnique: jest.fn().mockResolvedValue(null) },
+      historialEstado: { create: jest.fn().mockResolvedValue({ id: 'h1' }) },
+      decision: { create: jest.fn().mockResolvedValue({ id: 'd1' }) },
+      solicitudAprobacion: {
+        create: jest.fn().mockResolvedValue({ id: 'ap1' }),
+      },
+      $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn(prisma),
+      ),
+    };
+    montos = {
+      requiereSegundaAprobacion: jest.fn().mockReturnValue(false),
+    };
+
+    service = new SesionesService(
+      prisma,
+      { log: jest.fn() } as unknown as AuditService,
+      { notificarUsuario: jest.fn() } as unknown as NotificacionesService,
+      montos as unknown as MontosService,
+    );
+  });
+
+  it('una aprobación del comité sobre el umbral deja la solicitud pendiente de 2ª firma', async () => {
+    prisma.sesion.findUnique.mockResolvedValue(
+      sesionBase([solicitudEvaluada(12000)]),
+    );
+    montos.requiereSegundaAprobacion.mockReturnValue(true);
+
+    await service.finalizarSesion('se1', usuario as unknown as AuthenticatedUser);
+
+    expect(prisma.solicitud.update).toHaveBeenCalledWith({
+      where: { id: 's1' },
+      data: { estado: 'PENDIENTE_SEGUNDA_APROBACION' },
+    });
+  });
+
+  it('una aprobación del comité dentro del umbral aprueba la solicitud', async () => {
+    prisma.sesion.findUnique.mockResolvedValue(
+      sesionBase([solicitudEvaluada(5000)]),
+    );
+
+    await service.finalizarSesion('se1', usuario as unknown as AuthenticatedUser);
+
+    expect(prisma.solicitud.update).toHaveBeenCalledWith({
+      where: { id: 's1' },
+      data: { estado: 'APROBADA' },
+    });
+  });
+
+  it('la decisión del comité queda registrada como aprobación de 1ª instancia', async () => {
+    prisma.sesion.findUnique.mockResolvedValue(
+      sesionBase([solicitudEvaluada(5000)]),
+    );
+
+    await service.finalizarSesion('se1', usuario as unknown as AuthenticatedUser);
+
+    expect(prisma.solicitudAprobacion.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          solicitudId: 's1',
+          nivel: 1,
+          accion: 'aprobar',
+        }),
+      }),
+    );
+  });
+
+  it('el rechazo del comité queda registrado en la bitácora de decisiones', async () => {
+    prisma.sesion.findUnique.mockResolvedValue({
+      ...sesionBase([solicitudEvaluada(5000)]),
+      votos: [
+        { solicitudId: 's1', usuarioId: 'u-miembro', voto: 'RECHAZAR' },
+        { solicitudId: 's1', usuarioId: 'u-otro', voto: 'RECHAZAR' },
+      ],
+    });
+
+    await service.finalizarSesion('se1', usuario as unknown as AuthenticatedUser);
+
+    expect(prisma.solicitud.update).toHaveBeenCalledWith({
+      where: { id: 's1' },
+      data: { estado: 'RECHAZADA' },
+    });
+    expect(prisma.solicitudAprobacion.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          accion: 'rechazar',
+          resultado: 'RECHAZADA',
+        }),
+      }),
+    );
   });
 });

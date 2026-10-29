@@ -130,6 +130,8 @@ export interface Solicitud {
   montoOtorgable?: string | null;
   montoAprobado?: string | null;
   montoOrigenCalculo?: string | null;
+  // La postulación se identifica por la persona, no por el nombre de la beca.
+  usuario?: { nombres: string; cui: string };
   convocatoria: {
     id: string;
     nombre: string;
@@ -137,9 +139,47 @@ export interface Solicitud {
     evaluadoresMinimos?: number;
     maxCorrecciones?: number;
     evaluadorPorDefectoId?: string | null;
+    fechaApertura?: string | null;
+    fechaCierre?: string | null;
+    montoBase?: string | null;
     _count?: { documentosRequeridos?: number };
   };
   _count?: { documentos?: number };
+}
+
+/** Evaluación asignada a un evaluador (GET /evaluaciones/mias). */
+export interface EvaluacionAsignada {
+  solicitudId: string;
+  /** El evaluador ya dio por terminada su revisión. */
+  finalizada: boolean;
+  imparcialidadConfirmada: boolean;
+  totalCriterios: number;
+  completados: number;
+  solicitud: {
+    id: string;
+    estado: string;
+    createdAt: string;
+    montoOtorgable?: string | null;
+    respuestas?: Record<string, Record<string, unknown>> | null;
+    formularioSnapshot?: CampoFormulario[] | null;
+    convocatoria: {
+      id: string;
+      nombre: string;
+      fechaApertura?: string | null;
+      fechaCierre?: string | null;
+      montoBase?: string | null;
+      beca: Beca;
+    };
+    usuario: { nombres: string; cui: string; email?: string };
+  };
+  criterios: Array<{
+    id: string;
+    nombre: string;
+    peso: number;
+    puntaje: number | null;
+    observaciones: string | null;
+    completada: boolean;
+  }>;
 }
 
 export interface SolicitudPerfilAcademico {
@@ -321,6 +361,34 @@ export interface SesionDetalle extends Sesion {
   decisiones: Decision[];
 }
 
+export interface Desembolso {
+  id: string;
+  solicitudId: string;
+  estado: 'PENDIENTE' | 'EN_TRAMITE' | 'PAGADO' | 'ANULADO';
+  monto: string;
+  moneda: string;
+  metodo?: 'TRANSFERENCIA' | 'CHEQUE' | 'EFECTIVO' | null;
+  banco?: string | null;
+  numeroCuenta?: string | null;
+  titular?: string | null;
+  fechaPago?: string | null;
+  comprobanteUrl?: string | null;
+  notas?: string | null;
+}
+
+export const ETIQUETA_DESEMBOLSO: Record<string, string> = {
+  PENDIENTE: 'Pendiente de gestionar',
+  EN_TRAMITE: 'En trámite',
+  PAGADO: 'Pagado',
+  ANULADO: 'Anulado',
+};
+
+export const ETIQUETA_METODO_PAGO: Record<string, string> = {
+  TRANSFERENCIA: 'Transferencia',
+  CHEQUE: 'Cheque',
+  EFECTIVO: 'Efectivo',
+};
+
 export interface EvaluadorScore {
   evaluador: { id: string; nombres: string };
   criterios: {
@@ -328,6 +396,8 @@ export interface EvaluadorScore {
     nombre: string;
     peso: number;
     puntaje: number;
+    /** Observación del evaluador: el personal la necesita para decidir. */
+    observaciones?: string | null;
   }[];
   completados: number;
   total: number;

@@ -33,7 +33,10 @@ import {
   MarcarEstadoDocumentoDto,
   GuardarRespuestasDto,
   OverrideMontoDto,
+  RegistrarDesembolsoDto,
 } from './dto';
+import { RegistrarPuntajeDto } from '../evaluaciones/evaluaciones.dto';
+import { DesembolsoService } from './desembolso.service';
 import { Permisos } from '../common/decorators/permisos.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -67,6 +70,7 @@ export class SolicitudesController {
   constructor(
     private readonly solicitudesService: SolicitudesService,
     private readonly constanciasService: ConstanciasService,
+    private readonly desembolsosService: DesembolsoService,
   ) {}
 
   @Post()
@@ -138,6 +142,21 @@ export class SolicitudesController {
     return this.solicitudesService.transicion(id, dto, usuario);
   }
 
+  @Post(':id/finalizar-evaluacion')
+  @Permisos('evaluacion:editar')
+  @ApiOperation({
+    summary:
+      'El evaluador cierra su revisión. Si se alcanzó el mínimo de evaluadores, la solicitud pasa a EVALUADA.',
+  })
+  @ApiResponse({ status: 400, description: 'Faltan criterios por calificar' })
+  @ApiResponse({ status: 403, description: 'No tiene evaluación asignada' })
+  finalizarEvaluacion(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.solicitudesService.finalizarEvaluacion(id, usuario);
+  }
+
   @Post(':id/monto')
   @Permisos('solicitud:montos-override')
   @ApiOperation({
@@ -200,6 +219,46 @@ export class SolicitudesController {
     @CurrentUser() usuario: AuthenticatedUser,
   ) {
     return this.solicitudesService.guardarRespuestas(id, dto, usuario);
+  }
+
+  @Put(':id/criterios/:criterioId')
+  @Permisos('evaluacion:editar')
+  @ApiOperation({
+    summary:
+      'Registrar el puntaje de un criterio. Si el evaluador terminó su parte y ya se alcanzó el mínimo de evaluadores, la solicitud pasa a EVALUADA.',
+  })
+  registrarPuntaje(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('criterioId', ParseUUIDPipe) criterioId: string,
+    @Body() dto: RegistrarPuntajeDto,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.solicitudesService.registrarPuntaje(id, criterioId, dto, usuario);
+  }
+
+  @Get(':id/desembolso')
+  @Permisos('solicitud:ver')
+  @ApiOperation({
+    summary: 'Estado del pago de la beca (personal y postulante)',
+  })
+  async desembolso(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.desembolsosService.obtener(id, usuario);
+  }
+
+  @Patch(':id/desembolso')
+  @Permisos('solicitud:montos-override')
+  @ApiOperation({
+    summary: 'Registrar o actualizar el pago de la beca (autoridad competente)',
+  })
+  registrarDesembolso(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RegistrarDesembolsoDto,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.desembolsosService.registrar(id, dto, usuario);
   }
 
   @Post(':id/documentos/:tipoId')
