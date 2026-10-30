@@ -56,6 +56,11 @@ Las categorías son:
 - `docs/00-indice.md`: marcadores de conflicto Git resueltos
 - `docs/architecture/ARQUITECTURA_TECNICA_DETALLADA_SIGEB_v1.1.md`: despliegue real es PM2 (no Docker Compose)
 
+### Fixed (2026-10-30)
+- Build de la imagen web en CI: `next/font/google` fallaba de forma intermitente con `TypeError: Cannot read properties of null (reading '1')` en `next/dist/compiled/@next/font/dist/google/loader.js`, porque Google Fonts devuelve a veces URLs de fuente sin extension (`/l/font?kit=...`) y el loader de Next 14.2 asume que la URL termina en `.woff2` (vercel/next.js#99114; corregido upstream solo en Next 16.4.3+)
+- Las fuentes `Archivo`, `Instrument Sans` y `Space Mono` (subset latin) se versionan en `apps/web/src/fonts` con sus licencias OFL, y `apps/web/src/app/layout.tsx` usa `next/font/local`: el build ya no depende de la red y es determinista
+- `deploy-staging` volvio a ejecutarse: el job `docker-build` que lo bloqueaba ya pasa en verde
+
 ---
 
 ---
