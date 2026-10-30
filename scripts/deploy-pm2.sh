@@ -27,6 +27,52 @@
 
 set -euo pipefail
 
+# --- Navegador headless para las constancias PDF (US-F7) -------------------
+# Puppeteer baja su propio Chrome, pero la extraccion del zip necesita
+# `unzip` y el arranque necesita las librerias de Chromium del sistema. Si
+# falta cualquiera de las dos, la API responde "Could not find Chrome" al
+# pedir un PDF. Ya ocurrio en la VM: la carpeta de la cache quedo vacia
+# porque no habia `unzip` y la descarga fallo en silencio.
+asegurar_navegador_pdf() {
+  local paquetes="unzip libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libgbm1 libasound2t64 libasound2 libxshmfence1 libatspi2.0-0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libpango-1.0-0 libcairo2"
+
+  if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+    echo "    instalando unzip y librerias de Chromium"
+    local disponibles=""
+    for p in $paquetes; do
+      if apt-cache show "$p" >/dev/null 2>&1; then
+        disponibles="$disponibles $p"
+      fi
+    done
+    sudo apt-get update -qq
+    sudo apt-get install -y --no-install-recommends $disponibles >/dev/null
+  elif ! command -v unzip >/dev/null 2>&1; then
+    echo "ERROR: falta 'unzip' y no hay sudo sin password para instalarlo." >&2
+    echo "       Sin el, Puppeteer no extrae su navegador y los PDF fallan." >&2
+    return 1
+  fi
+
+  # La instalacion es idempotente: si el navegador ya esta, no se vuelve a bajar.
+  if ! npx puppeteer browsers install chrome; then
+    echo "    reinstalando el navegador desde cero (instalacion previa incompleta)"
+    rm -rf "$HOME/.cache/puppeteer/chrome" "$HOME/.cache/puppeteer/chrome-headless-shell"
+    npx puppeteer browsers install chrome
+  fi
+
+  # Comprobacion real: se arranca el navegador y se genera un PDF.
+  node -e '
+const puppeteer = require("puppeteer");
+(async () => {
+  const navegador = await puppeteer.launch({ headless: true, args: ["--no-sandbox", "--disable-setuid-sandbox"] });
+  const pagina = await navegador.newPage();
+  await pagina.setContent("<p>ok</p>");
+  const pdf = await pagina.pdf();
+  await navegador.close();
+  console.log("    PDF de prueba: " + pdf.length + " bytes");
+})().catch((e) => { console.error("    ERROR: " + e.message); process.exit(1); });
+'
+}
+
 RAIZ="${DEPLOY_PATH:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "$RAIZ"
 
@@ -79,6 +125,9 @@ git pull --ff-only origin "$RAMA"
 
 echo "==> Dependencias"
 npm ci
+
+echo "==> Navegador headless (constancias PDF / US-F7)"
+asegurar_navegador_pdf
 
 echo "==> Migraciones de la base de datos"
 export DATABASE_URL="$(grep -m1 '^DATABASE_URL=' apps/api/.env | cut -d= -f2-)"

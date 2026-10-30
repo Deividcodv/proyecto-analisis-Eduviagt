@@ -60,6 +60,9 @@ Las categorías son:
 - Build de la imagen web en CI: `next/font/google` fallaba de forma intermitente con `TypeError: Cannot read properties of null (reading '1')` en `next/dist/compiled/@next/font/dist/google/loader.js`, porque Google Fonts devuelve a veces URLs de fuente sin extension (`/l/font?kit=...`) y el loader de Next 14.2 asume que la URL termina en `.woff2` (vercel/next.js#99114; corregido upstream solo en Next 16.4.3+)
 - Las fuentes `Archivo`, `Instrument Sans` y `Space Mono` (subset latin) se versionan en `apps/web/src/fonts` con sus licencias OFL, y `apps/web/src/app/layout.tsx` usa `next/font/local`: el build ya no depende de la red y es determinista
 - `deploy-staging` volvio a ejecutarse: el job `docker-build` que lo bloqueaba ya pasa en verde
+- Constancias y reportes PDF en la VM: la API respondia «Could not find Chrome» porque Puppeteer no tenia navegador. Causa: la VM no tenia `unzip`, la extraccion del zip de Chrome fallaba en silencio y dejaba la cache vacia
+- `scripts/deploy-pm2.sh` y el job `deploy-staging` instalan `unzip` y las librerias de Chromium, aseguran el navegador de Puppeteer y **verifican el PDF generando uno real** antes de reiniciar PM2: un despliegue con el PDF roto ya no pasa inadvertido
+- El job `api-tests` de CI instala el navegador de forma explicita en vez de depender de que `npm ci` lo descargue bien
 
 ---
 

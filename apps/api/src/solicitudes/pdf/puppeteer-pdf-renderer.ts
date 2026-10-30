@@ -1,11 +1,40 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { existsSync } from 'node:fs';
 import puppeteer, { Browser } from 'puppeteer';
 import { PdfRenderOpciones, PdfRenderer } from './pdf-renderer.interface';
 
 @Injectable()
-export class PuppeteerPdfRenderer implements PdfRenderer {
+export class PuppeteerPdfRenderer implements PdfRenderer, OnModuleInit {
   private readonly logger = new Logger(PuppeteerPdfRenderer.name);
   private browserPromise: Promise<Browser> | null = null;
+
+  /**
+   * Aviso temprano: sin navegador, el PDF falla en runtime y el unico rastro
+   * queda en el log de la API. Con esta comprobacion el problema se ve al
+   * arrancar el proceso, no cuando un usuario pide un PDF.
+   */
+  async onModuleInit(): Promise<void> {
+    try {
+      const ruta = await puppeteer.executablePath();
+      if (!existsSync(ruta)) {
+        this.logger.warn(
+          `No hay navegador para Puppeteer ("${ruta}"). Las constancias y los reportes PDF fallaran. ` +
+            `Ejecuta "npx puppeteer browsers install chrome"; si la extraccion del zip falla, ` +
+            `instala tambien unzip (sudo apt-get install -y unzip).`,
+        );
+      }
+    } catch (error) {
+      this.logger.warn(
+        `No se pudo resolver el navegador de Puppeteer: ${(error as Error).message}. ` +
+          `Los PDF fallaran hasta instalar el navegador.`,
+      );
+    }
+  }
 
   async render(html: string, opciones: PdfRenderOpciones = {}): Promise<Buffer> {
     try {
