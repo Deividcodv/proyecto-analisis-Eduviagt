@@ -134,7 +134,7 @@ Dos implementaciones casi idénticas (`ChatWidget.tsx` global flotante + `MiniAs
 - **Barrel files:** solo `components/solicitud/steps/index.ts`.
 - **Alias:** `@/*` → `./src/*`.
 - **Composición por props/callbacks** en el wizard de postulación (cada `Paso*` recibe `solicitudId`, `onGuardado`, `onError`).
-- **Design system "brutalista institucional"**: paleta `sigeb.*`/`brutal.*`, sombras duras `6px 6px 0 0`, `borderRadius: 0`, fuentes `Archivo`/`Instrument_Sans`/`Space_Mono` vía `next/font/google`.
+- **Design system "brutalista institucional"**: paleta `sigeb.*`/`brutal.*`, sombras duras `6px 6px 0 0`, `borderRadius: 0`, fuentes `Archivo`/`Instrument Sans`/`Space Mono` vía `next/font/local`, con los archivos `.woff2` versionados en `apps/web/src/fonts` (licencia OFL). Se usa `next/font/local` y no `next/font/google` a propósito: Google Fonts devuelve a veces URLs de fuente sin extensión y el build falla de forma intermitente (vercel/next.js#99114).
 
 ## 11. Server Components / Server Actions
 

@@ -1,27 +1,41 @@
 import type { Metadata } from 'next';
-import { Archivo, Space_Mono, Instrument_Sans } from 'next/font/google';
+import localFont from 'next/font/local';
 import '@/styles/globals.css';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { AuthProvider } from '@/context/AuthContext';
 import { ChatWidget } from '@/components/chat/ChatWidget';
 
-const display = Archivo({
-  subsets: ['latin'],
-  weight: ['700', '800', '900'],
+// Las fuentes se sirven desde el propio repositorio (apps/web/src/fonts).
+// Antes se usaba `next/font/google`, que descarga de Google Fonts durante el
+// build: Google devuelve a veces URLs sin extension (`/l/font?kit=...`) y el
+// loader de Next 14.2 aborta la compilacion con
+// "TypeError: Cannot read properties of null (reading '1')"
+// (vercel/next.js#99114). Con archivos locales el build es determinista y
+// no depende de la red.
+const display = localFont({
+  src: '../fonts/archivo-latin.woff2',
+  weight: '100 900',
+  style: 'normal',
   variable: '--font-display',
+  display: 'swap',
 });
 
-const body = Instrument_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+const body = localFont({
+  src: '../fonts/instrument-sans-latin.woff2',
+  weight: '400 700',
+  style: 'normal',
   variable: '--font-body',
+  display: 'swap',
 });
 
-const mono = Space_Mono({
-  subsets: ['latin'],
-  weight: ['400', '700'],
+const mono = localFont({
+  src: [
+    { path: '../fonts/space-mono-400.woff2', weight: '400', style: 'normal' },
+    { path: '../fonts/space-mono-700.woff2', weight: '700', style: 'normal' },
+  ],
   variable: '--font-mono',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
