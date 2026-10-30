@@ -8,16 +8,16 @@
 graph TB
   subgraph MONO[Monorepo — npm workspaces + Turborepo]
     subgraph API[apps/api — NestJS 10]
-      MW[Guards globales: JwtAuthGuard → RolesGuard → PermissionsGuard]
+      MW[Guards globales: JwtAuthGuard -> RolesGuard -> PermissionsGuard]
       CTRL[Controllers — 14 routers]
       SVC[Services — 17 módulos]
-      PRIS[PrismaService → PostgreSQL 16]
+      PRIS[PrismaService -> PostgreSQL 16]
       TRANS[Transversales: AuthzService, AuditService, BitacoraService, NotificacionesService]
     end
     subgraph WEB[apps/web — Next.js 14 App Router]
       SSR[Server Components — fetch público sin token]
       CSR[Client Components — fetch autenticado]
-      PROXY[NEXT_PUBLIC_API_PROXY → rewrite /api/:path*]
+      PROXY[NEXT_PUBLIC_API_PROXY -> rewrite /api/:path*]
     end
   end
   DB[(PostgreSQL — 36 entidades)]
@@ -47,8 +47,8 @@ graph LR
   TURBO --> DEV[dev: cache false, persistent true]
   TURBO --> LINT[lint: dependsOn ^build]
   TURBO --> TEST[test: dependsOn build]
-  BUILD --> API[apps/api → nest build → dist/]
-  BUILD --> WEB[apps/web → next build → .next/]
+  BUILD --> API[apps/api -> nest build -> dist/]
+  BUILD --> WEB[apps/web -> next build -> .next/]
 ```
 
 ## 3. Flujo de autenticación
@@ -151,7 +151,7 @@ sequenceDiagram
   U->>API: POST /api/auth/eliminar-cuenta {contrasena, confirmacion, motivo?}
   API->>API: validar confirmacion === "ELIMINAR" (toUpperCase)
   API->>DB: verificar password (bcrypt.compare)
-  API->>DB: $transaction { anonimizar usuario (nombres→"Usuario eliminado", email→null, passwordHash→null, eliminadoAt=now), historialEstado, bitacora }
+  API->>DB: $transaction { anonimizar usuario (nombres->"Usuario eliminado", email->null, passwordHash->null, eliminadoAt=now), historialEstado, bitacora }
   API->>FS: borrar archivos fuera de la transacción (best-effort, try/catch vacío)
   API-->>U: 200 { data: { ok: true } }
 ```
@@ -186,9 +186,9 @@ sequenceDiagram
   participant LLM as Proveedor LLM (OpenAI-compatible)
 
   W->>C: POST /api/asistente/preguntar { pregunta }
-  C->>S: preguntar(pregunta)  [sin usuario → rol=null, usuarioId=null]
+  C->>S: preguntar(pregunta)  [sin usuario -> rol=null, usuarioId=null]
   S->>P: responder(pregunta, {rol:null, sesionId:null})
-  P->>P: obtenerProveedor() → 'openai' si AI_API_KEY, sino 'fallback-kb'
+  P->>P: obtenerProveedor() -> 'openai' si AI_API_KEY, sino 'fallback-kb'
 
   alt modo fallback-kb (sin AI_API_KEY)
     P->>KB: SELECT ... ts_rank(to_tsvector('spanish', titulo||' '||contenido), websearch_to_tsquery('spanish', REPLACE($1,' ',' OR '))) WHERE activo=true ORDER BY rank DESC, titulo ASC LIMIT 3
@@ -225,7 +225,7 @@ sequenceDiagram
 
   Note over B,N: Cliente llama a /api/* (relativo)
   B->>N: GET /api/convocatorias
-  N->>N: rewrite /api/:path* → NEXT_PUBLIC_API_PROXY/:path*
+  N->>N: rewrite /api/:path* -> NEXT_PUBLIC_API_PROXY/:path*
   N->>A: GET http://api:3000/api/convocatorias
   A-->>N: { data: { data:[...], total, page, limit } }
   N-->>B: mismo JSON
@@ -272,13 +272,13 @@ sequenceDiagram
 
   W->>API: GET /api/notificaciones/stream?token=JWT (EventSource)
   API->>API: AuthGuard('sse-jwt') valida token
-  API->>SVC: suscribir(usuarioId) → Subject<EventoNotificacion>
+  API->>SVC: suscribir(usuarioId) -> Subject<EventoNotificacion>
   loop heartbeat 25s
     API-->>W: event: hb
   end
   SVC-->>API: next(evento)
   API-->>W: data: {tipo, mensaje, ...}
-  Note over W: onerror → close → refreshAccessToken → setTimeout(conectar, 1000)
+  Note over W: onerror -> close -> refreshAccessToken -> setTimeout(conectar, 1000)
 ```
 
 ## 12. Subida y descarga segura de documentos
@@ -293,15 +293,15 @@ sequenceDiagram
   U->>API: POST /api/solicitudes/:id/documentos/:tipoId (multipart, max 5MB, MIME pdf/jpeg/png + extensión)
   API->>M: FileInterceptor (limits: fileSize 5MB, files 1)
   M->>API: fileFilter (MIME + extensión coincidente)
-  API->>FS: save(buffer, {folder, name}) → key = UUID + ext, resolveKey con anti path-traversal
+  API->>FS: save(buffer) -> key UUID, resolveKey anti path-traversal
   FS->>FS: fs.promises.writeFile
   API->>DB: solicitudDocumento.create (key, tamaño, estado)
   API-->>U: { data: { url, key, size } }
 
   U->>API: GET /api/solicitudes/:id/documentos/:tipoId/descargar
   API->>API: verificar dueño o revisor
-  API->>FS: read(key) → Buffer
-  API-->>U: 200 (Content-Disposition: inline; filename=...)
+  API->>FS: read(key) -> Buffer
+  API-->>U: 200 (Content-Disposition inline, filename)
 ```
 
 ## 13. Despliegue en VM (PM2 vigente + Docker Compose alternativa)

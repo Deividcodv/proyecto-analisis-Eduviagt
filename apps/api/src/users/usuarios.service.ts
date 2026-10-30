@@ -34,6 +34,33 @@ export class UsuariosService {
     });
   }
 
+  /**
+   * Directorio de personal: quienes pueden revisar, evaluar o decidir.
+   *
+   * Sin filtro de rol devuelve todo el personal **excepto a los
+   * postulantes**: en los selectores (miembros de comité, evaluadores) no
+   * tiene sentido que aparezcan quienes solo presentan una postulacion.
+   */
+  async findPersonal(rol?: string) {
+    return this.prisma.usuario.findMany({
+      where: {
+        estado: 'ACTIVO',
+        rol: rol
+          ? { nombre: rol }
+          : { nombre: { not: 'POSTULANTE' } },
+      },
+      select: {
+        id: true,
+        cui: true,
+        nombres: true,
+        email: true,
+        estado: true,
+        rol: { select: { nombre: true } },
+      },
+      orderBy: { nombres: 'asc' },
+    });
+  }
+
   async findById(id: string) {
     const usuario = await this.prisma.usuario.findUnique({
       where: { id },

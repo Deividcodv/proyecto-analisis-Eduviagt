@@ -11,7 +11,7 @@ describe('ReportesService', () => {
       solicitud: { groupBy: jest.fn(), findMany: jest.fn(), count: jest.fn() },
       convocatoria: { groupBy: jest.fn(), findMany: jest.fn() },
       decision: { findMany: jest.fn() },
-      evaluacion: { findMany: jest.fn() },
+      evaluacion: { findMany: jest.fn(), aggregate: jest.fn() },
     };
     service = new ReportesService(prisma);
   });
@@ -132,6 +132,100 @@ describe('ReportesService', () => {
       expect(r.etapas[2].porcentaje).toBe(40);
       expect(r.conversion.envio).toBe(80);
       expect(r.conversion.aprobacion).toBe(50);
+    });
+
+    it('cuenta las solicitudes pendientes de 2ª firma como evaluadas', async () => {
+      // Sin esto, el embudo pierde las solicitudes que esperan la segunda
+      // firma (el monto superó el umbral de control).
+      prisma.solicitud.groupBy.mockResolvedValue([
+        { estado: 'EVALUADA', _count: { _all: 2 } },
+        { estado: 'PENDIENTE_SEGUNDA_APROBACION', _count: { _all: 3 } },
+        { estado: 'APROBADA', _count: { _all: 1 } },
+      ]);
+
+      const r = await service.embudo();
+
+      expect(r.total).toBe(6);
+      // Evaluadas: 2 + 3 (pendientes de 2ª firma) + 1 aprobada.
+      expect(r.etapas[2].cantidad).toBe(6);
+    });
+  });
+
+  describe('tendencia', () => {
+    it('rechaza un número de meses inválido', async () => {
+      await expect(service.tendencia(Number('abc'))).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
+  describe('exportaciones con filtros', () => {
+    it('el CSV respeta la convocatoria filtrada', async () => {
+      prisma.solicitud.groupBy
+        .mockResolvedValueOnce([{ estado: 'ENVIADA', _count: { _all: 4 } }])
+        .mockResolvedValueOnce([
+          { convocatoriaId: 'c1', estado: 'ENVIADA', _count: { _all: 4 } },
+        ]);
+      prisma.convocatoria.findMany.mockResolvedValue([
+        {
+          id: 'c1',
+          nombre: 'Beca CI',
+          beca: { nombre: 'Permanencia' },
+          _count: { solicitudes: 4 },
+        },
+      ]);
+
+      const csv = await service.generarCsv(
+        'solicitudes-por-estado',
+        undefined,
+        undefined,
+        'c1',
+      );
+
+      expect(csv).toContain('Beca CI');
+      expect(prisma.solicitud.groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ convocatoriaId: 'c1' }),
+        }),
+      );
+    });
+
+    it('el PDF arma un HTML con las gráficas y las tablas', async () => {
+      prisma.solicitud.groupBy.mockResolvedValue([
+        { estado: 'ENVIADA', _count: { _all: 3 } },
+        { estado: 'APROBADA', _count: { _all: 2 } },
+      ]);
+      prisma.convocatoria.findMany.mockResolvedValue([
+        {
+          id: 'c1',
+          nombre: 'Beca CI',
+          estado: 'ABIERTA',
+          beca: { nombre: 'Permanencia' },
+          _count: { solicitudes: 5 },
+          createdAt: new Date('2026-01-01'),
+        },
+      ]);
+      prisma.solicitud.findMany.mockResolvedValue([
+        { createdAt: new Date('2026-01-15') },
+      ]);
+      prisma.evaluacion.findMany.mockResolvedValue([
+        { createdAt: new Date('2026-01-20'), completada: true, puntaje: 80, criterioEvaluacion: { peso: 1 } },
+      ]);
+      prisma.decision.findMany.mockResolvedValue([]);
+      prisma.evaluacion.aggregate.mockResolvedValue({
+        _count: { completada: 2 },
+        _avg: { puntaje: 85 },
+      });
+      prisma.convocatoria.groupBy.mockResolvedValue([
+        { estado: 'ABIERTA', _count: { _all: 1 } },
+      ]);
+
+      const html = await service.generarPdf('general');
+
+      expect(html).toContain('<svg');
+      expect(html).toContain('Solicitudes por estado');
+      expect(html).toContain('Tendencia mensual');
+      expect(html).toContain('Beca CI');
     });
   });
 

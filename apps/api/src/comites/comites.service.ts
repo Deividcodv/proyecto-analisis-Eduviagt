@@ -148,6 +148,43 @@ export class ComitesService {
     return miembro;
   }
 
+  /**
+   * Cambia el rol de un miembro dentro del comité (de vocal a presidente,
+   * por ejemplo). Antes había que quitarlo y volverlo a agregar.
+   */
+  async cambiarRolMiembro(
+    comiteId: string,
+    usuarioId: string,
+    rol: string,
+    usuario: AuthenticatedUser,
+  ) {
+    const miembro = await this.prisma.comiteMiembro.findFirst({
+      where: { comiteId, usuarioId, activo: true },
+    });
+
+    if (!miembro) {
+      throw new NotFoundException(
+        `El usuario ${usuarioId} no es miembro activo del comité ${comiteId}`,
+      );
+    }
+
+    const actualizado = await this.prisma.comiteMiembro.update({
+      where: { id: miembro.id },
+      data: { rol },
+      include: { usuario: { select: { id: true, nombres: true, email: true } } },
+    });
+
+    await this.audit.log({
+      usuarioId: usuario.id,
+      accion: 'cambiar-rol-miembro',
+      entidad: 'comite',
+      entidadId: comiteId,
+      detalle: { usuarioId, rol },
+    });
+
+    return actualizado;
+  }
+
   async eliminarMiembro(
     comiteId: string,
     usuarioId: string,

@@ -10,6 +10,7 @@ import {
 } from '@/lib/notificaciones-stream';
 import { useNotificacionesSonido } from '@/hooks/use-notificaciones-sonido';
 import type { ListaNotificaciones, Notificacion } from '@/lib/api';
+import { AvisoDialog } from '@/components/ui/AvisoDialog';
 
 function formatearMomento(fecha: string): string {
   const d = new Date(fecha);
@@ -174,11 +175,15 @@ export function CampanaNotificaciones() {
             )}
           </div>
 
-          {error && (
-            <p className="border-b-2 border-brutal-tinta bg-red-50 px-3 py-2 text-xs font-bold text-brutal-rojo">
-              {error}
-            </p>
-          )}
+          <AvisoDialog
+        open={!!error}
+        titulo="No se pudo completar la acción"
+        tono="error"
+        mensaje={error ?? ''}
+        onCerrar={() => {
+          setError(null);
+        }}
+      />
 
           <div className="max-h-96 overflow-y-auto">
             {items.length === 0 ? (

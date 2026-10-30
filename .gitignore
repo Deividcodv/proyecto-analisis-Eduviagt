@@ -80,3 +80,6 @@ __pycache__/
 # AI tooling artifacts
 .aider/
 skills-src/
+
+# Build intermedio de LaTeX (se regenera con scripts/)
+docs/latex/

@@ -10,6 +10,7 @@ import {
   mensajeEspera,
   saludoAsistente,
 } from '@/lib/asistente';
+import { AvisoDialog } from '@/components/ui/AvisoDialog';
 
 interface Mensaje {
   rol: 'usuario' | 'asistente';
@@ -139,14 +140,15 @@ export function MiniAsistente() {
             {mensajeEspera(esEquipo)}
           </div>
         )}
-        {error && (
-          <div
-            role="alert"
-            className="rounded-brutal border-2 border-brutal-rojo bg-red-50 px-3 py-2 text-xs text-brutal-rojo"
-          >
-            {error}
-          </div>
-        )}
+        <AvisoDialog
+        open={!!error}
+        titulo="No se pudo completar la acción"
+        tono="error"
+        mensaje={error ?? ''}
+        onCerrar={() => {
+          setError(null);
+        }}
+      />
         <div ref={finRef} />
       </div>
 

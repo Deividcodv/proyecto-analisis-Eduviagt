@@ -8,6 +8,8 @@ import { test, expect, type APIRequestContext } from '@playwright/test';
  * interfaz.
  */
 const API = `http://localhost:${process.env.E2E_API_PORT ?? '3000'}/api`;
+/** Beca del seed que tiene criterios de evaluación. */
+const BECA_CON_CRITERIOS = '00000000-0000-4000-8000-000000000002';
 const CLAVE = 'Admin123!';
 
 async function login(
@@ -40,34 +42,38 @@ test.describe('Segunda aprobación por monto', () => {
     request,
     page,
   }) => {
-    // 1. El postulante presenta su solicitud a la convocatoria de Excelencia
-    //    (monto base Q12,000).
-    const postulante = await login(request, 'postulante@demo.gt');
-    const convo = (
-      await (
-        await request.get(`${API}/convocatorias`)
-      ).json()
-    ).data as Array<{ id: string; nombre: string; montoBase?: string }>;
-    const convocatoria = convo.find((c) => c.nombre.includes('Excelencia'));
-    expect(convocatoria, 'la convocatoria de Excelencia debe existir').toBeTruthy();
-
-    let solicitudId = '';
-    const creada = await api(request, 'post', '/solicitudes', postulante, {
-      convocatoriaId: convocatoria!.id,
+    // 0. Se crea una convocatoria propia sobre Q10,000 (la que exige
+    //    segunda firma por monto): así la prueba no depende de los datos
+    //    que dejó una corrida anterior.
+    const admin = await login(request, 'admin@sigeb.gov.gt');
+    const creadaConv = await api(request, 'post', '/convocatorias', admin, {
+      nombre: `Convocatoria E2E 2ª firma ${Date.now()}`,
+      becaId: BECA_CON_CRITERIOS,
+      montoBase: 12000,
+      evaluadoresMinimos: 2,
+      fechaApertura: new Date(Date.now() - 86_400_000).toISOString(),
+      fechaCierre: new Date(Date.now() + 30 * 86_400_000).toISOString(),
     });
-    if (creada.ok()) {
-      solicitudId = ((await creada.json()).data as { id: string }).id;
-    } else {
-      // Puede existir una postulación previa de la misma cuenta de prueba.
-      const mias = (
-        await (
-          await request.get(`${API}/solicitudes`, {
-            headers: { authorization: `Bearer ${postulante}` },
-          })
-        ).json()
-      ).data as Array<{ id: string }>;
-      solicitudId = mias[0].id;
-    }
+    expect(creadaConv.ok(), `crear la convocatoria: ${await creadaConv.text()}`).toBeTruthy();
+    const convocatoria = (await creadaConv.json()).data as { id: string; nombre: string };
+    const publicar = await api(
+      request,
+      'post',
+      `/convocatorias/${convocatoria.id}/transicion`,
+      admin,
+      { accion: 'publicar' },
+    );
+    expect(publicar.ok(), 'publicar la convocatoria').toBeTruthy();
+
+    // 1. El postulante presenta su solicitud a esa convocatoria (es nueva,
+    //    así que no tiene ninguna postulación previa).
+    const postulante = await login(request, 'postulante@demo.gt');
+
+    const solicitudId = ((await (
+      await api(request, 'post', '/solicitudes', postulante, {
+        convocatoriaId: convocatoria!.id,
+      })
+    ).json()).data as { id: string }).id;
     expect(solicitudId).toBeTruthy();
 
     // 2. Se completa el expediente: perfiles, documentos y formulario.
@@ -98,7 +104,7 @@ test.describe('Segunda aprobación por monto', () => {
       documentosRequeridos: Array<{ documentoTipoId: string; obligatorio: boolean }>;
       formulario: Array<{ id: string; seccion: string; tipo: string; requerido: boolean; opciones?: string[] }>;
     };
-    for (const doc of detalle.documentosRequeridos.filter((d) => d.obligatorio)) {
+    for (const doc of (detalle.documentosRequeridos ?? []).filter((d) => d.obligatorio)) {
       await request.post(
         `${API}/solicitudes/${solicitudId}/documentos/${doc.documentoTipoId}`,
         {
@@ -114,7 +120,7 @@ test.describe('Segunda aprobación por monto', () => {
       );
     }
     const secciones: Record<string, Record<string, unknown>> = {};
-    for (const campo of detalle.formulario.filter((c) => c.requerido)) {
+    for (const campo of (detalle.formulario ?? []).filter((c) => c.requerido)) {
       const valor =
         campo.tipo === 'numero'
           ? 90
@@ -133,7 +139,6 @@ test.describe('Segunda aprobación por monto', () => {
     }
 
     // 3. Se envía y el comité la revisa hasta evaluarla.
-    const admin = await login(request, 'admin@sigeb.gov.gt');
     await api(request, 'post', `/solicitudes/${solicitudId}/transicion`, postulante, {
       accion: 'enviar',
     });
@@ -141,13 +146,16 @@ test.describe('Segunda aprobación por monto', () => {
       accion: 'iniciar_revision',
     });
 
+    // Solo evaluadores activos: un evaluador dado de baja no puede iniciar
+    // sesión ni evaluar.
     const evaluadores = (
       await (
-        await request.get(`${API}/seguridad/usuarios?rol=EVALUADOR`, {
+        await request.get(`${API}/seguridad/personal?rol=EVALUADOR`, {
           headers: { authorization: `Bearer ${admin}` },
         })
       ).json()
     ).data as Array<{ id: string; email: string }>;
+    expect(evaluadores.length).toBeGreaterThanOrEqual(3);
     await api(request, 'post', `/solicitudes/${solicitudId}/evaluadores`, admin, {
       evaluadorIds: evaluadores.slice(0, 3).map((e) => e.id),
     });
@@ -259,8 +267,14 @@ test.describe('Segunda aprobación por monto', () => {
     await page.getByLabel('Correo electrónico').fill('postulante@demo.gt');
     await page.getByLabel('Contraseña').fill(CLAVE);
     await page.getByRole('button', { name: 'Ingresar' }).click();
+    // Se espera a que la sesión quede iniciada: si se navega antes, la
+    // página de la postulación devuelve al login.
+    await expect(page).not.toHaveURL(/\/login$/);
     await page.goto(`/solicitudes/${solicitudId}`);
-    await expect(page.getByText('Aprobada').first()).toBeVisible();
+    await expect(
+      page.getByText('Aprobada').first(),
+      'la postulación debe verse aprobada',
+    ).toBeVisible({ timeout: 20000 });
   });
 });
 

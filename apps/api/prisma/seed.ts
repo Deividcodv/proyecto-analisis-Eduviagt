@@ -679,7 +679,17 @@ async function main() {
       'MIEMBRO_COMITE',
       (p) =>
         p.modulo === 'voto' ||
-        (p.accion === 'ver' && ['sesion', 'comite', 'solicitud'].includes(p.modulo)),
+        // El miembro del comité participa en la revisión: inicia revisiones,
+        // asigna evaluadores y pide correcciones. No firma aprobaciones
+        // (eso es del jefe de becas o del coordinador) ni califica
+        // postulaciones (eso es del evaluador).
+        (p.modulo === 'solicitud' && ['ver', 'editar'].includes(p.accion)) ||
+        // Ver los puntajes y las observaciones de las postulaciones que
+        // revisa (el comité decide con ese detalle).
+        (p.modulo === 'evaluacion' && p.accion === 'ver') ||
+        (p.modulo === 'evaluacion' && p.accion === 'crear') ||
+        (p.accion === 'ver' && ['sesion', 'comite'].includes(p.modulo)) ||
+        (p.modulo === 'reporte' && p.accion === 'ver'),
     ],
     // Sprint 8 (US-806): el jefe de becas administra las convocatorias y
     // participa en las dos instancias de aprobación. Que el segundo

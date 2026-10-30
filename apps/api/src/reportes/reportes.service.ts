@@ -2,8 +2,10 @@ import {
   BadRequestException,
   Injectable,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { aCsv } from './csv.util';
+import { graficaBarras, graficaLineas } from './graficas';
 import {
   CONVOCATORIA_ESTADO,
   SOLICITUD_ESTADO,
@@ -30,9 +32,14 @@ interface RangoFecha {
 export class ReportesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async solicitudesPorEstado(convocatoriaId?: string, rango?: RangoFecha) {
-    const where = {
+  async solicitudesPorEstado(
+    convocatoriaId?: string,
+    rango?: RangoFecha,
+    estado?: string,
+  ) {
+    const where: Prisma.SolicitudWhereInput = {
       ...(convocatoriaId ? { convocatoriaId } : {}),
+      ...(estado ? { estado: estado as Prisma.SolicitudWhereInput['estado'] } : {}),
       ...(rango ? { createdAt: rango } : {}),
     };
 
@@ -485,8 +492,11 @@ export class ReportesService {
       {
         clave: 'EVALUADAS',
         etiqueta: 'Evaluadas',
+        // Las que esperan la segunda firma ya fueron evaluadas por el
+        // comité: cuentan aquí y no se pierden del reporte.
         cantidad: contar([
           SOLICITUD_ESTADO.EVALUADA,
+          SOLICITUD_ESTADO.PENDIENTE_SEGUNDA_APROBACION,
           SOLICITUD_ESTADO.APROBADA,
           SOLICITUD_ESTADO.RECHAZADA,
         ]),
@@ -525,7 +535,12 @@ export class ReportesService {
     };
   }
 
-  async detalle(convocatoriaId?: string, desde?: string, hasta?: string) {
+  async detalle(
+    convocatoriaId?: string,
+    desde?: string,
+    hasta?: string,
+    estado?: string,
+  ) {
     const rango = this.parseRango(desde, hasta);
 
     const convocatorias = await this.prisma.convocatoria.findMany({
@@ -541,6 +556,9 @@ export class ReportesService {
           by: ['convocatoriaId', 'estado'],
           where: {
             convocatoriaId: { in: ids },
+            ...(estado
+              ? { estado: estado as Prisma.SolicitudWhereInput['estado'] }
+              : {}),
             ...(rango ? { createdAt: rango } : {}),
           },
           _count: { _all: true },
@@ -574,6 +592,8 @@ export class ReportesService {
         contarEstado(c.id, SOLICITUD_ESTADO.CORRECCION);
       const evaluadas =
         contarEstado(c.id, SOLICITUD_ESTADO.EVALUADA) +
+        // Las que esperan la segunda firma ya fueron evaluadas.
+        contarEstado(c.id, SOLICITUD_ESTADO.PENDIENTE_SEGUNDA_APROBACION) +
         contarEstado(c.id, SOLICITUD_ESTADO.APROBADA) +
         contarEstado(c.id, SOLICITUD_ESTADO.RECHAZADA);
       const total =
@@ -680,6 +700,11 @@ export class ReportesService {
   }
 
   async tendencia(meses = 12) {
+    if (!Number.isFinite(meses) || !Number.isInteger(meses)) {
+      throw new BadRequestException(
+        'El número de meses debe ser un entero entre 1 y 24',
+      );
+    }
     const n = Math.max(1, Math.min(meses, 24));
     const ahora = new Date();
     const lista = Array.from({ length: n }, (_, i) => {
@@ -727,6 +752,8 @@ export class ReportesService {
     tipo: TipoReporte,
     desde?: string,
     hasta?: string,
+    convocatoriaId?: string,
+    estado?: string,
   ): Promise<string> {
     if (!TIPOS_VALIDOS.includes(tipo)) {
       throw new BadRequestException(
@@ -737,7 +764,7 @@ export class ReportesService {
     const rango = this.parseRango(desde, hasta);
 
     if (tipo === 'solicitudes-por-estado') {
-      const data = await this.solicitudesPorEstado(undefined, rango);
+      const data = await this.solicitudesPorEstado(convocatoriaId, rango, estado);
       const filas: Record<string, unknown>[] = data.porConvocatoria.flatMap((c) =>
         c.porEstado.map((e) => ({
           convocatoria: c.nombre,
@@ -759,8 +786,11 @@ export class ReportesService {
 
     if (tipo === 'convocatorias') {
       const data = await this.convocatorias(rango);
+      const detalle = convocatoriaId
+        ? data.detalle.filter((c) => c.id === convocatoriaId)
+        : data.detalle;
       return aCsv(
-        data.detalle.map((c) => ({
+        detalle.map((c) => ({
           convocatoria: c.nombre,
           beca: c.beca,
           estado: c.estado,
@@ -771,8 +801,11 @@ export class ReportesService {
     }
 
     const data = await this.evaluaciones(rango);
+    const porConvocatoria = convocatoriaId
+      ? data.porConvocatoria.filter((c) => c.id === convocatoriaId)
+      : data.porConvocatoria;
     return aCsv(
-      data.porConvocatoria.map((c) => ({
+      porConvocatoria.map((c) => ({
         convocatoria: c.nombre,
         beca: c.beca,
         solicitudesEvaluadas: c.solicitudesEvaluadas,
@@ -785,6 +818,118 @@ export class ReportesService {
         pendientes: c.pendientes,
       })),
     );
+  }
+
+  /**
+   * Arma el HTML del reporte en PDF: las mismas cifras que se ven en
+   * pantalla, con sus gráficas y tablas.
+   */
+  async generarPdf(
+    tipo: 'general' | 'detalle',
+    filtros: {
+      convocatoriaId?: string;
+      estado?: string;
+      desde?: string;
+      hasta?: string;
+      meses?: number;
+    } = {},
+  ): Promise<string> {
+    const [general, tendencia, detalle] = await Promise.all([
+      this.reporteGeneral(),
+      this.tendencia(filtros.meses ?? 12),
+      this.detalle(filtros.convocatoriaId, filtros.desde, filtros.hasta, filtros.estado),
+    ]);
+
+    const porEstado = general.solicitudes.porEstado.map((e) => ({
+      etiqueta: e.estado,
+      valor: e.cantidad,
+    }));
+    const porConvocatoria = detalle.filas
+      .slice()
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 12)
+      .map((c) => ({ etiqueta: c.nombre, valor: c.total }));
+
+    const secciones: string[] = [];
+
+    if (tipo === 'general') {
+      secciones.push(`
+        <h2>Resumen general</h2>
+        <table>
+          <tr><th>Solicitudes</th><td>${general.solicitudes.total}</td>
+              <th>Evaluaciones completas</th><td>${general.evaluaciones.completadas}</td></tr>
+          <tr><th>Convocatorias</th><td>${general.convocatorias.total}</td>
+              <th>Puntaje promedio</th><td>${general.evaluaciones.scorePromedio ?? '—'}</td></tr>
+        </table>
+        <h2>Solicitudes por estado</h2>
+        ${graficaBarras(porEstado)}
+        <h2>Tendencia mensual</h2>
+        ${graficaLineas(
+          tendencia.meses,
+          [
+            { nombre: 'Solicitudes', valores: tendencia.solicitudes },
+            { nombre: 'Evaluaciones', valores: tendencia.evaluaciones },
+          ],
+        )}
+        <h2>Solicitudes por convocatoria</h2>
+        ${graficaBarras(porConvocatoria)}
+      `);
+    }
+
+    if (tipo === 'detalle') {
+      secciones.push(`
+        <h2>Detalle por convocatoria</h2>
+        <table>
+          <thead><tr><th>Convocatoria</th><th>Beca</th><th>Total</th><th>Enviadas</th>
+          <th>Evaluadas</th><th>Aprobadas</th><th>Rechazadas</th><th>Aprobación %</th></tr></thead>
+          <tbody>
+            ${detalle.filas
+              .map(
+                (f) => `<tr><td>${escaparHtml(f.nombre)}</td><td>${escaparHtml(
+                  f.beca,
+                )}</td><td>${f.total}</td><td>${f.enviadas}</td><td>${
+                  f.evaluadas
+                }</td><td>${f.aprobadas}</td><td>${f.rechazadas}</td><td>${
+                  f.tasaAprobacion
+                }</td></tr>`,
+              )
+              .join('')}
+          </tbody>
+        </table>
+      `);
+    }
+
+    const titulo =
+      tipo === 'general'
+        ? 'Reporte general de becas'
+        : 'Detalle por convocatoria';
+
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>${titulo}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; color: #1c2530; margin: 28px; }
+    h1 { font-size: 20px; text-transform: uppercase; letter-spacing: 0.04em; }
+    h2 { font-size: 14px; text-transform: uppercase; margin-top: 26px; border-bottom: 2px solid #1c2530; padding-bottom: 4px; }
+    table { border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 8px; }
+    th, td { border: 1px solid #c9ced6; padding: 5px 7px; text-align: left; }
+    th { background: #f1f3f5; }
+    .pie { margin-top: 30px; font-size: 11px; font-family: monospace; color: #556; }
+  </style>
+</head>
+<body>
+  <h1>EDUVIAGT · ${titulo}</h1>
+  <p style="font-family:monospace;font-size:11px">Generado el ${new Date()
+    .toISOString()
+    .slice(0, 10)}${
+      filtros.convocatoriaId ? ` · convocatoria ${filtros.convocatoriaId}` : ''
+    }${filtros.estado ? ` · estado ${filtros.estado}` : ''}</p>
+  ${secciones.join('\n')}
+  <p class="pie">Documento generado por el Sistema Integral de Gestión de Becas (EDUVIAGT).</p>
+</body>
+</html>`;
   }
 
   private parseRango(desde?: string, hasta?: string): RangoFecha | undefined {
@@ -807,4 +952,12 @@ export class ReportesService {
     }
     return rango;
   }
+}
+
+function escaparHtml(valor: string): string {
+  return valor
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }

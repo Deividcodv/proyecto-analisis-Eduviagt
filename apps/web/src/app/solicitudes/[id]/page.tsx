@@ -14,10 +14,13 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { LineaTemporal } from '@/components/solicitud/LineaTemporal';
 import {
   formatearFecha,
+  ETIQUETA_DESEMBOLSO,
   type CampoFormulario,
+  type Desembolso,
   type SolicitudDetalle,
   type SolicitudChecklist,
 } from '@/lib/api';
+import { AvisoDialog } from '@/components/ui/AvisoDialog';
 
 export default function SolicitudDetallePage() {
   return (
@@ -38,6 +41,7 @@ function SolicitudDetalleContent() {
   const [subiendo, setSubiendo] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [exito, setExito] = useState<string | null>(null);
+  const [desembolso, setDesembolso] = useState<Desembolso | null>(null);
   const [confirmTipo, setConfirmTipo] = useState<{
     tipoId: string;
     accion: 'eliminar' | 'reemplazar';
@@ -46,12 +50,16 @@ function SolicitudDetalleContent() {
 
   const cargar = useCallback(async () => {
     try {
-      const [detalle, chk] = await Promise.all([
+      const [detalle, chk, pago] = await Promise.all([
         fetchConToken<SolicitudDetalle>(`/solicitudes/${id}`),
         fetchConToken<SolicitudChecklist>(`/solicitudes/${id}/checklist`),
+        fetchConToken<Desembolso | null>(`/solicitudes/${id}/desembolso`).catch(
+          () => null,
+        ),
       ]);
       setSolicitud(detalle);
       setChecklist(chk);
+      setDesembolso(pago);
       setError(null);
     } catch (e) {
       setError(traducirError(e, 'No se pudo cargar la postulación'));
@@ -201,12 +209,26 @@ function SolicitudDetalleContent() {
             Postulada el {formatearFecha(solicitud.createdAt)}
           </p>
           {solicitud.estado === 'APROBADA' && (
-            <Button
-              onClick={descargarPdf}
-              className="mt-5"
-            >
-              Descargar comprobante (PDF)
-            </Button>
+            <div className="mt-5 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-papel p-3">
+              <p className="font-brut text-xs font-bold uppercase tracking-wide text-brutal-tinta/80">
+                Tu beca
+              </p>
+              <p className="mt-1 font-mono text-sm text-brutal-tinta">
+                Monto aprobado: Q{solicitud.montoAprobado ?? '—'}
+              </p>
+              <p className="font-mono text-sm text-brutal-tinta">
+                Estado del pago:{' '}
+                {desembolso
+                  ? ETIQUETA_DESEMBOLSO[desembolso.estado] ?? desembolso.estado
+                  : 'Pendiente de gestionar'}
+                {desembolso?.fechaPago
+                  ? ` · ${formatearFecha(desembolso.fechaPago)}`
+                  : ''}
+              </p>
+              <Button onClick={descargarPdf} className="mt-3">
+                Descargar comprobante (PDF)
+              </Button>
+            </div>
           )}
           {(puedeEnviar || enCorreccion) && (
             <Button
@@ -220,16 +242,17 @@ function SolicitudDetalleContent() {
       </section>
 
       <Container className="py-8">
-        {error && (
-          <p className="mb-4 rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-4 text-sm font-bold text-brutal-rojo">
-            {error}
-          </p>
-        )}
-        {exito && (
-          <p className="mb-4 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-lima/30 p-4 text-sm font-bold text-brutal-tinta">
-            {exito}
-          </p>
-        )}
+        <AvisoDialog
+        open={!!error || !!exito}
+        titulo={error ? 'No se pudo completar la acción' : 'Listo'}
+        tono={error ? 'error' : 'exito'}
+        mensaje={error ?? exito ?? ''}
+        onCerrar={() => {
+          setError(null);
+          setExito(null);
+        }}
+      />
+        
 
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
@@ -551,14 +574,17 @@ function RespuestasExtra({
   campos?: CampoFormulario[] | null;
   respuestas?: Record<string, Record<string, unknown>> | null;
 }) {
-  if (!campos || campos.length === 0) return null;
+  // El snapshot puede no ser un arreglo si la convocatoria se creó sin
+  // formulario: se normaliza para no romper la vista.
+  const lista = Array.isArray(campos) ? campos : [];
+  if (lista.length === 0) return null;
 
   const valores: Record<string, unknown> = {};
   for (const seccion of Object.values(respuestas ?? {})) {
     if (seccion && typeof seccion === 'object') Object.assign(valores, seccion);
   }
 
-  const conValor = campos.filter(
+  const conValor = lista.filter(
     (campo) => formatearRespuesta(valores[campo.id]) !== null,
   );
   if (conValor.length === 0) return null;

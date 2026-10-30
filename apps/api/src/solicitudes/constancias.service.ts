@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PDF_RENDERER, PdfRenderer } from './pdf/pdf-renderer.interface';
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
@@ -24,8 +25,40 @@ interface SolicitudConstancia {
     nivelAcademico?: { nombre: string } | null;
     nivelAcademicoOtro?: string | null;
   } | null;
-  decision?: { resultado: string; fecha: Date } | null;
+  decisiones?: { resultado: string; fecha: Date }[];
+  montoAprobado?: Prisma.Decimal | number | null;
+  montoOtorgable?: Prisma.Decimal | number | null;
+  aprobaciones?: {
+    nivel: number;
+    accion: string;
+    resultado: string;
+    rolNombre: string;
+    createdAt: Date;
+    usuario?: { nombres: string } | null;
+  }[];
+  desembolso?: {
+    estado: string;
+    monto?: Prisma.Decimal | number | null;
+    metodo?: string | null;
+    banco?: string | null;
+    numeroCuenta?: string | null;
+    titular?: string | null;
+    fechaPago?: Date | null;
+  } | null;
 }
+
+const ETIQUETA_DESEMBOLSO: Record<string, string> = {
+  PENDIENTE: 'Pendiente de gestionar',
+  EN_TRAMITE: 'En trámite',
+  PAGADO: 'Pagado',
+  ANULADO: 'Anulado',
+};
+
+const ETIQUETA_METODO: Record<string, string> = {
+  TRANSFERENCIA: 'Transferencia',
+  CHEQUE: 'Cheque',
+  EFECTIVO: 'Efectivo',
+};
 
 @Injectable()
 export class ConstanciasService {
@@ -45,7 +78,15 @@ export class ConstanciasService {
         usuario: true,
         convocatoria: { include: { beca: true } },
         perfilAcademico: { include: { nivelAcademico: true } },
-        decision: true,
+        // La más reciente es la decisión vigente: la solicitud puede tener
+        // más de una si volvió a revisión.
+        decisiones: { orderBy: { fecha: 'desc' } },
+        // Para dejar constancia de quién firmó y de cómo se entregó el dinero.
+        aprobaciones: {
+          orderBy: { createdAt: 'asc' },
+          include: { usuario: { select: { nombres: true } } },
+        },
+        desembolso: true,
       },
     })) as unknown as SolicitudConstancia;
 
@@ -67,13 +108,57 @@ export class ConstanciasService {
 
   private renderHtml(solicitud: SolicitudConstancia): string {
     const codigo = `EDUVIAGT-${solicitud.id.slice(0, 8).toUpperCase()}`;
+    // La decisión vigente es la más reciente: la solicitud puede tener más
+    // de una si volvió a revisión. No se depende del orden del arreglo.
+    const decisionVigente = (solicitud.decisiones ?? []).reduce<
+      { resultado: string; fecha: Date } | null
+    >((vigente, d) => (!vigente || d.fecha > vigente.fecha ? d : vigente), null);
     const fechaResolucion =
-      solicitud.decision?.fecha ?? solicitud.updatedAt ?? new Date();
+      decisionVigente?.fecha ?? solicitud.updatedAt ?? new Date();
 
     const nivel =
       solicitud.perfilAcademico?.nivelAcademico?.nombre ??
       solicitud.perfilAcademico?.nivelAcademicoOtro ??
       null;
+
+    // Monto aprobado y estado del pago.
+    const monto = solicitud.montoAprobado ?? solicitud.montoOtorgable ?? null;
+    const montoAprobado = monto != null ? `Q${monto}` : null;
+    const estadoPago = solicitud.desembolso
+      ? ETIQUETA_DESEMBOLSO[solicitud.desembolso.estado] ??
+        solicitud.desembolso.estado
+      : 'Pendiente de gestionar';
+    const formaEntrega = solicitud.desembolso?.metodo
+      ? `${ETIQUETA_METODO[solicitud.desembolso.metodo]}${
+          solicitud.desembolso.banco
+            ? ` · ${solicitud.desembolso.banco}${
+                solicitud.desembolso.numeroCuenta
+                  ? ` · cuenta ${solicitud.desembolso.numeroCuenta}`
+                  : ''
+              }`
+            : ''
+        }${
+          solicitud.desembolso.titular
+            ? ` · titular ${solicitud.desembolso.titular}`
+            : ''
+        }`
+      : null;
+    const fechaPago = solicitud.desembolso?.fechaPago
+      ? this.formatearFecha(solicitud.desembolso.fechaPago)
+      : null;
+
+    // Quién firmó: la última aprobación registrada.
+    const aprobaciones = solicitud.aprobaciones ?? [];
+    const ultima = [...aprobaciones].sort(
+      (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+    )[0];
+    const firmante = {
+      nombre: ultima?.usuario?.nombres ?? 'Autoridad competente',
+      cargo: ultima?.rolNombre
+        ? `Cargo: ${ultima.rolNombre.replace(/_/g, ' ')}`
+        : 'Autoridad competente · EDUVIAGT',
+      nivel: ultima?.nivel ?? 1,
+    };
 
     const fila = (
       etiqueta: string,
@@ -162,6 +247,16 @@ export class ConstanciasService {
     width: 55%;
     margin: 42px auto 8px;
   }
+  .firma .sello {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 4px 10px;
+    border: 2px solid #1c2530;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+  }
   .pie {
     margin-top: 34px;
     border-top: 1px solid #d1d5db;
@@ -208,22 +303,28 @@ export class ConstanciasService {
     ${fila('Promedio acumulado', solicitud.perfilAcademico?.promedio)}
     ${fila('Programa de beca', solicitud.convocatoria.beca.nombre)}
     ${fila('Convocatoria', solicitud.convocatoria.nombre)}
+    ${fila('Monto aprobado', montoAprobado)}
+    ${fila('Estado del pago', estadoPago)}
+    ${fila('Forma de entrega', formaEntrega)}
     ${fila('Fecha de resolución', this.formatearFecha(fechaResolucion))}
+    ${fila('Fecha del pago', fechaPago)}
   </table>
 
   <p class="texto">
     La presente constancia se emite a partir de la resolución adoptada por el
     comité evaluador, según lo registrado en el Sistema Integral de Gestión de
-    Becas (EDUVIAGT). Se trata de un documento de demostración: no tiene
-    efectos legales ni constituye un beneficio económico real.
+    Becas (EDUVIAGT), y deja constancia del monto aprobado y de la forma en que
+    fue entregado.
   </p>
 
   <div class="firma">
     <div class="linea"></div>
-    <strong>Autoridad competente</strong><br />
-    EDUVIAGT — prototipo académico
+    <strong>${escapeHtml(firmante.nombre)}</strong><br />
+    ${escapeHtml(firmante.cargo)}<br />
+    Firmada el ${escapeHtml(this.formatearFecha(fechaResolucion))}
+    ${firmante.nivel > 1 ? '· Segunda instancia de aprobación' : ''}
+    <div class="sello">EDUVIAGT · ${escapeHtml(codigo)}</div>
   </div>
-
   <div class="pie">
     <span>Documento generado electrónicamente por EDUVIAGT</span>
     <span>${escapeHtml(codigo)} · ${escapeHtml(this.formatearFecha(new Date()))}</span>

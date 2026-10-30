@@ -51,7 +51,9 @@ describe('ConstanciasService (US-F7)', () => {
       nivelAcademico: { nombre: 'Universitario' },
       nivelAcademicoOtro: null,
     },
-    decision: { resultado: 'APROBADA', fecha: new Date('2026-09-01T10:00:00.000Z') },
+    decisiones: [
+      { resultado: 'APROBADA', fecha: new Date('2026-09-01T10:00:00.000Z') },
+    ],
   };
 
   beforeEach(() => {
@@ -59,7 +61,7 @@ describe('ConstanciasService (US-F7)', () => {
       solicitud: { findUnique: jest.fn() },
     };
     renderer = { render: jest.fn().mockResolvedValue(Buffer.from('%PDF-1.4')) };
-    service = new ConstanciasService(prisma, renderer, new AuthzService());
+    service = new ConstanciasService(prisma, renderer, new AuthzService(prisma));
   });
 
   it('lanza NotFoundException si la solicitud no existe', async () => {
@@ -120,6 +122,61 @@ describe('ConstanciasService (US-F7)', () => {
     );
 
     expect(Buffer.isBuffer(pdf)).toBe(true);
+  });
+
+  it('imprime el monto aprobado, el estado del pago y quién firmó', async () => {
+    prisma.solicitud.findUnique.mockResolvedValue({
+      ...solicitudAprobada,
+      montoAprobado: 12000,
+      montoOtorgable: 12000,
+      decisiones: [
+        { resultado: 'APROBADA', fecha: new Date('2026-09-01T10:00:00.000Z') },
+      ],
+      aprobaciones: [
+        {
+          nivel: 1,
+          accion: 'aprobar',
+          resultado: 'APROBADA',
+          rolNombre: 'JEFE_BECAS',
+          createdAt: new Date('2026-09-01T10:00:00.000Z'),
+          usuario: { nombres: 'Jefa de Becas Demo' },
+        },
+      ],
+      desembolso: {
+        estado: 'PAGADO',
+        monto: 12000,
+        metodo: 'TRANSFERENCIA',
+        banco: 'Banco de Guatemala',
+        numeroCuenta: '1234-5678',
+        fechaPago: new Date('2026-09-15T10:00:00.000Z'),
+      },
+    });
+
+    await service.generarConstancia('sol-12345678', usuarioDueno);
+    const html = renderer.render.mock.calls[0][0] as string;
+
+    expect(html).toContain('12000');
+    expect(html).toContain('Pagado');
+    expect(html).toContain('Jefa de Becas Demo');
+    expect(html).toContain('Banco de Guatemala');
+  });
+
+  it('con varias decisiones toma la más reciente', async () => {
+    prisma.solicitud.findUnique.mockResolvedValue({
+      ...solicitudAprobada,
+      decisiones: [
+        { resultado: 'RECHAZADA', fecha: new Date('2026-08-01T10:00:00.000Z') },
+        { resultado: 'APROBADA', fecha: new Date('2026-09-01T10:00:00.000Z') },
+      ],
+    });
+
+    await service.generarConstancia('sol-12345678', usuarioDueno);
+    const html = renderer.render.mock.calls[0][0] as string;
+
+    // La fecha de resolución es la de la decisión más reciente, no la de
+    // la última modificación de la solicitud.
+    expect(html).toContain('Fecha de resolución');
+    expect(html).toContain('01 de septiembre de 2026');
   });
 
   it('escapa valores HTML para evitar inyección en el documento', async () => {

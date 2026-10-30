@@ -268,7 +268,12 @@ export async function generarEscenarios() {
             usuarioId: postulante.id,
             estado: estadoObjetivo,
             respuestas: { demo: true, ciclo: ciclo.indice },
-            formularioSnapshot: JSON.stringify([]),
+            // El snapshot SIEMPRE es un arreglo de campos. Guardarlo como
+            // texto JSON ("[]") hace que la interfaz no pueda iterarlo y el
+            // panel del evaluador se caiga con "campos.map is not a function".
+            formularioSnapshot: Array.isArray(convocatoria.formulario)
+              ? (convocatoria.formulario as Prisma.InputJsonValue)
+              : ([] as Prisma.InputJsonValue),
             montoOtorgable: resultadoMonto.monto,
             montoOrigenCalculo: resultadoMonto.origen,
             montoCalculadoAt: new Date(),
@@ -441,8 +446,10 @@ async function crearSesionesComite(
   miembros: any[],
   ciclos: CicloConvocatoria[]
 ): Promise<Map<number, string>> {
+  // Solo entran en agenda las solicitudes que el comité puede decidir:
+  // las que ya fueron evaluadas por los evaluadores.
   const paraSesion = solicitudes.filter(s =>
-    ['EVALUADA', 'PENDIENTE_SEGUNDA_APROBACION', 'APROBADA', 'RECHAZADA'].includes(s.estado)
+    ['EVALUADA', 'PENDIENTE_SEGUNDA_APROBACION'].includes(s.estado)
   );
 
   console.log(`🏛️ Creando sesiones para ${paraSesion.length} solicitudes...`);
@@ -455,6 +462,8 @@ async function crearSesionesComite(
   }
 
   const sesionesPorCiclo = new Map<number, string>();
+  // La última sesión queda abierta: es la que el comité tiene que resolver.
+  const ultimoCiclo = ciclos.length - 1;
 
   for (const [cicloIdx, sols] of porCiclo) {
     const ciclo = ciclos[cicloIdx];
@@ -463,19 +472,27 @@ async function crearSesionesComite(
     });
     if (!comite) continue;
 
-    // Una sesión por ciclo. El estado refleja si el ciclo ya terminó.
+    const esLaUltima = cicloIdx === ultimoCiclo;
+
+    // Una sesión por ciclo. La última queda PROGRAMADA (con fecha futura)
+    // para que el comité pueda.resolve ella; las anteriores están
+    // FINALIZADAS con sus decisiones.
     const sesion = await prisma.sesion.create({
       data: {
         comiteId: comite.id,
-        fecha: fechaPostResultados(ciclo, 5),
-        estado: ciclo.finalizado ? 'FINALIZADA' : 'PROGRAMADA',
-        quorumMinimo: 5,
+        fecha: esLaUltima
+          ? new Date(Date.now() + 7 * 86_400_000)
+          : fechaPostResultados(ciclo, 5),
+        estado: esLaUltima ? 'PROGRAMADA' : 'FINALIZADA',
+        quorumMinimo: 3,
         lugar: `Ciclo ${ciclo.indice + 1}`,
       },
     });
 
     sesionesPorCiclo.set(cicloIdx, sesion.id);
 
+    // Los asistentes se registran como miembros activos del comité: solo
+    // ellos pueden votar en sus sesiones.
     const asistentes = barajar(miembros).slice(0, 5 + Math.floor(Math.random() * 3));
     for (const miembro of asistentes) {
       await prisma.comiteMiembro.upsert({
@@ -502,11 +519,13 @@ async function crearSesionesComite(
 
 async function crearVotosYDecisiones(
   solicitudes: SolicitudConCiclo[],
-  miembros: any[],
+  _miembros: any[],
   _coordinador: any,
   _ciclos: CicloConvocatoria[],
   sesionesPorCiclo: Map<number, string>
 ) {
+  // Solo las sesiones ya cerradas tienen decisiones. La sesión abierta del
+  // último ciclo queda pendiente de que el comité vote.
   const paraDecision = solicitudes.filter(s =>
     ['PENDIENTE_SEGUNDA_APROBACION', 'APROBADA', 'RECHAZADA'].includes(s.estado)
   );
@@ -518,49 +537,68 @@ async function crearVotosYDecisiones(
     const batch = paraDecision.slice(i, i + batchSize);
     for (const sol of batch) {
       const ciclo = sol.ciclo;
-      const esAprobada = sol.estado === 'APROBADA' || sol.estado === 'PENDIENTE_SEGUNDA_APROBACION';
+      const esAprobada =
+        sol.estado === 'APROBADA' || sol.estado === 'PENDIENTE_SEGUNDA_APROBACION';
 
       const sesionId = sesionesPorCiclo.get(sol.ciclo.indice);
       if (!sesionId) continue;
       const sesion = await prisma.sesion.findUnique({ where: { id: sesionId } });
       if (!sesion) continue;
+      // La sesión abierta todavía no se decide.
+      if (sesion.estado !== 'FINALIZADA') continue;
 
-      const votantes = barajar(miembros).slice(0, 5 + Math.floor(Math.random() * 3));
+      // Solo votan los miembros activos de ese comité.
+      const miembrosDelComite = await prisma.comiteMiembro.findMany({
+        where: { comiteId: sesion.comiteId, activo: true },
+        select: { usuarioId: true },
+      });
+      if (miembrosDelComite.length === 0) continue;
+      const ids = miembrosDelComite.map((m) => m.usuarioId);
+
+      const votantes = barajar(ids).slice(0, Math.min(ids.length, 5));
       let votosFavor = 0;
+      let votosContra = 0;
 
-      for (const miembro of votantes) {
-        const voto = esAprobada ? (Math.random() > 0.15 ? 'A_FAVOR' : 'EN_CONTRA') :
-                                   (Math.random() > 0.3 ? 'EN_CONTRA' : 'A_FAVOR');
-        if (voto === 'A_FAVOR') votosFavor++;
+      for (const usuarioId of votantes) {
+        // Los valores son los que acepta la API: APROBAR / RECHAZAR /
+        // ABSTENCION. La mayoría refleja el resultado de la solicitud.
+        const voto = esAprobada
+          ? Math.random() > 0.15
+            ? 'APROBAR'
+            : 'RECHAZAR'
+          : Math.random() > 0.3
+            ? 'RECHAZAR'
+            : 'APROBAR';
+        if (voto === 'APROBAR') votosFavor++;
+        if (voto === 'RECHAZAR') votosContra++;
 
         await prisma.voto.create({
           data: {
             sesionId: sesion.id,
             solicitudId: sol.id,
-            usuarioId: miembro.id,
+            usuarioId,
             voto,
-            observaciones: voto === 'A_FAVOR' ? 'Cumple con los criterios' : 'No cumple umbral mínimo',
+            observaciones:
+              voto === 'APROBAR'
+                ? 'Cumple con los criterios'
+                : 'No cumple umbral mínimo',
           },
         });
       }
 
-      const resultado = esAprobada ? 'APROBADA' : 'RECHAZADA';
+      // La decisión se DERIVA de los votos, no del estado de la solicitud.
+      const resultado = votosFavor > votosContra ? 'APROBADA' : 'RECHAZADA';
       const fechaDecision = fechaPostResultados(ciclo, 7);
-
-      // La sesión que recibió votos/decisiones queda FINALIZADA.
-      await prisma.sesion.update({
-        where: { id: sesion.id },
-        data: { estado: 'FINALIZADA' },
-      });
 
       await prisma.decision.create({
         data: {
           solicitudId: sol.id,
           sesionId: sesion.id,
           resultado,
-          observaciones: esAprobada
-            ? 'La mayoría del comité consideró que la solicitud cumple con los requisitos establecidos en la convocatoria.'
-            : 'La solicitud no alcanzó el puntaje mínimo requerido ni la mayoría de votos favorables.',
+          observaciones:
+            resultado === 'APROBADA'
+              ? `El comité aprobó con ${votosFavor} voto(s) a favor y ${votosContra} en contra.`
+              : `El comité rechazó la postulación: ${votosContra} voto(s) en contra y ${votosFavor} a favor.`,
           fecha: fechaDecision,
         },
       });

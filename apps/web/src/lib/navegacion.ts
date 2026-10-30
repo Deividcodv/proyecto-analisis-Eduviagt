@@ -68,7 +68,7 @@ export const navegacionPorRol: Record<string, GrupoNav[]> = {
       titulo: 'Gestión',
       enlaces: [
         { label: 'Convocatorias', href: '/admin/convocatorias', icono: 'becas' },
-        { label: 'Solicitudes', href: '/admin/solicitudes', icono: 'documento' },
+        { label: 'Solicitudes', href: '/revision', icono: 'documento' },
         { label: 'Comités', href: '/admin/comites', icono: 'grupos' },
         { label: 'Sesiones', href: '/admin/sesiones', icono: 'calendario' },
         { label: 'Reportes', href: '/reportes', icono: 'grafica' },
@@ -86,7 +86,7 @@ export const navegacionPorRol: Record<string, GrupoNav[]> = {
       titulo: 'Gestión de becas',
       enlaces: [
         { label: 'Convocatorias', href: '/admin/convocatorias', icono: 'becas' },
-        { label: 'Solicitudes', href: '/admin/solicitudes', icono: 'documento' },
+        { label: 'Solicitudes', href: '/revision', icono: 'documento' },
         { label: 'Comités', href: '/admin/comites', icono: 'grupos' },
         { label: 'Sesiones', href: '/admin/sesiones', icono: 'calendario' },
         { label: 'Reportes', href: '/reportes', icono: 'grafica' },
@@ -115,6 +115,7 @@ export const navegacionPorRol: Record<string, GrupoNav[]> = {
     {
       titulo: 'Comités',
       enlaces: [
+        { label: 'Solicitudes', href: '/revision', icono: 'documento' },
         { label: 'Sesiones', href: '/coordinador', icono: 'calendario' },
         { label: 'Mis reportes', href: '/reportes', icono: 'grafica' },
       ],
@@ -128,6 +129,7 @@ export const navegacionPorRol: Record<string, GrupoNav[]> = {
     {
       titulo: 'Comité',
       enlaces: [
+        { label: 'Solicitudes', href: '/revision', icono: 'documento' },
         { label: 'Votar en sesión', href: '/comite', icono: 'votar' },
         { label: 'Mis reportes', href: '/reportes', icono: 'grafica' },
       ],

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Spinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import {
   formatearFecha,
   type Sesion,
@@ -16,6 +17,7 @@ import {
   type Comite,
   type Solicitud,
 } from '@/lib/api';
+import { AvisoDialog } from '@/components/ui/AvisoDialog';
 
 export function PanelSesiones() {
   const [sesiones, setSesiones] = useState<Sesion[] | null>(null);
@@ -33,6 +35,11 @@ export function PanelSesiones() {
     quorumMinimo: '',
   });
   const [agenda, setAgenda] = useState<string[]>([]);
+  const [confirmandoFinalizar, setConfirmandoFinalizar] = useState<string | null>(
+    null,
+  );
+  const [filtroEstado, setFiltroEstado] = useState('');
+  const [filtroComite, setFiltroComite] = useState('');
 
   const cargar = useCallback(async () => {
     try {
@@ -121,20 +128,71 @@ export function PanelSesiones() {
     );
   };
 
+  /** Quita una solicitud de la agenda de una sesión abierta. */
+  const quitarDeAgenda = async (sesionId: string, solicitudId: string) => {
+    setEnviando(true);
+    setError(null);
+    setExito(null);
+    try {
+      await fetchConToken(`/sesiones/${sesionId}/agenda/${solicitudId}`, {
+        method: 'DELETE',
+      });
+      setExito('Solicitud quitada de la agenda.');
+      await abrirDetalle(sesionId);
+      await cargar();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo quitar de la agenda');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
   if (!sesiones) {
     return <div className="flex justify-center py-20"><Spinner /></div>;
   }
 
+  const sesionesFiltradas = sesiones.filter(
+    (s) =>
+      (filtroEstado === '' || s.estado === filtroEstado) &&
+      (filtroComite === '' || s.comiteId === filtroComite),
+  );
+
   return (
     <div>
-      {error && (
-        <p className="mb-4 rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-4 text-sm font-bold text-brutal-rojo">{error}</p>
-      )}
-      {exito && (
-        <p className="mb-4 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-lima/30 p-4 text-sm font-bold text-brutal-tinta">{exito}</p>
-      )}
+      <AvisoDialog
+        open={!!error || !!exito}
+        titulo={error ? 'No se pudo completar la acción' : 'Listo'}
+        tono={error ? 'error' : 'exito'}
+        mensaje={error ?? exito ?? ''}
+        onCerrar={() => {
+          setError(null);
+          setExito(null);
+        }}
+      />
+      
 
-      <div className="mb-6 flex justify-end">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-wrap items-end gap-3">
+          <Select
+            aria-label="Filtrar sesiones por estado"
+            value={filtroEstado}
+            onChange={(e) => setFiltroEstado(e.target.value)}
+            placeholder="Todos los estados"
+            options={[
+              { value: 'PROGRAMADA', label: 'Programadas' },
+              { value: 'FINALIZADA', label: 'Finalizadas' },
+            ]}
+            className="w-56"
+          />
+          <Select
+            aria-label="Filtrar sesiones por comité"
+            value={filtroComite}
+            onChange={(e) => setFiltroComite(e.target.value)}
+            placeholder="Todos los comités"
+            options={comites.map((c) => ({ value: c.id, label: c.nombre }))}
+            className="w-72"
+          />
+        </div>
         <Button onClick={() => setMostrarForm((v) => !v)}>
           {mostrarForm ? 'Cancelar' : '+ Nueva sesión'}
         </Button>
@@ -231,7 +289,7 @@ export function PanelSesiones() {
             </div>
             <div className="flex gap-2">
               {detalle.estado === 'PROGRAMADA' && (
-                <Button onClick={() => finalizar(detalle.id)} disabled={enviando}>
+                <Button onClick={() => setConfirmandoFinalizar(detalle.id)} disabled={enviando}>
                   Finalizar sesión
                 </Button>
               )}
@@ -241,21 +299,78 @@ export function PanelSesiones() {
             </div>
           </div>
 
+          {(() => {
+            const votantes = new Set(detalle.votos.map((v) => v.usuario?.id)).size;
+            const quorum = detalle.quorumMinimo ?? 1;
+            const pct = Math.min(100, Math.round((votantes / quorum) * 100));
+            return (
+              <div className="mb-4 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-papel p-3">
+                <div className="mb-1 flex items-center justify-between font-mono text-xs font-bold text-brutal-tinta">
+                  <span>Quórum</span>
+                  <span>
+                    {votantes}/{quorum} votantes
+                  </span>
+                </div>
+                <div className="h-3 w-full rounded-brutal border-[3px] border-brutal-tinta bg-brutal-blanco">
+                  <div
+                    className={`h-full rounded-brutal ${votantes >= quorum ? 'bg-brutal-lima' : 'bg-brutal-naranja'}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })()}
+
           <p className="mb-2 font-brut text-sm font-bold uppercase tracking-wide text-brutal-tinta">Agenda ({detalle.agenda.length})</p>
           {detalle.agenda.length === 0 ? (
             <p className="text-sm text-brutal-tinta/75">Sin solicitudes en la agenda.</p>
           ) : (
             <ul className="divide-y divide-brutal-tinta/20">
               {detalle.agenda.map((item) => (
-                <li key={item.id} className="flex items-center justify-between py-2">
+                <li key={item.id} className="flex items-center justify-between gap-2 py-2">
                   <span className="font-mono text-sm text-brutal-tinta">
                     {item.solicitud.usuario.nombres}
-                    <span className="block text-xs text-brutal-tinta/75">CUI {item.solicitud.usuario.cui}</span>
+                    <span className="block text-xs text-brutal-tinta/75">
+                      CUI {item.solicitud.usuario.cui} · Solicitud{' '}
+                      {item.solicitud.id.slice(0, 8)}
+                    </span>
                   </span>
-                  <Badge estado={item.solicitud.estado} />
+                  <div className="flex items-center gap-2">
+                    <Badge estado={item.solicitud.estado} />
+                    {detalle.estado === 'PROGRAMADA' && (
+                      <Button
+                        variant="ghost"
+                        onClick={() => quitarDeAgenda(detalle.id, item.solicitud.id)}
+                        disabled={enviando}
+                      >
+                        Quitar
+                      </Button>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
+          )}
+
+          {detalle.votos.length > 0 && (
+            <div className="mt-4">
+              <p className="mb-2 font-brut text-sm font-bold uppercase tracking-wide text-brutal-tinta">
+                Votos ({detalle.votos.length})
+              </p>
+              <ul className="divide-y divide-brutal-tinta/20">
+                {detalle.votos.map((v) => (
+                  <li key={v.id} className="flex items-center justify-between py-2 font-mono text-sm">
+                    <span className="text-brutal-tinta">
+                      {v.usuario?.nombres ?? 'Miembro'}
+                      <span className="block text-xs text-brutal-tinta/75">
+                        Solicitud {v.solicitud?.id.slice(0, 8)}
+                      </span>
+                    </span>
+                    <Badge estado={v.voto} />
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           {detalle.decisiones.length > 0 && (
@@ -263,8 +378,10 @@ export function PanelSesiones() {
               <p className="mb-2 font-brut text-sm font-bold uppercase tracking-wide text-brutal-tinta">Decisiones</p>
               <ul className="divide-y divide-brutal-tinta/20">
                 {detalle.decisiones.map((d) => (
-                  <li key={d.id} className="py-2 font-mono text-sm">
-                    <span className="font-bold text-brutal-tinta">Solicitud {d.solicitudId.slice(0, 8)}</span>{' '}
+                  <li key={d.id} className="flex items-center justify-between gap-2 py-2 font-mono text-sm">
+                    <span className="font-bold text-brutal-tinta">
+                      Solicitud {d.solicitudId.slice(0, 8)}
+                    </span>
                     <Badge estado={d.resultado} />
                   </li>
                 ))}
@@ -274,11 +391,25 @@ export function PanelSesiones() {
         </Card>
       )}
 
-      {sesiones.length === 0 ? (
+      <ConfirmDialog
+        open={confirmandoFinalizar !== null}
+        title="Finalizar la sesión"
+        description="Al finalizar, el comité decide las postulaciones de la agenda: las aprobadas quedan APPROBADA (o pasan a una segunda firma si el monto lo exige) y las rechazadas quedan RECHAZADA. Esta acción no se puede deshacer."
+        confirmLabel="Finalizar y decidir"
+        tone="danger"
+        onCancel={() => setConfirmandoFinalizar(null)}
+        onConfirm={() => {
+          const id = confirmandoFinalizar;
+          setConfirmandoFinalizar(null);
+          if (id) void finalizar(id);
+        }}
+      />
+
+      {sesionesFiltradas.length === 0 ? (
         <EmptyState title="Sin sesiones" description="Crea una sesión para el comité evaluador." />
       ) : (
         <div className="space-y-4">
-          {sesiones.map((sesion) => (
+          {sesionesFiltradas.map((sesion) => (
             <Card
               key={sesion.id}
               className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"

@@ -152,9 +152,12 @@ done
 SCORE=$(curl -sf "$BASE/solicitudes/$SOL_ID/score" -H "Authorization: Bearer $TOKEN_ADMIN" | jq -r '.data.score')
 echo "$SCORE" | grep -E '^[0-9]+([.][0-9]+)?$' > /dev/null || { echo "Score invalido: $SCORE"; exit 1; }
 
-INCOMPLETO=$(curl -sf -X POST "$BASE/solicitudes/$SOL_ID/transicion" -H "Authorization: Bearer $TOKEN_ADMIN" \
-  -H 'Content-Type: application/json' -d '{"accion":"evaluar"}' | jq -r '.data.estado')
-[ "$INCOMPLETO" = "EVALUADA" ] || { echo "evaluar esperaba EVALUADA, obtuve $INCOMPLETO"; exit 1; }
+ESTADO_ACTUAL=$(curl -sf "$BASE/solicitudes/$SOL_ID" -H "Authorization: Bearer $TOKEN_ADMIN" | jq -r '.data.estado')
+if [ "$ESTADO_ACTUAL" != "EVALUADA" ]; then
+  INCOMPLETO=$(curl -sf -X POST "$BASE/solicitudes/$SOL_ID/transicion" -H "Authorization: Bearer $TOKEN_ADMIN" \
+    -H 'Content-Type: application/json' -d '{"accion":"evaluar"}' | jq -r '.data.estado')
+  [ "$INCOMPLETO" = "EVALUADA" ] || { echo "evaluar esperaba EVALUADA, obtuve $INCOMPLETO"; exit 1; }
+fi
 
 # ---- Conv a EN_EVALUACION ----
 curl -sf -X POST "$BASE/convocatorias/$PUBLICADA_ID/transicion" -H "Authorization: Bearer $TOKEN_ADMIN" \

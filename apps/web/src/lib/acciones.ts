@@ -27,16 +27,18 @@ export const accionesPorRol: Record<string, Accion[]> = {
     { titulo: 'Mis reportes',        descripcion: 'Indicadores de tu actividad de evaluación',    href: '/reportes',          icono: 'grafica',  acento: 'bg-brutal-indigo' },
   ],
   COORDINADOR_COMITE: [
+    { titulo: 'Solicitudes',        descripcion: 'Revisa postulaciones y firma decisiones',        href: '/revision',         icono: 'documento', acento: 'bg-brutal-gold' },
     { titulo: 'Sesiones',            descripcion: 'Crea y gestiona las sesiones de los comités',  href: '/coordinador',       icono: 'calendario', acento: 'bg-brutal-gold' },
     { titulo: 'Mis reportes',        descripcion: 'Indicadores de tus comités y sesiones',        href: '/reportes',          icono: 'grafica',    acento: 'bg-brutal-indigo' },
   ],
   MIEMBRO_COMITE: [
+    { titulo: 'Solicitudes',        descripcion: 'Revisa las postulaciones del comité',             href: '/revision',         icono: 'documento', acento: 'bg-brutal-gold' },
     { titulo: 'Votar en sesión',     descripcion: 'Participa en las sesiones y emite tu voto',    href: '/comite',            icono: 'votar',   acento: 'bg-brutal-lima' },
     { titulo: 'Mis reportes',        descripcion: 'Indicadores de tu participación en sesiones',   href: '/reportes',          icono: 'grafica', acento: 'bg-brutal-indigo' },
   ],
   ADMIN: [
     { titulo: 'Convocatorias',       descripcion: 'Crea, publica y actualiza convocatorias',      href: '/admin/convocatorias', icono: 'becas',      acento: 'bg-brutal-cyan' },
-    { titulo: 'Solicitudes',         descripcion: 'Revisa solicitudes y estados',                 href: '/admin/solicitudes',   icono: 'documento',  acento: 'bg-brutal-gold' },
+    { titulo: 'Solicitudes',         descripcion: 'Revisa solicitudes y estados',                 href: '/revision',            icono: 'documento',  acento: 'bg-brutal-gold' },
     { titulo: 'Comités',             descripcion: 'Organiza comités evaluadores',                 href: '/admin/comites',       icono: 'grupos',     acento: 'bg-brutal-lima' },
     { titulo: 'Sesiones',            descripcion: 'Agenda y resuelve sesiones',                   href: '/admin/sesiones',      icono: 'calendario', acento: 'bg-brutal-rosa' },
     { titulo: 'Seguridad',           descripcion: 'Roles, permisos y usuarios',                   href: '/admin/seguridad',     icono: 'escudo',     acento: 'bg-brutal-indigo' },
@@ -45,7 +47,7 @@ export const accionesPorRol: Record<string, Accion[]> = {
   ],
   JEFE_BECAS: [
     { titulo: 'Convocatorias',       descripcion: 'Crea, publica y actualiza convocatorias',      href: '/admin/convocatorias', icono: 'becas',      acento: 'bg-brutal-cyan' },
-    { titulo: 'Solicitudes',         descripcion: 'Revisa, aprueba y ajusta montos',              href: '/admin/solicitudes',   icono: 'documento',  acento: 'bg-brutal-gold' },
+    { titulo: 'Solicitudes',         descripcion: 'Revisa, aprueba y ajusta montos',              href: '/revision',            icono: 'documento',  acento: 'bg-brutal-gold' },
     { titulo: 'Comités',             descripcion: 'Organiza comités evaluadores',                 href: '/admin/comites',       icono: 'grupos',     acento: 'bg-brutal-lima' },
     { titulo: 'Sesiones',            descripcion: 'Agenda y resuelve sesiones',                   href: '/admin/sesiones',      icono: 'calendario', acento: 'bg-brutal-rosa' },
     { titulo: 'Reportes',            descripcion: 'Indicadores, tendencia y exportación CSV',     href: '/reportes',            icono: 'grafica',    acento: 'bg-brutal-teal' },

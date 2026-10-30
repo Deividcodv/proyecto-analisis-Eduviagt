@@ -32,6 +32,7 @@ describe('ComitesService', () => {
       comiteMiembro: {
         findFirst: jest.fn(),
         create: jest.fn(),
+        update: jest.fn(),
         delete: jest.fn(),
       },
       usuario: { findUnique: jest.fn() },
@@ -147,6 +148,53 @@ describe('ComitesService', () => {
       expect(prisma.comiteMiembro.delete).toHaveBeenCalledWith({
         where: { id: 'm1' },
       });
+    });
+  });
+
+  describe('cambiarRolMiembro', () => {
+    it('rechaza si el miembro no existe en el comité', async () => {
+      prisma.comiteMiembro.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.cambiarRolMiembro('c1', 'u1', 'PRESIDENTE', usuario),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('cambia el rol del miembro y lo deja registrado', async () => {
+      prisma.comiteMiembro.findFirst.mockResolvedValue({
+        id: 'm1',
+        comiteId: 'c1',
+        usuarioId: 'u1',
+        rol: 'VOCAL',
+        activo: true,
+      });
+      prisma.comiteMiembro.update.mockResolvedValue({
+        id: 'm1',
+        comiteId: 'c1',
+        usuarioId: 'u1',
+        rol: 'PRESIDENTE',
+        activo: true,
+      });
+
+      const result = await service.cambiarRolMiembro(
+        'c1',
+        'u1',
+        'PRESIDENTE',
+        usuario,
+      );
+
+      expect(result.rol).toBe('PRESIDENTE');
+      expect(prisma.comiteMiembro.update).toHaveBeenCalledWith({
+        where: { id: 'm1' },
+        data: { rol: 'PRESIDENTE' },
+        include: expect.anything(),
+      });
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accion: 'cambiar-rol-miembro',
+          entidadId: 'c1',
+        }),
+      );
     });
   });
 

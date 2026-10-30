@@ -58,6 +58,11 @@ export class UsersService {
     return this.usuarios.findAll(rol);
   }
 
+  /** Directorio de personal (sin postulantes). */
+  findPersonal(rol?: string) {
+    return this.usuarios.findPersonal(rol);
+  }
+
   findUsuarioById(id: string) {
     return this.usuarios.findById(id);
   }

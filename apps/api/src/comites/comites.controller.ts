@@ -14,6 +14,7 @@ import {
   CrearComiteDto,
   ActualizarComiteDto,
   AgregarMiembroDto,
+  CambiarRolMiembroDto,
 } from './comites.dto';
 import { Permisos } from '../common/decorators/permisos.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -76,6 +77,18 @@ export class ComitesController {
     @CurrentUser() usuario: AuthenticatedUser,
   ) {
     return this.comitesService.agregarMiembro(id, dto, usuario);
+  }
+
+  @Patch(':id/miembros/:usuarioId')
+  @Permisos('comite:editar')
+  @ApiOperation({ summary: 'Cambiar el rol de un miembro del comité' })
+  cambiarRolMiembro(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('usuarioId', ParseUUIDPipe) usuarioId: string,
+    @Body() dto: CambiarRolMiembroDto,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.comitesService.cambiarRolMiembro(id, usuarioId, dto.rol, usuario);
   }
 
   @Delete(':id/miembros/:usuarioId')

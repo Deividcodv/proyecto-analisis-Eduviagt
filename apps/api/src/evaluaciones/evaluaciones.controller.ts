@@ -2,7 +2,6 @@ import {
   Controller,
   Get,
   Post,
-  Put,
   Patch,
   Delete,
   Body,
@@ -19,7 +18,6 @@ import { EvaluacionesService } from './evaluaciones.service';
 import {
   AsignarEvaluadoresDto,
   ImparcialidadDto,
-  RegistrarPuntajeDto,
 } from './evaluaciones.dto';
 import { Permisos } from '../common/decorators/permisos.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -55,18 +53,6 @@ export class EvaluacionesController {
     @CurrentUser() usuario: AuthenticatedUser,
   ) {
     return this.evaluacionesService.asignarEvaluadores(id, dto, usuario);
-  }
-
-  @Put('solicitudes/:id/criterios/:criterioId')
-  @Permisos('evaluacion:editar')
-  @ApiOperation({ summary: 'Registrar puntaje de un criterio (0-100)' })
-  registrarPuntaje(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Param('criterioId', ParseUUIDPipe) criterioId: string,
-    @Body() dto: RegistrarPuntajeDto,
-    @CurrentUser() usuario: AuthenticatedUser,
-  ) {
-    return this.evaluacionesService.registrarPuntaje(id, criterioId, dto, usuario);
   }
 
   @Patch('solicitudes/:id/imparcialidad')

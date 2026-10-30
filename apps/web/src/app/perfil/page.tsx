@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import { InternalPageHeader } from '@/components/ui/InternalPageHeader';
 import { GestionDeCuenta } from '@/components/perfil/GestionDeCuenta';
+import { AvisoDialog } from '@/components/ui/AvisoDialog';
 
 function PreferenciasNotificaciones() {
   const [config, setConfig] = useState({
@@ -264,12 +265,17 @@ function PerfilContent() {
       />
 
       <Container className="py-8">
-        {error && (
-          <p className="mb-4 rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-4 text-sm font-bold text-brutal-rojo">{error}</p>
-        )}
-        {exito && (
-          <p className="mb-4 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-lima/30 p-4 text-sm font-bold text-brutal-tinta">{exito}</p>
-        )}
+        <AvisoDialog
+        open={!!error || !!exito}
+        titulo={error ? 'No se pudo completar la acción' : 'Listo'}
+        tono={error ? 'error' : 'exito'}
+        mensaje={error ?? exito ?? ''}
+        onCerrar={() => {
+          setError(null);
+          setExito(null);
+        }}
+      />
+        
 
         <Card className="max-w-3xl">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3">

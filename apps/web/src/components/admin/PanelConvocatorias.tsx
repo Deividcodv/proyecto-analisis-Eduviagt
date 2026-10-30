@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { Spinner } from '@/components/ui/Spinner';
 import { formatearFecha, type Convocatoria } from '@/lib/api';
+import { AvisoDialog } from '@/components/ui/AvisoDialog';
 
 const accionesPorEstado: Record<string, { value: string; label: string }[]> = {
   BORRADOR: [
@@ -79,12 +80,17 @@ export function PanelConvocatorias() {
 
   return (
     <div>
-      {error && (
-        <p className="mb-4 rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-4 text-sm font-bold text-brutal-rojo">{error}</p>
-      )}
-      {exito && (
-        <p className="mb-4 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-lima/30 p-4 text-sm font-bold text-brutal-tinta">{exito}</p>
-      )}
+      <AvisoDialog
+        open={!!error || !!exito}
+        titulo={error ? 'No se pudo completar la acción' : 'Listo'}
+        tono={error ? 'error' : 'exito'}
+        mensaje={error ?? exito ?? ''}
+        onCerrar={() => {
+          setError(null);
+          setExito(null);
+        }}
+      />
+      
 
       <div className="mb-6 flex justify-end">
         <Button href="/admin/convocatorias/nueva">+ Nueva convocatoria</Button>

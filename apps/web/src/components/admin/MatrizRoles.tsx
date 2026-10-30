@@ -5,6 +5,7 @@ import { fetchConToken } from '@/lib/api-auth';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import { Spinner } from '@/components/ui/Spinner';
+import { AvisoDialog } from '@/components/ui/AvisoDialog';
 
 interface Permiso {
   id: string;
@@ -85,12 +86,17 @@ export function MatrizRoles() {
 
   return (
     <div>
-      {error && (
-        <p className="mb-4 rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-4 text-sm font-bold text-brutal-rojo">{error}</p>
-      )}
-      {exito && (
-        <p className="mb-4 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-lima/30 p-4 text-sm font-bold text-brutal-tinta">{exito}</p>
-      )}
+      <AvisoDialog
+        open={!!error || !!exito}
+        titulo={error ? 'No se pudo completar la acción' : 'Listo'}
+        tono={error ? 'error' : 'exito'}
+        mensaje={error ?? exito ?? ''}
+        onCerrar={() => {
+          setError(null);
+          setExito(null);
+        }}
+      />
+      
 
       <div className="overflow-x-auto rounded-brutal border-[3px] border-brutal-tinta bg-brutal-blanco">
         <table className="w-full min-w-[860px] text-left font-mono text-sm">

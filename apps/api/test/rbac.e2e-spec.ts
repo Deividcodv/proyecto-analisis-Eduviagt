@@ -1,4 +1,5 @@
 import { INestApplication } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
 import {
   api,
   auth,
@@ -8,7 +9,7 @@ import {
 } from './helpers/app';
 import { nombreSimple } from './helpers/correlativos';
 
-type Rol = 'admin' | 'postulante' | 'evaluador' | 'coordinador' | 'miembro';
+type Rol = 'admin' | 'postulante' | 'evaluador' | 'coordinador' | 'miembro' | 'jefe';
 
 /**
  * Matriz de autorización por rol (caja negra).
@@ -30,6 +31,7 @@ describe('Autorización (matriz RBAC por rol)', () => {
       evaluador: await loginDemo(app, 'evaluador'),
       coordinador: await loginDemo(app, 'coordinador'),
       miembro: await loginDemo(app, 'miembro'),
+      jefe: await loginDemo(app, 'jefe'),
     };
   });
 
@@ -167,6 +169,38 @@ describe('Autorización (matriz RBAC por rol)', () => {
     });
   });
 
+  describe('directorio de personal (/seguridad/personal) — por ROL', () => {
+    // El directorio se autoriza por rol y no por el permiso `personal:ver`:
+    // un permiso depende de que la base se haya sembrado con el seed vigente
+    // (si no, la ruta responde 403 y el panel de solicitudes se vacía).
+    it.each(['postulante', 'evaluador', 'miembro'] as Rol[])(
+      'rechaza a %s con 403',
+      async (rol) => {
+        const res = await api(app).get('/api/seguridad/personal').set(auth(tokens[rol]));
+        expect(res.status).toBe(403);
+      },
+    );
+
+    it.each(['admin', 'jefe', 'coordinador'] as Rol[])('permite a %s', async (rol) => {
+      const res = await api(app).get('/api/seguridad/personal').set(auth(tokens[rol]));
+      expect(res.status).toBe(200);
+    });
+
+    it('filtra por rol', async () => {
+      const res = await api(app)
+        .get('/api/seguridad/personal?rol=EVALUADOR')
+        .set(auth(tokens.admin));
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.data)).toBe(true);
+      expect(res.body.data.length).toBeGreaterThan(0);
+      expect(
+        res.body.data.every(
+          (u: { rol?: { nombre?: string } }) => u.rol?.nombre === 'EVALUADOR',
+        ),
+      ).toBe(true);
+    });
+  });
+
   describe('postulante (solicitud:crear) — solo POSTULANTE y ADMIN', () => {
     it('rechaza a EVALUADOR con 403', async () => {
       const res = await api(app)
@@ -174,6 +208,96 @@ describe('Autorización (matriz RBAC por rol)', () => {
         .set(auth(tokens.evaluador))
         .send({ convocatoriaId: '00000000-0000-4000-8000-000000000001' });
       expect(res.status).toBe(403);
+    });
+  });
+
+  describe('matriz del flujo de revisión (iniciar revisión / aprobar)', () => {
+    const prisma = new PrismaClient();
+    let evaluadaId: string;
+    let enviadaId: string;
+
+    beforeAll(async () => {
+      const postulante = await prisma.usuario.findUnique({
+        where: { email: 'postulante@demo.gt' },
+      });
+      const convocatoria = await prisma.convocatoria.findFirst({
+        where: { estado: 'ABIERTA' },
+      });
+
+      const enviada = await prisma.solicitud.create({
+        data: {
+          convocatoriaId: convocatoria!.id,
+          usuarioId: postulante!.id,
+          estado: 'ENVIADA',
+        },
+      });
+      enviadaId = enviada.id;
+
+      const evaluada = await prisma.solicitud.create({
+        data: {
+          convocatoriaId: convocatoria!.id,
+          usuarioId: postulante!.id,
+          estado: 'EVALUADA',
+          montoOtorgable: 5000,
+        },
+      });
+      evaluadaId = evaluada.id;
+    });
+
+    afterAll(async () => {
+      const ids = { in: [enviadaId, evaluadaId] };
+      // La solicitud de prueba autoasigna un evaluador al iniciar la
+      // revisión: se borran las filas dependientes antes que la solicitud.
+      await prisma.evaluacion.deleteMany({ where: { solicitudId: ids } });
+      await prisma.solicitudAprobacion.deleteMany({ where: { solicitudId: ids } });
+      await prisma.historialEstado.deleteMany({ where: { solicitudId: ids } });
+      await prisma.solicitud.deleteMany({ where: { id: ids } });
+      await prisma.$disconnect();
+    });
+
+    it('el miembro del comité puede iniciar la revisión', async () => {
+      const res = await api(app)
+        .post(`/api/solicitudes/${enviadaId}/transicion`)
+        .set(auth(tokens.miembro))
+        .send({ accion: 'iniciar_revision' });
+      expect(res.status).toBe(201);
+      expect(res.body.data.estado).toBe('EN_REVISION');
+    });
+
+    it('el miembro del comité NO puede aprobar (solo vota en sesión)', async () => {
+      const res = await api(app)
+        .post(`/api/solicitudes/${evaluadaId}/transicion`)
+        .set(auth(tokens.miembro))
+        .send({ accion: 'aprobar' });
+      expect(res.status).toBe(403);
+    });
+
+    it('el coordinador del comité puede aprobar', async () => {
+      const res = await api(app)
+        .post(`/api/solicitudes/${evaluadaId}/transicion`)
+        .set(auth(tokens.coordinador))
+        .send({ accion: 'aprobar' });
+      expect(res.status).toBe(201);
+      expect(res.body.data.estado).toBe('APROBADA');
+    });
+
+    it('el evaluador no puede aprobar', async () => {
+      const res = await api(app)
+        .post(`/api/solicitudes/${evaluadaId}/transicion`)
+        .set(auth(tokens.evaluador))
+        .send({ accion: 'aprobar' });
+      expect(res.status).toBe(403);
+    });
+
+    it('el miembro del comité puede asignar evaluadores', async () => {
+      const evaluadorDemo = await prisma.usuario.findUnique({
+        where: { email: 'evaluador@demo.gt' },
+      });
+      const res = await api(app)
+        .post(`/api/solicitudes/${enviadaId}/evaluadores`)
+        .set(auth(tokens.miembro))
+        .send({ evaluadorIds: [evaluadorDemo!.id] });
+      expect(res.status).toBe(201);
     });
   });
 });

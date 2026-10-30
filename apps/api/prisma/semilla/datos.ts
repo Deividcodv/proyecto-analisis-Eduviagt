@@ -553,7 +553,9 @@ export async function crearEvaluadores(cantidad: number, rolEvaluador: Rol) {
 
     const usuario = await prisma.usuario.upsert({
       where: { email },
-      update: { nombres: nombre },
+      // Se reactiva: un evaluador que quedó inactivo en una corrida
+      // anterior volvería a aparecer como no disponible.
+      update: { nombres: nombre, estado: 'ACTIVO' },
       create: {
         cui,
         nombres: nombre,
@@ -582,7 +584,8 @@ export async function crearMiembrosComite(cantidad: number, rolMiembro: Rol) {
 
     const usuario = await prisma.usuario.upsert({
       where: { email },
-      update: { nombres: nombre },
+      // Igual que los evaluadores: el miembro del comité queda disponible.
+      update: { nombres: nombre, estado: 'ACTIVO' },
       create: {
         cui,
         nombres: nombre,
@@ -812,7 +815,6 @@ export async function asegurarConvocatorias(total: number) {
     aperturaDias: number;
     cierreDias: number;
     anio: number;
-    evaluadorPorDefectoId?: string | null;
   }) => {
     correlativo += 1;
     const montoBase = params.beca.montoBase;
@@ -824,7 +826,9 @@ export async function asegurarConvocatorias(total: number) {
         becaId: params.beca.id,
         nivelAcademicoId: nivelPorNombre.get(params.nivelNombre)?.id ?? null,
         cobertura: params.beca.cobertura,
-        evaluadorPorDefectoId: params.evaluadorPorDefectoId ?? null,
+        // Todas las convocatorias quedan con evaluador por defecto: es lo
+        // que dispara la autoasignación al iniciar la revisión.
+        evaluadorPorDefectoId: evaluadorPorDefectoId ?? null,
         estado: params.estado,
         fechaApertura: fechaRelativa(params.aperturaDias),
         fechaCierre: fechaRelativa(params.cierreDias),
@@ -914,7 +918,6 @@ export async function asegurarConvocatorias(total: number) {
         aperturaDias: -10,
         cierreDias: 30,
         anio: 2026,
-        evaluadorPorDefectoId,
       });
     }
 
@@ -979,8 +982,27 @@ export async function asegurarConvocatorias(total: number) {
         aperturaDias: -240,
         cierreDias: -150,
         anio: 2025,
-        evaluadorPorDefectoId,
       });
+    }
+  }
+
+  // 6. Backfill del evaluador por defecto. Las convocatorias creadas en
+  // corridas anteriores del seed pueden no tener el campo (se agregó
+  // después); sin completarlo, la autoasignación al iniciar la revisión
+  // nunca ocurre y la solicitud queda sin ningún evaluador.
+  if (evaluadorPorDefectoId) {
+    const sinDefault = convocatorias.filter((conv) => !conv.evaluadorPorDefectoId);
+    for (const conv of sinDefault) {
+      await prisma.convocatoria.update({
+        where: { id: conv.id },
+        data: { evaluadorPorDefectoId },
+      });
+      conv.evaluadorPorDefectoId = evaluadorPorDefectoId;
+    }
+    if (sinDefault.length > 0) {
+      console.log(
+        `♻️  Evaluador por defecto aplicado a ${sinDefault.length} convocatoria(s) preexistentes`,
+      );
     }
   }
 

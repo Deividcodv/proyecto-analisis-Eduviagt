@@ -11,12 +11,31 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Textarea } from '@/components/ui/Textarea';
 import { Input } from '@/components/ui/Input';
+import { DetalleSolicitudRevision } from '@/components/revision/DetalleSolicitudRevision';
 import {
   formatearFecha,
   type Solicitud,
   type UsuarioSimplificado,
   type ScoreSolicitud,
 } from '@/lib/api';
+import { AvisoDialog } from '@/components/ui/AvisoDialog';
+
+/**
+ * Catálogo de evaluadores disponibles para asignar.
+ *
+ * `GET /seguridad/personal` es la fuente principal. Si el servidor responde
+ * 403 (base sembrada con un seed anterior, sin el permiso `personal:ver`)
+ * se recurre al endpoint histórico `GET /seguridad/usuarios`, que exige
+ * `permiso:editar`. Que esta carga falle NO debe vaciar la lista de
+ * solicitudes: es un recurso auxiliar.
+ */
+async function cargarCatalogoEvaluadores(): Promise<UsuarioSimplificado[]> {
+  try {
+    return await fetchConToken<UsuarioSimplificado[]>('/seguridad/personal?rol=EVALUADOR');
+  } catch {
+    return await fetchConToken<UsuarioSimplificado[]>('/seguridad/usuarios?rol=EVALUADOR');
+  }
+}
 
 export function PanelSolicitudes() {
   const [solicitudes, setSolicitudes] = useState<Solicitud[] | null>(null);
@@ -26,7 +45,9 @@ export function PanelSolicitudes() {
   const [enviando, setEnviando] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState('ENVIADA');
   const [asignando, setAsignando] = useState<Solicitud | null>(null);
+  const [viendoDetalle, setViendoDetalle] = useState<string | null>(null);
   const [seleccionados, setSeleccionados] = useState<string[]>([]);
+  const [elegido, setElegido] = useState('');
   const [scores, setScores] = useState<Record<string, ScoreSolicitud>>({});
   const [quitarEvaluadorDe, setQuitarEvaluadorDe] = useState<{
     solicitudId: string;
@@ -44,20 +65,26 @@ export function PanelSolicitudes() {
   const [justificacionMonto, setJustificacionMonto] = useState('');
 
   const cargar = useCallback(async () => {
-    try {
-      const [lista, catEvaluadores] = await Promise.all([
-        fetchConToken<Solicitud[]>('/solicitudes'),
-        fetchConToken<UsuarioSimplificado[]>('/seguridad/personal?rol=EVALUADOR'),
-      ]);
-      setSolicitudes(lista);
-      setEvaluadores(catEvaluadores);
+    // Cada recurso se resuelve por separado: que el catálogo de evaluadores
+    // falle no puede vaciar la lista de solicitudes (fallo en cascada por
+    // `Promise.all`).
+    const [resSolicitudes, resEvaluadores] = await Promise.allSettled([
+      fetchConToken<Solicitud[]>('/solicitudes'),
+      cargarCatalogoEvaluadores(),
+    ]);
+
+    if (resSolicitudes.status === 'fulfilled') {
+      setSolicitudes(resSolicitudes.value);
       setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudieron cargar las solicitudes');
-      // Sin esto la lista queda en `null` y la vista muestra el spinner para
-      // siempre, tragándose el mensaje de error.
+    } else {
       setSolicitudes([]);
+      setError(
+        resSolicitudes.reason instanceof Error
+          ? resSolicitudes.reason.message
+          : 'No se pudieron cargar las solicitudes',
+      );
     }
+    setEvaluadores(resEvaluadores.status === 'fulfilled' ? resEvaluadores.value : []);
   }, []);
 
   useEffect(() => {
@@ -88,8 +115,15 @@ export function PanelSolicitudes() {
     // Siempre se puede quitar o cambiar: no es obligatorio.
     const sugerido = solicitud.convocatoria?.evaluadorPorDefectoId;
     setSeleccionados(sugerido ? [sugerido] : []);
+    setElegido(sugerido ?? '');
     setError(null);
     setExito(null);
+  };
+
+  /** Añade el evaluador elegido en el desplegable a la selección. */
+  const agregarElegido = () => {
+    if (!elegido) return;
+    setSeleccionados((prev) => (prev.includes(elegido) ? prev : [...prev, elegido]));
   };
 
   const asignar = async () => {
@@ -323,20 +357,19 @@ export function PanelSolicitudes() {
     (s) => filtroEstado === '' || s.estado === filtroEstado,
   );
 
-  const toggleEvaluador = (id: string) => {
-    setSeleccionados((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  };
-
   return (
     <div>
-      {error && (
-        <p className="mb-4 rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-4 text-sm font-bold text-brutal-rojo">{error}</p>
-      )}
-      {exito && (
-        <p className="mb-4 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-lima/30 p-4 text-sm font-bold text-brutal-tinta">{exito}</p>
-      )}
+      <AvisoDialog
+        open={!!error || !!exito}
+        titulo={error ? 'No se pudo completar la acción' : 'Listo'}
+        tono={error ? 'error' : 'exito'}
+        mensaje={error ?? exito ?? ''}
+        onCerrar={() => {
+          setError(null);
+          setExito(null);
+        }}
+      />
+      
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <Select
@@ -373,24 +406,67 @@ export function PanelSolicitudes() {
               No hay usuarios con rol Evaluador registrados en el sistema.
             </p>
           ) : (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {evaluadores.map((ev) => (
-                <label
-                  key={ev.id}
-                  className="flex cursor-pointer items-center gap-2 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-blanco px-3 py-2 font-mono text-sm text-brutal-tinta"
-                >
-                  <input
-                    type="checkbox"
-                    checked={seleccionados.includes(ev.id)}
-                    onChange={() => toggleEvaluador(ev.id)}
-                    className="h-4 w-4 accent-brutal-tinta"
-                  />
-                  <span>
-                    {ev.nombres}
-                    <span className="block text-xs text-brutal-tinta/75">{ev.email}</span>
-                  </span>
-                </label>
-              ))}
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-end gap-2">
+                <Select
+                  value={elegido}
+                  onChange={(e) => {
+                    setElegido(e.target.value);
+                    if (e.target.value) {
+                      setSeleccionados((prev) =>
+                        prev.includes(e.target.value)
+                          ? prev
+                          : [...prev, e.target.value],
+                      );
+                    }
+                  }}
+                  aria-label="Elegir evaluador"
+                  placeholder="Elegir evaluador…"
+                  options={evaluadores.map((ev) => ({
+                    value: ev.id,
+                    label: `${ev.nombres} (${ev.email})`,
+                  }))}
+                  className="w-80"
+                />
+                <Button variant="ghost" onClick={agregarElegido} disabled={!elegido}>
+                  Agregar
+                </Button>
+              </div>
+
+              {seleccionados.length === 0 ? (
+                <p className="font-mono text-sm text-brutal-tinta/70">
+                  Todavía no hay evaluadores asignados a esta solicitud.
+                </p>
+              ) : (
+                <ul className="flex flex-wrap gap-2">
+                  {seleccionados.map((id) => {
+                    const ev = evaluadores.find((e) => e.id === id);
+                    return (
+                      <li
+                        key={id}
+                        className="flex items-center gap-2 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-blanco px-3 py-1 font-mono text-xs text-brutal-tinta"
+                      >
+                        <span>
+                          {ev?.nombres ?? 'Evaluador'}
+                          <span className="block text-[10px] text-brutal-tinta/75">
+                            {ev?.email ?? id}
+                          </span>
+                        </span>
+                        <button
+                          type="button"
+                          aria-label={`Quitar ${ev?.nombres ?? 'evaluador'}`}
+                          onClick={() =>
+                            setSeleccionados((prev) => prev.filter((x) => x !== id))
+                          }
+                          className="font-bold text-brutal-rojo"
+                        >
+                          ×
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           )}
           <div className="mt-4 flex gap-2">
@@ -411,16 +487,23 @@ export function PanelSolicitudes() {
           {filtradas.map((solicitud) => {
             const score = scores[solicitud.id];
             return (
-              <Card key={solicitud.id} className="flex flex-col gap-3">
+              <Card
+                key={solicitud.id}
+                data-solicitud-id={solicitud.id}
+                className="flex flex-col gap-3"
+              >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="flex flex-wrap items-center gap-3">
                       <h3 className="text-lg font-bold text-brutal-tinta">
-                        {solicitud.convocatoria?.beca?.nombre ?? 'Beca'}
+                        {solicitud.usuario?.nombres ?? 'Postulación'}
                       </h3>
                       <Badge estado={solicitud.estado} />
                     </div>
-                    <p className="text-sm text-brutal-tinta/70">{solicitud.convocatoria?.nombre}</p>
+                    <p className="font-mono text-xs text-brutal-tinta/70">
+                      Solicitud {solicitud.id.slice(0, 8)}
+                      {solicitud.usuario?.cui ? ` · CUI ${solicitud.usuario.cui}` : ''}
+                    </p>
                     <p className="text-sm text-brutal-tinta/70">
                       Creada el {formatearFecha(solicitud.createdAt)} ·{' '}
                       {solicitud._count?.documentos ?? 0} documentos
@@ -435,11 +518,9 @@ export function PanelSolicitudes() {
                     <Button variant="ghost" onClick={() => verScore(solicitud.id)}>
                       {score ? 'Actualizar puntaje' : 'Ver puntaje'}
                     </Button>
-                    {solicitud.estado === 'ENVIADA' && (
-                      <Button onClick={() => iniciarRevision(solicitud)} disabled={enviando}>
-                        Iniciar revisión
-                      </Button>
-                    )}
+                    <Button variant="ghost" onClick={() => setViendoDetalle(solicitud.id)}>
+                      Ver detalle
+                    </Button>
                     {solicitud.estado === 'ENVIADA' && (
                       <Button onClick={() => iniciarRevision(solicitud)} disabled={enviando}>
                         Iniciar revisión
@@ -628,6 +709,13 @@ export function PanelSolicitudes() {
           void quitarEvaluador(solicitudId, evaluadorId, nombre);
         }}
       />
+
+      {viendoDetalle && (
+        <DetalleSolicitudRevision
+          solicitudId={viendoDetalle}
+          onCerrar={() => setViendoDetalle(null)}
+        />
+      )}
 
       {pidiendoCorreccion && (
         <div

@@ -91,6 +91,7 @@ model Usuario {
   auditLogs          AuditLog[]
   notificaciones     Notificacion[]
   aprobacionesHechas            SolicitudAprobacion[]
+  desembolsosRegistrados         Desembolso[]         @relation("DesembolsoRegistradoPor")
   configuracion                ConfiguracionUsuario?
   convocatoriasEvaluadorDefault Convocatoria[] @relation("ConvocatoriaEvaluadorPorDefecto")
 
@@ -355,9 +356,12 @@ model Solicitud {
   historial        HistorialEstado[]
   evaluaciones     Evaluacion[]
   votos            Voto[]
-  decision         Decision?
+  /// Una solicitud puede volver a entrar en agenda y ser decidida otra vez:
+  /// puede tener más de una decisión (la más reciente es la vigente).
+  decisiones       Decision[]
   sesionesAgenda   SesionAgenda[]
   aprobaciones     SolicitudAprobacion[]
+  desembolso       Desembolso?
 
   @@map("solicitud")
 }
@@ -489,6 +493,8 @@ model Evaluacion {
   observaciones        String?
   completada           Boolean  @default(false)
   confirmImparcialidad Boolean  @default(false)
+  /// El evaluador dio por terminada su revisión de esta solicitud.
+  finalizada           Boolean  @default(false)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -586,7 +592,9 @@ model Voto {
 
 model Decision {
   id            String   @id @default(uuid())
-  solicitudId   String   @unique
+  /// Una solicitud puede volver a entrar en agenda y ser decidida otra vez:
+  /// la decisión ya no es única por solicitud.
+  solicitudId   String
   sesionId      String
   resultado     String
   observaciones String?
@@ -595,7 +603,61 @@ model Decision {
   solicitud Solicitud @relation(fields: [solicitudId], references: [id])
   sesion    Sesion    @relation(fields: [sesionId], references: [id])
 
+  @@index([solicitudId])
   @@map("decision")
+}
+
+// ==========================================
+// DESEMBOLSO DE LA BECA
+// ==========================================
+
+/// Estado en el que va el pago de la beca una vez aprobada.
+enum DesembolsoEstado {
+  /// La beca está aprobada y el pago está pendiente de gestionarse.
+  PENDIENTE
+  /// El pago está en trámite en la entidad financiera.
+  EN_TRAMITE
+  /// El pago se hizo.
+  PAGADO
+  /// El pago se canceló.
+  ANULADO
+}
+
+/// Forma en la que se entrega el dinero.
+enum DesembolsoMetodo {
+  TRANSFERENCIA
+  CHEQUE
+  EFECTIVO
+}
+
+/// Pago de una beca aprobada: qué se adeuda, a quién, cómo y cuándo se
+/// entregó.
+model Desembolso {
+  id            String             @id @default(uuid())
+  solicitudId  String             @unique
+  estado        DesembolsoEstado   @default(PENDIENTE)
+  /// Monto a entregar (puede diferir del aprobado si se ajusta).
+  monto         Decimal            @db.Decimal(12, 2)
+  moneda        String             @default("GTQ")
+  metodo        DesembolsoMetodo?
+  banco         String?
+  numeroCuenta  String?
+  titular       String?
+  /// Fecha en que se entregó el dinero.
+  fechaPago     DateTime?
+  /// Comprobante (recibo, depósito o foto del cheque).
+  comprobanteUrl String?
+  /// Quién registró el movimiento.
+  registradoPorId String?
+  notas         String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  solicitud    Solicitud @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  registradoPor Usuario?  @relation("DesembolsoRegistradoPor", fields: [registradoPorId], references: [id])
+
+  @@index([estado])
+  @@map("desembolso")
 }
 
 // ==========================================

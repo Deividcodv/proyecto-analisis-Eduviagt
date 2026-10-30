@@ -8,7 +8,7 @@ La web (Next.js) y la API (NestJS) son dos aplicaciones independientes que se co
 Browser ──► Next.js server ──► API NestJS ──► PostgreSQL
    │              │                  │
    │  /api/*      │  rewrite         │  /api/* (prefijo global)
-   │  (relativo)  │  → NEXT_PUBLIC_  │
+   │  (relativo)  │  -> NEXT_PUBLIC_  │
    │              │    API_PROXY     │
    │              │                  │
    │  SSR fetch   │  API_INTERNAL_   │
@@ -49,30 +49,30 @@ Mensajes traducidos a español por `formatearErroresValidacion` (`common/filters
 
 ## 3. Los tres paths de comunicación
 
-### 3.1 Path público (browser → API directo vía proxy)
+### 3.1 Path público (browser -> API directo vía proxy)
 
 ```
-Browser → GET /api/convocatorias → Next.js rewrite → API → { data: ... }
+Browser -> GET /api/convocatorias -> Next.js rewrite -> API -> { data: ... }
 ```
 
 El navegador siempre llama a `/api/*` (relativo). Next.js reenvía a `NEXT_PUBLIC_API_PROXY`. **No se envía token.**
 
-### 3.2 Path autenticado (browser → API con token)
+### 3.2 Path autenticado (browser -> API con token)
 
 ```
-Browser → fetchConToken('/convocatorias') → /api/convocatorias + Authorization: Bearer <localStorage>
+Browser -> fetchConToken('/convocatorias') -> /api/convocatorias + Authorization: Bearer <localStorage>
 ```
 
 `fetchConToken` (`lib/api-auth.ts`):
 1. Lee `sigeb_access_token` de `localStorage`.
 2. Adjunta `Authorization: Bearer <token>`.
-3. Si la respuesta es 401 → `refreshAccessToken()` (POST /api/auth/refresh con el refresh token) → un reintento con el nuevo access token.
-4. Si el refresh falla → `clearTokens()` (no redirige a `/login`).
+3. Si la respuesta es 401 -> `refreshAccessToken()` (POST /api/auth/refresh con el refresh token) -> un reintento con el nuevo access token.
+4. Si el refresh falla -> `clearTokens()` (no redirige a `/login`).
 
-### 3.3 Path SSR (Server Component → API directo)
+### 3.3 Path SSR (Server Component -> API directo)
 
 ```
-Server Component → httpData('/convocatorias') → API_INTERNAL_URL (absoluto) → API
+Server Component -> httpData('/convocatorias') -> API_INTERNAL_URL (absoluto) -> API
 ```
 
 El Server Component usa `API_INTERNAL_URL` (absoluto, sin token). Como el token está en `localStorage`, **ningún Server Component puede estar autenticado**.
@@ -86,7 +86,7 @@ sequenceDiagram
   participant A as API
 
   B->>W: montar app (layout.tsx)
-  W->>A: refreshAccessToken() → POST /api/auth/refresh
+  W->>A: refreshAccessToken() -> POST /api/auth/refresh
   alt refresh ok
     A-->>W: { data: { accessToken } }
     W->>W: storeTokens(access, refresh)
@@ -95,13 +95,13 @@ sequenceDiagram
     W->>W: setUsuario (rol aplanado a string)
   else refresh fail
     A-->>W: 401
-    W->>W: clearTokens(); setUsuario(null)
+    W->>W: clearTokens() y setUsuario(null)
   end
 
   B->>W: submit login form
   W->>A: POST /api/auth/login {email, password}
   A-->>W: { data: { accessToken, refreshToken, user } }
-  W->>W: storeTokens; setUsuario (rol aplanado)
+  W->>W: storeTokens y setUsuario (rol aplanado)
   W->>W: router.replace(rutaPorRol(rol))
 
   Note over B,W: Request autenticado posterior
@@ -127,7 +127,7 @@ sequenceDiagram
 - Endpoint: `GET /api/notificaciones/stream?token=<JWT>` (el token viaja en **query string** porque `EventSource` no permite headers).
 - Estrategia Passport: `sse-jwt` (`auth/strategies/sse-jwt.strategy.ts`).
 - Formato: `text/event-stream`, heartbeat `hb` cada 25 s.
-- Reconexión en el cliente: `onerror` → `close()` → `refreshAccessToken()` → `setTimeout(conectar, 1000)`.
+- Reconexión en el cliente: `onerror` -> `close()` -> `refreshAccessToken()` -> `setTimeout(conectar, 1000)`.
 
 ## 6. Variables de entorno (origen y efecto)
 
@@ -142,7 +142,7 @@ sequenceDiagram
 | `HOST` | `.env` raíz | Interfaz de escucha (default 0.0.0.0) |
 | `CORS_ORIGIN` | `.env` raíz | Origen permitido (default http://localhost:3001) |
 | `STORAGE_PATH` | `.env` raíz | Ruta del adapter FS (default ./storage) |
-| `AI_API_KEY` | `.env` raíz | Activa modo OpenAI; vacío → fallback-kb |
+| `AI_API_KEY` | `.env` raíz | Activa modo OpenAI; vacío -> fallback-kb |
 | `AI_BASE_URL` | `.env` raíz | URL base OpenAI-compatible (default https://api.openai.com/v1) |
 | `AI_MODEL` | `.env` raíz | Modelo (default gpt-4o-mini) |
 | `AI_TIMEOUT_MS` | `.env` raíz | Timeout LLM (default 15000) |

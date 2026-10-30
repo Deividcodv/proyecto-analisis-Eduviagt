@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Spinner } from '@/components/ui/Spinner';
+import { AvisoDialog } from '@/components/ui/AvisoDialog';
 
 interface ResultadoEliminacion {
   seudonimo: string;
@@ -111,19 +112,17 @@ export function GestionDeCuenta() {
         permite saber de quién se trata.
       </p>
 
-      {error && (
-        <p
-          role="alert"
-          className="mt-4 rounded-brutal border-[3px] border-brutal-rojo bg-red-50 p-4 text-sm font-bold text-brutal-rojo"
-        >
-          {error}
-        </p>
-      )}
-      {exito && (
-        <p className="mt-4 rounded-brutal border-[3px] border-brutal-tinta bg-brutal-lima/30 p-4 text-sm font-bold text-brutal-tinta">
-          {exito}
-        </p>
-      )}
+      <AvisoDialog
+        open={!!error || !!exito}
+        titulo={error ? 'No se pudo completar la acción' : 'Listo'}
+        tono={error ? 'error' : 'exito'}
+        mensaje={error ?? exito ?? ''}
+        onCerrar={() => {
+          setError(null);
+          setExito(null);
+        }}
+      />
+      
 
       <div className="mt-5 flex flex-wrap gap-3">
         <Button variant="danger" onClick={() => setAbierto(true)}>

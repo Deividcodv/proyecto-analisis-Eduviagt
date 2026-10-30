@@ -201,6 +201,7 @@ Toda la documentación detallada está en la carpeta `docs/`:
 
 | Sección | Carpeta / Archivo |
 |---|---|
+| **Entregables del curso (Anexos 1–7)** | `docs/entregables/` — índice y trazabilidad en `docs/entregables/README.md` |
 | Arquitectura (ADR, diagramas, SOLID, schema DB) | `docs/architecture/` |
 | **Arquitectura real verificada (backend)** | `docs/architecture/ARQUITECTURA-REAL.md` |
 | **Datos de demostración** | `docs/architecture/datos-demostracion.md` |
