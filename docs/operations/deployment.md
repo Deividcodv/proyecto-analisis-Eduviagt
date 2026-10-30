@@ -120,6 +120,27 @@ desplegó**: forzar el principal cuando todavía no tiene la réplica haría que
 el siguiente despliegue bajara un código antiguo. En cuanto la réplica esté
 hecha, el remoto pasa a EDUVIAGT solo, sin tocar nada.
 
+### Constancias PDF (US-F7): el navegador headless
+
+Las constancias y los reportes en PDF se generan con Puppeteer, que necesita
+un Chromium. El despliegue lo resuelve solo, pero es bueno saber qué hace y
+por qué:
+
+| Pieza | Para qué | Cómo lo resuelve el despliegue |
+|---|---|---|
+| `unzip` | Descomprimir el zip de Chrome que baja Puppeteer | `sudo apt-get install unzip` |
+| Librerías de Chromium | Que el navegador arranque (`libnss3`, `libgbm1`, `libasound2`, …) | `sudo apt-get install` |
+| Chrome de Puppeteer | El navegador que genera el PDF | `npx puppeteer browsers install chrome` |
+
+> **Por qué importa:** sin `unzip` la descarga de Chrome falla en silencio y
+> deja la carpeta de caché vacía. La API responde entonces
+> `Could not find Chrome (ver. 152.x)` al pedir un PDF, y el portal muestra
+> «No se pudo generar el documento PDF en este momento». Pasó en la VM el
+> 30-oct-2026 y se corrigió instalando `unzip` y las librerías.
+
+Si `CHROME_EXECUTABLE_PATH` apunta a un Chromium del sistema, ese tiene
+preferencia sobre el que descarga Puppeteer.
+
 ---
 
 ## Variables de entorno del servidor
@@ -254,15 +275,19 @@ Qué hace, en orden:
    `apps/api/.env` y los documentos `storage/` no se tocan) y el código se
    sobrescribe sin dejar restos de versiones anteriores.
 2. `npm ci`.
-3. `prisma migrate deploy` y `prisma generate`. La `DATABASE_URL` se lee del
+3. **Navegador headless para las constancias PDF (US-F7).** Instala `unzip`
+   y las librerías de Chromium del sistema, se assure que Puppeteer tenga su
+   Chrome y **comprueba generando un PDF real**. Si algo falla, el despliegue
+   para aquí en lugar de publicar una aplicación con el PDF roto.
+4. `prisma migrate deploy` y `prisma generate`. La `DATABASE_URL` se lee del
    `apps/api/.env` del servidor, que no se versiona.
-4. `npm run build`.
-5. **Copia de `.next/static` y de `public` al árbol standalone.** El output
+5. `npm run build`.
+6. **Copia de `.next/static` y de `public` al árbol standalone.** El output
    `standalone` de Next.js no los incluye: sin este paso el servidor responde
    404 a cada CSS, cada chunk de JavaScript y cada SVG, y el portal se sirve
    sin estilos y sin funcionar. Es el mismo paso que hace el `Dockerfile`.
-6. `pm2 startOrRestart` de `EDUVIAGT-api` y `EDUVIAGT-web`, y `pm2 save`.
-7. Comprobación: el script pide el CSS al servidor y **falla si no responde
+7. `pm2 startOrRestart` de `EDUVIAGT-api` y `EDUVIAGT-web`, y `pm2 save`.
+8. Comprobación: el script pide el CSS al servidor y **falla si no responde
    200**, para que un despliegue roto no pase inadvertido.
 
 > La comprobación de versión es **por commit exacto** (`DEPLOY_EXPECTED_SHA`):
